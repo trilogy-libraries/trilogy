@@ -1,0 +1,18 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        mysql: ["5.7", "8"]
+        dockerfile: ["Dockerfile.test.buster", "Dockerfile.test.stretch", "Dockerfile.test.focal", "Dockerfile.test.bionic"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run tests
+      env:
+        MYSQL_VERSION: ${{ matrix.mysql }}
+        DOCKERFILE: ${{ matrix.dockerfile }}
+      run: script/cibuild

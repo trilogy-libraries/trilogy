@@ -1,0 +1,18 @@
+require "bundler/gem_helper"
+require "rake/extensiontask"
+
+Rake::ExtensionTask.new do |ext|
+  ext.name  = "cext"
+  ext.ext_dir = "ext/trilogy-ruby"
+  ext.lib_dir = "lib/trilogy"
+end
+
+task :test => :compile do
+  system('script/test')
+end
+
+task :default => :test
+
+task :console => :compile do
+  sh "ruby -I lib -r trilogy -S irb"
+end

@@ -1,0 +1,47 @@
+#!/bin/bash
+
+set -e
+
+output_fold() {
+  # Exit early if no label provided
+  if [ -z "$1" ]; then
+    echo "output_fold(): requires a label argument."
+    return
+  fi
+
+  exit_value=0  # exit_value is used to record exit status of the given command
+  label=$1      # human-readable label describing what's being folded up
+  shift 1       # having retrieved the output_fold()-specific arguments, strip them off $@
+
+  # Only echo the tags when in CI_MODE
+  if [ "$CI_MODE" ]; then
+    echo "%%%FOLD {$label}%%%"
+  fi
+
+  # run the remaining arguments. If the command exits non-0, the `||` will
+  # prevent the `-e` flag from seeing the failure exit code, and we'll see
+  # the second echo execute
+  "$@" || exit_value=$?
+
+  # Only echo the tags when in CI_MODE
+  if [ "$CI_MODE" ]; then
+    echo "%%%END FOLD%%%"
+  fi
+
+  # preserve the exit code from the subcommand.
+  return $exit_value
+}
+
+function cleanup() {
+  echo
+  echo "%%%FOLD {Shutting down services...}%%%"
+  docker-compose down -v
+  echo "%%%END FOLD%%%"
+}
+
+trap cleanup EXIT
+
+export CI_MODE=true
+
+output_fold "Bootstrapping container..." docker-compose build
+output_fold "Running tests..." docker-compose run --rm app

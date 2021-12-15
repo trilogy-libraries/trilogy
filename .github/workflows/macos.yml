@@ -1,0 +1,46 @@
+name: macOS
+on: [push]
+
+jobs:
+  test:
+    name: Test
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        mysql: ["5.7", "8.0"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup MySQL
+      run: |
+        brew install mysql@${{ matrix.mysql }}
+        (unset CI; brew postinstall mysql@${{ matrix.mysql }})
+        brew services start mysql@${{ matrix.mysql }}
+        sleep 5
+        $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot -e 'CREATE DATABASE test'
+    - name: Build
+      run: CFLAGS="-I$(brew --prefix openssl@1.1)/include" LDFLAGS="-L$(brew --prefix openssl@1.1)/lib" make all test/test
+    - name: test
+      run: test/test
+  test-ruby:
+    name: Test Ruby
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        mysql: ["5.7", "8.0"]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup MySQL
+      run: |
+        brew install mysql@${{ matrix.mysql }}
+        (unset CI; brew postinstall mysql@${{ matrix.mysql }})
+        brew services start mysql@${{ matrix.mysql }}
+        sleep 5
+        $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot -e 'CREATE DATABASE test'
+    - name: Install dependencies
+      run: |
+        cd contrib/ruby
+        bundle --without benchmark
+    - name: Run tests
+      run: |
+        cd contrib/ruby
+        bundle exec rake

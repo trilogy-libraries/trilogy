@@ -1,0 +1,11 @@
+#!/bin/sh
+# Bootstrap the application's environment.
+set -e
+cd "$(dirname $0)"/..
+
+bundle check --path vendor/gems 2>&1 > /dev/null || {
+  bundle install --path vendor/gems "$@"
+  bundle clean
+}
+
+script/build

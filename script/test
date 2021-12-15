@@ -1,0 +1,86 @@
+#!/bin/bash -xe
+
+set -ex
+
+MYSQL_HOST=${MYSQL_HOST:=127.0.0.1}
+
+wait_for_mysql() {
+	echo "Waiting for MySQL to boot"
+	for i in {1..30}; do
+		nc -z "$MYSQL_HOST" 3306 && break
+		sleep 1
+	done
+}
+
+wait_for_mysql
+
+sanitizers="address"
+old_cc="$CC"
+old_cflags="$CFLAGS"
+
+export CFLAGS+="-O3"
+
+if [ "$(uname)" == "Linux" ]
+  then
+
+  make clean
+  scan-build --status-bugs make
+
+  sanitizers+=",undefined"
+
+  export CC=clang
+
+elif [ "$(uname)" == "Darwin" ]
+  then
+
+  make analyze
+fi
+
+export CFLAGS+=" -fsanitize=$sanitizers"
+
+echo "Building with sanitizers: $sanitizers"
+export LSAN_OPTIONS=verbosity=1:log_threads=1
+make clean
+make
+make test
+
+if [ "$(uname)" == "Linux" ]
+  then
+
+  if [ "$old_cc" ]
+    then
+
+    export CC=$old_cc
+  else
+    unset CC
+  fi
+
+  if [ "$old_cflags" ]
+    then
+
+    export CFLAGS=$old_cflags
+  else
+    unset CFLAGS
+  fi
+
+  echo "Building Cleanly"
+  make clean
+  make
+
+  echo "Testing under valgrind"
+  valgrind --leak-check=full --show-reachable=yes --track-origins=yes \
+    ./example/trilogy_query -h $MYSQL_HOST -u root -P 3306 -s "SHOW DATABASES"
+
+  make test/test
+  valgrind --leak-check=full --show-reachable=yes --track-origins=yes \
+    ./test/test
+fi
+
+# ensure fuzz harness compiles and doesn't bitrot
+echo "Testing fuzz harness"
+make fuzz
+
+# ruby
+echo "Testing ruby extension"
+make clean
+contrib/ruby/script/cibuild

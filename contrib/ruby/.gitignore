@@ -1,0 +1,6 @@
+*.bundle
+*.so
+/ext/trilogy-ruby/Makefile
+/tmp
+/vendor/gems
+/pkg

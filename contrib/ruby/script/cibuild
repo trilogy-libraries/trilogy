@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+cd "$(dirname "$0")/.."
+
+if [ -d /usr/share/rbenv/shims ]; then
+  export PATH=/usr/share/rbenv/shims:$PATH
+  export RBENV_VERSION="2.6.5"
+fi
+
+ruby -v
+bundle -v
+
+script/bootstrap
+
+MYSQL_SOCK=$(mysql_config --socket) script/test

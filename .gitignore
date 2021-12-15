@@ -1,0 +1,6 @@
+*.dSYM
+*.o
+/libtrilogy.a
+/trilogy
+/test/test
+/example/trilogy_query

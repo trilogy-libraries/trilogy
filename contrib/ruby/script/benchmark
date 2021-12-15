@@ -1,0 +1,160 @@
+#!/usr/bin/env ruby
+
+require "rubygems" if !defined?(Gem)
+require "bundler/setup"
+
+require "benchmark/ips"
+require "trilogy"
+require "mysql2"
+
+DEFAULT_USER = ENV["MYSQL_USER"] || "root"
+DEFAULT_PASS = ENV["MYSQL_PASS"]
+DEFAULT_SOCK = ENV["MYSQL_SOCK"] || "/tmp/mysql.sock"
+
+connect_options = {
+  path:     DEFAULT_SOCK, # for trilogy
+  socket:   DEFAULT_SOCK, # for mysql2
+  username: DEFAULT_USER,
+  password: DEFAULT_PASS
+}
+
+Benchmark.ips do |x|
+  x.report "trilogy connect/close" do
+    client = Trilogy.new(connect_options)
+    client.close
+  end
+
+  x.report "mysql2 connect/close" do
+    client = Mysql2::Client.new(connect_options)
+    client.close
+  end
+
+  x.compare!
+end
+
+trilogy_client = Trilogy.new(connect_options)
+mysql2_client = Mysql2::Client.new(connect_options)
+
+ESCAPE_STR = "abc\\'def\\\"ghi\\0jkl%mno"
+
+Benchmark.ips do |x|
+  x.report "trilogy escape" do
+    trilogy_client.escape ESCAPE_STR
+  end
+
+  x.report "mysql2 escape" do
+    mysql2_client.escape ESCAPE_STR
+  end
+
+  x.compare!
+end
+
+Benchmark.ips do |x|
+  x.report "trilogy ping" do
+    trilogy_client.ping
+  end
+
+  x.report "mysql2 ping" do
+    mysql2_client.ping
+  end
+
+  x.compare!
+end
+
+TEST_DB = "test"
+
+Benchmark.ips do |x|
+  x.report "trilogy change_db" do
+    trilogy_client.change_db TEST_DB
+  end
+
+  x.report "mysql2 change_db" do
+    mysql2_client.select_db TEST_DB
+  end
+
+  x.compare!
+end
+
+QUERY = "SELECT 1"
+
+Benchmark.ips do |x|
+  x.report "trilogy query" do
+    trilogy_client.query QUERY
+  end
+
+  x.report "trilogy query (no-casting)" do
+    trilogy_client.query_options[:cast] = false
+    result = trilogy_client.query QUERY
+    result.to_a
+  end
+
+  x.report "mysql2 query" do
+    result = mysql2_client.query QUERY
+    result.to_a
+  end
+
+  x.report "mysql2 query (no-casting)" do
+    result = mysql2_client.query QUERY, cast: false
+    result.to_a
+  end
+
+  x.report "mysql2 query (stream)" do
+    result = mysql2_client.query QUERY, stream: true, cache_rows: false
+    result.to_a
+  end
+
+  x.report "mysql2 query (stream + no-casting)" do
+    result = mysql2_client.query QUERY, stream: true, cache_rows: false
+    result.to_a
+  end
+
+  x.compare!
+end
+
+# affect some rows
+trilogy_client.query("INSERT INTO trilogy_test (varchar_test) VALUES ('a')")
+mysql2_client.query("INSERT INTO trilogy_test (varchar_test) VALUES ('a')")
+
+Benchmark.ips do |x|
+  x.report "trilogy affected_rows" do
+    trilogy_client.affected_rows
+  end
+
+  x.report "mysql2 affected_rows" do
+    mysql2_client.affected_rows
+  end
+
+  x.compare!
+end
+
+# reset warning count
+trilogy_client.query("SELECT 1")
+mysql2_client.query("SELECT 1").to_a
+
+Benchmark.ips do |x|
+  x.report "trilogy warning_count" do
+    trilogy_client.warning_count
+  end
+
+  x.report "mysql2 warning_count" do
+    mysql2_client.warning_count
+  end
+
+  x.compare!
+end
+
+# setup an insert id
+trilogy_client.query("INSERT INTO trilogy_test (varchar_test) VALUES ('a')")
+mysql2_client.query("INSERT INTO trilogy_test (varchar_test) VALUES ('a')")
+
+Benchmark.ips do |x|
+  x.report "trilogy last_insert_id" do
+    trilogy_client.last_insert_id
+  end
+
+  x.report "mysql2 last_insert_id" do
+    mysql2_client.last_id
+  end
+
+  x.compare!
+end

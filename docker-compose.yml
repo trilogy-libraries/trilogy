@@ -1,0 +1,37 @@
+version: "3.5"
+services:
+  db:
+    image: "mysql:${MYSQL_VERSION}"
+    command:
+    - --sql_mode=NO_ENGINE_SUBSTITUTION
+    - --server-id=1
+    - --gtid-mode=ON
+    - --enforce-gtid-consistency=ON
+    - --log-bin=mysql-bin.log
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: 1
+      MYSQL_DATABASE: test
+      MYSQL_HOST: db.local
+    volumes:
+      - "db-data:/var/lib/mysql"
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+  app:
+    image: app
+    privileged: true
+    build:
+      context: .
+      dockerfile: "${DOCKERFILE}"
+    environment:
+      MYSQL_HOST: db.local
+      MYSQL_VERSION: ${MYSQL_VERSION}
+      TRILOGY_TEST_CERTS: "/db-data"
+    depends_on:
+      - db
+    links:
+      - "db:db.local"
+      - "db:wildcard.db.local"
+    volumes:
+      - "db-data:/db-data"
+
+volumes:
+  db-data:
