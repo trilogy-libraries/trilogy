@@ -25,7 +25,7 @@ It's currently in production use on github.com.
 
 ## Limitations
 
-* Only supports the parts of the text protocol that are in common use. There's no support for the binary protocol or prepared statements
+* Only supports the parts of the text protocol that are in common use.
 
 * No support for `LOAD DATA INFILE` on local files
 

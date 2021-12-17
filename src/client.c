@@ -777,4 +777,182 @@ int trilogy_discard(trilogy_conn_t *conn)
     return rc;
 }
 
+int trilogy_stmt_prepare_send(trilogy_conn_t *conn, const char *stmt, size_t stmt_len)
+{
+    trilogy_builder_t builder;
+    int err = begin_command_phase(&builder, conn, 0);
+    if (err < 0) {
+        return err;
+    }
+
+    err = trilogy_build_stmt_prepare_packet(&builder, stmt, stmt_len);
+    if (err < 0) {
+        return err;
+    }
+
+    return begin_write(conn);
+}
+
+int trilogy_stmt_prepare_recv(trilogy_conn_t *conn, trilogy_stmt_t *stmt_out)
+{
+    int err = read_packet(conn);
+
+    if (err < 0) {
+        return err;
+    }
+
+    switch (current_packet_type(conn)) {
+    case TRILOGY_PACKET_OK: {
+        err = trilogy_parse_stmt_ok_packet(conn->packet_buffer.buff, conn->packet_buffer.len, stmt_out);
+
+        if (err < 0) {
+            return err;
+        }
+
+        conn->warning_count = stmt_out->warning_count;
+
+        return TRILOGY_OK;
+    }
+
+    case TRILOGY_PACKET_ERR:
+        return read_err_packet(conn);
+
+    default:
+        return TRILOGY_UNEXPECTED_PACKET;
+    }
+}
+
+int trilogy_stmt_execute_send(trilogy_conn_t *conn, trilogy_stmt_t *stmt, uint8_t flags, trilogy_binary_value_t *binds)
+{
+    trilogy_builder_t builder;
+    int err = begin_command_phase(&builder, conn, 0);
+    if (err < 0) {
+        return err;
+    }
+
+    err = trilogy_build_stmt_execute_packet(&builder, stmt->id, flags, binds, stmt->parameter_count);
+
+    if (err < 0) {
+        return err;
+    }
+
+    conn->packet_parser.sequence_number = builder.seq;
+
+    return begin_write(conn);
+}
+
+int trilogy_stmt_execute_recv(trilogy_conn_t *conn, uint64_t *column_count_out)
+{
+    int err = read_packet(conn);
+
+    if (err < 0) {
+        return err;
+    }
+
+    switch (current_packet_type(conn)) {
+    case TRILOGY_PACKET_OK:
+        return read_ok_packet(conn);
+
+    case TRILOGY_PACKET_ERR:
+        return read_err_packet(conn);
+
+    default: {
+        trilogy_result_packet_t result_packet;
+        err = trilogy_parse_result_packet(conn->packet_buffer.buff, conn->packet_buffer.len, &result_packet);
+
+        if (err < 0) {
+            return err;
+        }
+
+        conn->column_count = result_packet.column_count;
+        *column_count_out = result_packet.column_count;
+
+        return TRILOGY_OK;
+    }
+    }
+}
+
+// FYI: there is no `trilogy_stmt_bind_data_recv` because the server doesn't send a response.
+int trilogy_stmt_bind_data_send(trilogy_conn_t *conn, trilogy_stmt_t *stmt, uint16_t param_num, uint8_t *data,
+                                size_t data_len)
+{
+    trilogy_builder_t builder;
+    int err = begin_command_phase(&builder, conn, 0);
+    if (err < 0) {
+        return err;
+    }
+
+    err = trilogy_build_stmt_bind_data_packet(&builder, stmt->id, param_num, data, data_len);
+
+    if (err < 0) {
+        return err;
+    }
+
+    return begin_write(conn);
+}
+
+int trilogy_stmt_read_row(trilogy_conn_t *conn, trilogy_stmt_t *stmt, trilogy_column_packet_t *columns,
+                          trilogy_binary_value_t *values_out)
+{
+    int err = read_packet(conn);
+
+    if (err < 0) {
+        return err;
+    }
+
+    if (conn->capabilities & TRILOGY_CAPABILITIES_DEPRECATE_EOF && current_packet_type(conn) == TRILOGY_PACKET_EOF) {
+        if ((err = read_ok_packet(conn)) != TRILOGY_OK) {
+            return err;
+        }
+
+        return TRILOGY_EOF;
+    } else if (current_packet_type(conn) == TRILOGY_PACKET_EOF && conn->packet_buffer.len < 9) {
+        return read_eof_packet(conn);
+    } else if (current_packet_type(conn) == TRILOGY_PACKET_ERR) {
+        return read_err_packet(conn);
+    } else {
+        return trilogy_parse_stmt_row_packet(conn->packet_buffer.buff, conn->packet_buffer.len, columns,
+                                             stmt->column_count, values_out);
+    }
+}
+
+int trilogy_stmt_reset_send(trilogy_conn_t *conn, trilogy_stmt_t *stmt)
+{
+    int err = 0;
+
+    trilogy_builder_t builder;
+    err = begin_command_phase(&builder, conn, 0);
+    if (err < 0) {
+        return err;
+    }
+
+    err = trilogy_build_stmt_reset_packet(&builder, stmt->id);
+    if (err < 0) {
+        return err;
+    }
+
+    return begin_write(conn);
+}
+
+int trilogy_stmt_reset_recv(trilogy_conn_t *conn) {
+    return read_generic_response(conn);
+}
+
+int trilogy_stmt_close_send(trilogy_conn_t *conn, trilogy_stmt_t *stmt)
+{
+    trilogy_builder_t builder;
+    int err = begin_command_phase(&builder, conn, 0);
+    if (err < 0) {
+        return err;
+    }
+
+    err = trilogy_build_stmt_close_packet(&builder, stmt->id);
+
+    if (err < 0) {
+        return err;
+    }
+
+    return begin_write(conn);
+}
+
 #undef CHECKED

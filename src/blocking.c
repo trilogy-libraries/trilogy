@@ -261,4 +261,121 @@ int trilogy_close(trilogy_conn_t *conn)
     }
 }
 
+int trilogy_stmt_prepare(trilogy_conn_t *conn, const char *stmt, size_t stmt_len, trilogy_stmt_t *stmt_out)
+{
+    int rc = trilogy_stmt_prepare_send(conn, stmt, stmt_len);
+
+    if (rc == TRILOGY_AGAIN) {
+        rc = flush_full(conn);
+    }
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    while (1) {
+        rc = trilogy_stmt_prepare_recv(conn, stmt_out);
+
+        if (rc != TRILOGY_AGAIN) {
+            return rc;
+        }
+
+        CHECKED(trilogy_sock_wait_read(conn->socket));
+    }
+}
+
+int trilogy_stmt_execute(trilogy_conn_t *conn, trilogy_stmt_t *stmt, uint8_t flags, trilogy_binary_value_t *binds,
+                         uint64_t *column_count_out)
+{
+    int rc = trilogy_stmt_execute_send(conn, stmt, flags, binds);
+
+    if (rc == TRILOGY_AGAIN) {
+        rc = flush_full(conn);
+    }
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    while (1) {
+        rc = trilogy_stmt_execute_recv(conn, column_count_out);
+
+        if (rc != TRILOGY_AGAIN) {
+            return rc;
+        }
+
+        CHECKED(trilogy_sock_wait_read(conn->socket));
+    }
+}
+
+int trilogy_stmt_bind_data(trilogy_conn_t *conn, trilogy_stmt_t *stmt, uint16_t param_num, uint8_t *data,
+                           size_t data_len)
+{
+    int rc = trilogy_stmt_bind_data_send(conn, stmt, param_num, data, data_len);
+
+    if (rc == TRILOGY_AGAIN) {
+        rc = flush_full(conn);
+    }
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    return TRILOGY_OK;
+}
+
+int trilogy_stmt_read_full_row(trilogy_conn_t *conn, trilogy_stmt_t *stmt, trilogy_column_packet_t *columns,
+                               trilogy_binary_value_t *values_out)
+{
+    int rc;
+
+    while (1) {
+        rc = trilogy_stmt_read_row(conn, stmt, columns, values_out);
+
+        if (rc != TRILOGY_AGAIN) {
+            return rc;
+        }
+
+        CHECKED(trilogy_sock_wait_read(conn->socket));
+    }
+}
+
+int trilogy_stmt_reset(trilogy_conn_t *conn, trilogy_stmt_t *stmt)
+{
+    int rc = trilogy_stmt_reset_send(conn, stmt);
+
+    if (rc == TRILOGY_AGAIN) {
+        rc = flush_full(conn);
+    }
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    while (1) {
+        rc = trilogy_stmt_reset_recv(conn);
+
+        if (rc != TRILOGY_AGAIN) {
+            return rc;
+        }
+
+        CHECKED(trilogy_sock_wait_read(conn->socket));
+    }
+}
+
+int trilogy_stmt_close(trilogy_conn_t *conn, trilogy_stmt_t *stmt)
+{
+    int rc = trilogy_stmt_close_send(conn, stmt);
+
+    if (rc == TRILOGY_AGAIN) {
+        rc = flush_full(conn);
+    }
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    return TRILOGY_OK;
+}
+
 #undef CHECKED

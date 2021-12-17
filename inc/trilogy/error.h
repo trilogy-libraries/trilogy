@@ -22,7 +22,8 @@
     XX(TRILOGY_UNSUPPORTED, -17)                                                                                       \
     XX(TRILOGY_DNS_ERR, -18)                                                                                           \
     XX(TRILOGY_AUTH_SWITCH, -19)                                                                                       \
-    XX(TRILOGY_MAX_PACKET_EXCEEDED, -20)
+    XX(TRILOGY_MAX_PACKET_EXCEEDED, -20)                                                                               \
+    XX(TRILOGY_UNKNOWN_TYPE, -21)
 
 enum {
 #define XX(name, code) name = code,

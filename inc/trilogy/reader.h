@@ -90,6 +90,10 @@ int trilogy_reader_get_uint32(trilogy_reader_t *reader, uint32_t *out);
  */
 int trilogy_reader_get_uint64(trilogy_reader_t *reader, uint64_t *out);
 
+int trilogy_reader_get_float(trilogy_reader_t *reader, float *out);
+
+int trilogy_reader_get_double(trilogy_reader_t *reader, double *out);
+
 /* trilogy_reader_get_lenenc - Parse an unsigned, length-encoded integer.
  *
  * reader - A pointer to a pre-initialized trilogy_reader_t.

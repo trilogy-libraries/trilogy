@@ -565,6 +565,13 @@ typedef struct {
 } trilogy_ok_packet_t;
 
 typedef struct {
+    uint32_t id;
+    uint16_t column_count;
+    uint16_t parameter_count;
+    uint16_t warning_count;
+} trilogy_stmt_ok_packet_t;
+
+typedef struct {
     uint16_t warning_count;
     uint16_t status_flags;
 } trilogy_eof_packet_t;
@@ -613,6 +620,127 @@ typedef struct {
     const void *data;
     size_t data_len;
 } trilogy_value_t;
+
+typedef struct {
+    bool is_null;
+
+    TRILOGY_TYPE_t type;
+
+    union {
+        double dbl;
+
+        int64_t int64;
+        uint64_t uint64;
+
+        float flt;
+
+        uint32_t uint32;
+        int32_t int32;
+
+        uint16_t uint16;
+        int16_t int16;
+
+        uint8_t uint8;
+        int8_t int8;
+
+        struct {
+            const void *data;
+            size_t len;
+        } str;
+
+        struct {
+            uint16_t year;
+            uint8_t month, day;
+            struct {
+                bool is_negative;
+                uint32_t days;
+                uint8_t hour, minute, second;
+                uint32_t micro_seconds;
+            } time;
+        } date;
+    } as;
+} trilogy_binary_value_t;
+
+/* trilogy_build_stmt_prepare_packet - Build a prepared statement prepare command packet.
+ *
+ * builder   - A pointer to a pre-initialized trilogy_builder_t.
+ * query     - The query string to be used by the prepared statement.
+ * query_len - The length of query in bytes.
+ *
+ * Return values:
+ *   TRILOGY_OK     - The packet was successfully built and written to the
+ *                    builder's internal buffer.
+ *   TRILOGY_SYSERR - A system error occurred, check errno.
+ */
+int trilogy_build_stmt_prepare_packet(trilogy_builder_t *builder, const char *sql, size_t sql_len);
+
+// Prepared statement flags
+typedef enum {
+    TRILOGY_CURSOR_TYPE_NO_CURSOR  = 0x00,
+    TRILOGY_CURSOR_TYPE_READ_ONLY  = 0x01,
+    TRILOGY_CURSOR_TYPE_FOR_UPDATE = 0x02,
+    TRILOGY_CURSOR_TYPE_SCROLLABLE = 0x04,
+    TRILOGY_CURSOR_TYPE_UNKNOWN
+} TRILOGY_STMT_FLAGS_t;
+
+/* trilogy_build_stmt_execute_packet - Build a prepared statement execute command packet.
+ *
+ * builder   - A pointer to a pre-initialized trilogy_builder_t.
+ * stmt_id   - The statement id for which to build the execute packet with.
+ * flags     - The flags (TRILOGY_STMT_FLAGS_t) to be used with this execute command packet.
+ * binds     - Pointer to an array of trilogy_binary_value_t's.
+ * num_binds - The number of elements in the binds array above.
+ *
+ * Return values:
+ *   TRILOGY_OK                 - The packet was successfully built and written to the
+ *                                builder's internal buffer.
+ *   TRILOGY_PROTOCOL_VIOLATION - num_binds is > 0 but binds is NULL.
+ *   TRILOGY_UNKNOWN_TYPE       - An unsupported or unknown MySQL type was used in the list
+ *                                of binds.
+ *   TRILOGY_SYSERR             - A system error occurred, check errno.
+ */
+int trilogy_build_stmt_execute_packet(trilogy_builder_t *builder, uint32_t stmt_id, uint8_t flags,
+                                      trilogy_binary_value_t *binds, uint16_t num_binds);
+
+/* trilogy_build_stmt_bind_data_packet - Build a prepared statement send long data command packet.
+ *
+ * builder  - A pointer to a pre-initialized trilogy_builder_t.
+ * stmt_id  - The statement id for which to build the bind data packet with.
+ * param_id - The parameter index for which the supplied data should be bound to.
+ * data     - A pointer to the buffer containing the data to be bound.
+ * data_len - The length of the data buffer.
+ *
+ * Return values:
+ *   TRILOGY_OK     - The packet was successfully built and written to the
+ *                    builder's internal buffer.
+ *   TRILOGY_SYSERR - A system error occurred, check errno.
+ */
+int trilogy_build_stmt_bind_data_packet(trilogy_builder_t *builder, uint32_t stmt_id, uint16_t param_id, uint8_t *data,
+                                        size_t data_len);
+
+/* trilogy_build_stmt_reset_packet - Build a prepared statement reset command packet.
+ *
+ * builder - A pointer to a pre-initialized trilogy_builder_t.
+ * stmt_id - The statement id for which to build the reset packet with.
+ *
+ * Return values:
+ *   TRILOGY_OK     - The packet was successfully built and written to the
+ *                    builder's internal buffer.
+ *   TRILOGY_SYSERR - A system error occurred, check errno.
+ */
+int trilogy_build_stmt_reset_packet(trilogy_builder_t *builder, uint32_t stmt_id);
+
+/* trilogy_build_stmt_close_packet - Build a prepared statement close command packet.
+ *
+ * builder - A pointer to a pre-initialized trilogy_builder_t.
+ * stmt_id - The statement id for which to build the close packet with.
+ *
+ * Return values:
+ *   TRILOGY_OK     - The packet was successfully built and written to the
+ *                    builder's internal buffer.
+ *   TRILOGY_SYSERR - A system error occurred, check errno.
+ */
+int trilogy_build_stmt_close_packet(trilogy_builder_t *builder, uint32_t stmt_id);
 
 /* The following parsing functions assume the buffer and length passed in point
  * to one full MySQL-compatible packet. If the buffer contains more than one packet or
@@ -769,5 +897,49 @@ int trilogy_parse_column_packet(const uint8_t *buff, size_t len, bool field_list
  *                                  buffer.
  */
 int trilogy_parse_row_packet(const uint8_t *buff, size_t len, uint64_t column_count, trilogy_value_t *out_values);
+
+/* trilogy_parse_stmt_ok_packet - Parse a prepared statement ok packet.
+ *
+ * buff         - A pointer to the buffer containing the result packet data.
+ * len          - The length of buffer in bytes.
+ * out_packet   - Out parameter; A pointer to a pre-allocated trilogy_stmt_ok_packet_t.
+ *
+ * Return values:
+ *   TRILOGY_OK                   - The packet was was parsed and the out
+ *                                  parameter has been filled in.
+ *   TRILOGY_TRUNCATED_PACKET     - There isn't enough data in the buffer
+ *                                  to parse the packet.
+ *   TRILOGY_PROTOCOL_VIOLATION   - Filler byte was something other than zero.
+ *   TRILOGY_EXTRA_DATA_IN_PACKET - There are unparsed bytes left in the
+ *                                  buffer.
+ */
+int trilogy_parse_stmt_ok_packet(const uint8_t *buff, size_t len, trilogy_stmt_ok_packet_t *out_packet);
+
+/* trilogy_parse_stmt_row_packet - Parse a prepared statement row packet.
+ *
+ * buff         - A pointer to the buffer containing the result packet data.
+ * len          - The length of buffer in bytes.
+ * columns      - The list of columns from the prepared statement. This parser needs
+ *                this in order to match up the value types.
+ * column_count - The number of columns in prepared statement. This parser needs this
+ *                in order to know how many values to parse.
+ * out_values   - Out parameter; A pointer to a pre-allocated array of
+ *                trilogy_binary_value_t's. There must be enough space to fit all of the
+ *                values. This can be computed with:
+ *                `(sizeof(trilogy_value_t) * column_count)`.
+ *
+ * Return values:
+ *   TRILOGY_OK                   - The packet was was parsed and the out
+ *                                  parameter has been filled in.
+ *   TRILOGY_TRUNCATED_PACKET     - There isn't enough data in the buffer
+ *                                  to parse the packet.
+ *   TRILOGY_PROTOCOL_VIOLATION   - Invalid length parsed for a TIME/DATETIME/TIMESTAMP value.
+ *   TRILOGY_UNKNOWN_TYPE         - An unsupported or unknown MySQL type was used in the list
+ *                                  of binds.
+ *   TRILOGY_EXTRA_DATA_IN_PACKET - There are unparsed bytes left in the
+ *                                  buffer.
+ */
+int trilogy_parse_stmt_row_packet(const uint8_t *buff, size_t len, trilogy_column_packet_t *columns,
+                                  uint64_t column_count, trilogy_binary_value_t *out_values);
 
 #endif

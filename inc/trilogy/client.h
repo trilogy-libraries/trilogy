@@ -601,4 +601,28 @@ void trilogy_free(trilogy_conn_t *conn);
  */
 int trilogy_discard(trilogy_conn_t *conn);
 
+int trilogy_stmt_prepare_send(trilogy_conn_t *conn, const char *stmt, size_t stmt_len);
+
+/* trilogy_stmt_t - The trilogy client's prepared statement type.
+ */
+typedef trilogy_stmt_ok_packet_t trilogy_stmt_t;
+
+int trilogy_stmt_prepare_recv(trilogy_conn_t *conn, trilogy_stmt_t *stmt_out);
+
+int trilogy_stmt_bind_data_send(trilogy_conn_t *conn, trilogy_stmt_t *stmt, uint16_t param_num, uint8_t *data,
+                                size_t data_len);
+
+int trilogy_stmt_execute_send(trilogy_conn_t *conn, trilogy_stmt_t *stmt, uint8_t flags, trilogy_binary_value_t *binds);
+
+int trilogy_stmt_execute_recv(trilogy_conn_t *conn, uint64_t *column_count_out);
+
+int trilogy_stmt_read_row(trilogy_conn_t *conn, trilogy_stmt_t *stmt, trilogy_column_packet_t *columns,
+                          trilogy_binary_value_t *values_out);
+
+int trilogy_stmt_reset_send(trilogy_conn_t *conn, trilogy_stmt_t *stmt);
+
+int trilogy_stmt_reset_recv(trilogy_conn_t *conn);
+
+int trilogy_stmt_close_send(trilogy_conn_t *conn, trilogy_stmt_t *stmt);
+
 #endif

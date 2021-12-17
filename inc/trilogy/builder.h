@@ -117,6 +117,10 @@ int trilogy_builder_write_uint32(trilogy_builder_t *builder, uint32_t val);
  */
 int trilogy_builder_write_uint64(trilogy_builder_t *builder, uint64_t val);
 
+int trilogy_builder_write_float(trilogy_builder_t *builder, float val);
+
+int trilogy_builder_write_double(trilogy_builder_t *builder, double val);
+
 /* trilogy_builder_write_lenenc - Append a length-encoded integer to the packet
  * buffer.
  *

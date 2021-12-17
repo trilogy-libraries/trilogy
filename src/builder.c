@@ -120,6 +120,48 @@ int trilogy_builder_write_uint64(trilogy_builder_t *builder, uint64_t val)
     return TRILOGY_OK;
 }
 
+typedef union {
+    float f;
+    uint32_t u;
+} trilogy_float_buf_t;
+
+int trilogy_builder_write_float(trilogy_builder_t *builder, float val)
+{
+    trilogy_float_buf_t float_val;
+
+    float_val.f = val;
+
+    CHECKED(trilogy_builder_write_uint8(builder, float_val.u & 0xff));
+    CHECKED(trilogy_builder_write_uint8(builder, (float_val.u >> 8) & 0xff));
+    CHECKED(trilogy_builder_write_uint8(builder, (float_val.u >> 16) & 0xff));
+    CHECKED(trilogy_builder_write_uint8(builder, (float_val.u >> 24) & 0xff));
+
+    return TRILOGY_OK;
+}
+
+typedef union {
+    double d;
+    uint64_t u;
+} trilogy_double_buf_t;
+
+int trilogy_builder_write_double(trilogy_builder_t *builder, double val)
+{
+    trilogy_double_buf_t double_val;
+
+    double_val.d = val;
+
+    CHECKED(trilogy_builder_write_uint8(builder, double_val.u & 0xff));
+    CHECKED(trilogy_builder_write_uint8(builder, (double_val.u >> 8) & 0xff));
+    CHECKED(trilogy_builder_write_uint8(builder, (double_val.u >> 16) & 0xff));
+    CHECKED(trilogy_builder_write_uint8(builder, (double_val.u >> 24) & 0xff));
+    CHECKED(trilogy_builder_write_uint8(builder, (double_val.u >> 32) & 0xff));
+    CHECKED(trilogy_builder_write_uint8(builder, (double_val.u >> 40) & 0xff));
+    CHECKED(trilogy_builder_write_uint8(builder, (double_val.u >> 48) & 0xff));
+    CHECKED(trilogy_builder_write_uint8(builder, (double_val.u >> 56) & 0xff));
+
+    return TRILOGY_OK;
+}
+
 int trilogy_builder_write_lenenc(trilogy_builder_t *builder, uint64_t val)
 {
     if (val < 251) {
