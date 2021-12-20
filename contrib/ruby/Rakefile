@@ -1,4 +1,4 @@
-require "bundler/gem_helper"
+require "bundler/gem_tasks"
 require "rake/extensiontask"
 
 Rake::ExtensionTask.new do |ext|
