@@ -872,7 +872,6 @@ int trilogy_stmt_execute_recv(trilogy_conn_t *conn, uint64_t *column_count_out)
     }
 }
 
-// FYI: there is no `trilogy_stmt_bind_data_recv` because the server doesn't send a response.
 int trilogy_stmt_bind_data_send(trilogy_conn_t *conn, trilogy_stmt_t *stmt, uint16_t param_num, uint8_t *data,
                                 size_t data_len)
 {
