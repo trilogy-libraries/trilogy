@@ -702,7 +702,7 @@ typedef enum {
 int trilogy_build_stmt_execute_packet(trilogy_builder_t *builder, uint32_t stmt_id, uint8_t flags,
                                       trilogy_binary_value_t *binds, uint16_t num_binds);
 
-/* trilogy_build_stmt_bind_data_packet - Build a prepared statement send long data command packet.
+/* trilogy_build_stmt_bind_data_packet - Build a prepared statement bind long data command packet.
  *
  * builder  - A pointer to a pre-initialized trilogy_builder_t.
  * stmt_id  - The statement id for which to build the bind data packet with.
