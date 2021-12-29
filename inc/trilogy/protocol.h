@@ -926,7 +926,7 @@ int trilogy_parse_stmt_ok_packet(const uint8_t *buff, size_t len, trilogy_stmt_o
  * out_values   - Out parameter; A pointer to a pre-allocated array of
  *                trilogy_binary_value_t's. There must be enough space to fit all of the
  *                values. This can be computed with:
- *                `(sizeof(trilogy_value_t) * column_count)`.
+ *                `(sizeof(trilogy_binary_value_t) * column_count)`.
  *
  * Return values:
  *   TRILOGY_OK                   - The packet was was parsed and the out
@@ -934,8 +934,7 @@ int trilogy_parse_stmt_ok_packet(const uint8_t *buff, size_t len, trilogy_stmt_o
  *   TRILOGY_TRUNCATED_PACKET     - There isn't enough data in the buffer
  *                                  to parse the packet.
  *   TRILOGY_PROTOCOL_VIOLATION   - Invalid length parsed for a TIME/DATETIME/TIMESTAMP value.
- *   TRILOGY_UNKNOWN_TYPE         - An unsupported or unknown MySQL type was used in the list
- *                                  of binds.
+ *   TRILOGY_UNKNOWN_TYPE         - An unsupported or unknown MySQL type was seen in the packet.
  *   TRILOGY_EXTRA_DATA_IN_PACKET - There are unparsed bytes left in the
  *                                  buffer.
  */
