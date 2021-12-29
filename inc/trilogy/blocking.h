@@ -177,19 +177,122 @@ int trilogy_ping(trilogy_conn_t *conn);
  */
 int trilogy_close(trilogy_conn_t *conn);
 
+/* trilogy_stmt_prepare - Send a prepared statement prepare command to the server.
+ *
+ * conn     - A connected trilogy_conn_t pointer. Using a disconnected trilogy_conn_t is
+ *            undefined.
+ * stmt     - A pointer to the buffer containing the statement to prepare.
+ * stmt_len - The length of the data buffer.
+ * stmt_out - A pointer to a pre-allocated trilogy_stmt_t.
+ *
+ * Return values:
+ *   TRILOGY_OK                 - The prepare command was successfully sent to the server.
+ *   TRILOGY_UNEXPECTED_PACKET  - The response packet wasn't what was expected.
+ *   TRILOGY_PROTOCOL_VIOLATION - An error occurred while processing a network
+ *                                packet.
+ *   TRILOGY_SYSERR             - A system error occurred, check errno.
+ *   TRILOGY_CLOSED_CONNECTION  - The connection is closed.
+ */
 int trilogy_stmt_prepare(trilogy_conn_t *conn, const char *stmt, size_t stmt_len, trilogy_stmt_t *stmt_out);
 
+/* trilogy_stmt_execute - Send a prepared statement execute command to the server.
+ *
+ * conn             - A connected trilogy_conn_t pointer. Using a disconnected trilogy_conn_t is
+ *                    undefined.
+ * stmt             - Pointer to a valid trilogy_stmt_t, representing the prepared statement you're
+ *                    requesting to execute.
+ * flags            - The flags (TRILOGY_STMT_FLAGS_t) to be used with this execute command packet.
+ * binds            - Pointer to an array of trilogy_binary_value_t's. The array size should
+ *                    match that of `trilogy_stmt_t.column_count`.
+ * column_count_out - Out parameter; A pointer to a pre-allocated uint64_t. Represents the
+ *                    number of columns in the response.
+ *
+ * Return values:
+ *   TRILOGY_OK                 - The execute command was successfully sent to the server.
+ *   TRILOGY_UNEXPECTED_PACKET  - The response packet wasn't what was expected.
+ *   TRILOGY_PROTOCOL_VIOLATION - An error occurred while processing a network
+ *                                packet.
+ *   TRILOGY_SYSERR             - A system error occurred, check errno.
+ *   TRILOGY_CLOSED_CONNECTION  - The connection is closed.
+ */
 int trilogy_stmt_execute(trilogy_conn_t *conn, trilogy_stmt_t *stmt, uint8_t flags, trilogy_binary_value_t *binds,
                          uint64_t *column_count_out);
 
+/* trilogy_stmt_bind_data - Send a prepared statement bind long data command to the server.
+ *
+ * conn      - A connected trilogy_conn_t pointer. Using a disconnected trilogy_conn_t is
+ *             undefined.
+ * stmt      - Pointer to a valid trilogy_stmt_t, representing the prepared statement for which
+ *             to bind the supplied parameter data to.
+ * param_num - The parameter index for which the supplied data should be bound to.
+ * data      - A pointer to the buffer containing the data to be bound.
+ * data_len  - The length of the data buffer.
+ *
+ * Return values:
+ *   TRILOGY_OK     - The bind data command was successfully sent to the server.
+ *   TRILOGY_SYSERR - A system error occurred, check errno.
+ */
 int trilogy_stmt_bind_data(trilogy_conn_t *conn, trilogy_stmt_t *stmt, uint16_t param_num, uint8_t *data,
                            size_t data_len);
 
+/* trilogy_stmt_read_full_row - Read a row from the prepared statement execute response.
+ *
+ * This should only be called after a sucessful call to trilogy_stmt_execute.
+ * You should continue calling this until TRILOGY_EOF is returned. Denoting the end
+ * of the result set.
+ *
+ * conn         - A pre-initialized trilogy_conn_t pointer. It can also be connected but
+ *                a disconnected trilogy_conn_t will also return TRILOGY_OK.
+ * stmt         - Pointer to a valid trilogy_stmt_t, representing the prepared statement you're
+ *                requesting to execute.
+ * columns      - The list of columns from the prepared statement.
+ * column_count - The number of columns in prepared statement.
+ * values_out   - Out parameter; A pointer to a pre-allocated array of
+ *                trilogy_binary_value_t's. There must be enough space to fit all of the
+ *                values. This can be computed with:
+ *                `(sizeof(trilogy_binary_value_t) * column_count)`.
+ *
+ * Return values:
+ *   TRILOGY_OK                 - The prepare command response successfully read from
+ *                                the server.
+ *   TRILOGY_EOF                - There are no more rows to read from the result set.
+ *   TRILOGY_UNEXPECTED_PACKET  - The response packet wasn't what was expected.
+ *   TRILOGY_PROTOCOL_VIOLATION - Invalid length parsed for a TIME/DATETIME/TIMESTAMP value.
+ *   TRILOGY_UNKNOWN_TYPE       - An unsupported or unknown MySQL type was seen.
+ *   TRILOGY_SYSERR             - A system error occurred, check errno.
+ *   TRILOGY_CLOSED_CONNECTION  - The connection is closed.
+ */
 int trilogy_stmt_read_full_row(trilogy_conn_t *conn, trilogy_stmt_t *stmt, trilogy_column_packet_t *columns,
                                trilogy_binary_value_t *values_out);
 
+/* trilogy_stmt_reset - Send a prepared statement reset command to the server.
+ *
+ * conn  - A connected trilogy_conn_t pointer. Using a disconnected trilogy_conn_t is
+ *         undefined.
+ * stmt  - Pointer to a valid trilogy_stmt_t, representing the prepared statement you're
+ *         requesting to reset.
+ *
+ * Return values:
+ *   TRILOGY_OK                 - The reset command was successfully sent to the server.
+ *   TRILOGY_UNEXPECTED_PACKET  - The response packet wasn't what was expected.
+ *   TRILOGY_PROTOCOL_VIOLATION - An error occurred while processing a network
+ *                                packet.
+ *   TRILOGY_SYSERR             - A system error occurred, check errno.
+ *   TRILOGY_CLOSED_CONNECTION  - The connection is closed.
+ */
 int trilogy_stmt_reset(trilogy_conn_t *conn, trilogy_stmt_t *stmt);
 
+/* trilogy_stmt_close_send - Send a prepared statement close command to the server.
+ *
+ * conn  - A connected trilogy_conn_t pointer. Using a disconnected trilogy_conn_t is
+ *         undefined.
+ * stmt  - Pointer to a valid trilogy_stmt_t, representing the prepared statement you're
+ *         requesting to close.
+ *
+ * Return values:
+ *   TRILOGY_OK     - The close command was successfully sent to the server.
+ *   TRILOGY_SYSERR - A system error occurred, check errno.
+ */
 int trilogy_stmt_close(trilogy_conn_t *conn, trilogy_stmt_t *stmt);
 
 #endif
