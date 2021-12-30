@@ -757,19 +757,24 @@ int trilogy_build_stmt_execute_packet(trilogy_builder_t *builder, uint32_t stmt_
             return TRILOGY_PROTOCOL_VIOLATION;
         }
 
-        int bind_off = 0;
-        int bm_bytes = (num_binds + 7) / 8;
+        uint8_t current_bits = 0;
 
-        for (i = 0; i < bm_bytes; i++) {
-            uint8_t nb = 0;
-
-            for (; bind_off < num_binds; bind_off++) {
-                if (binds[bind_off].is_null) {
-                    nb |= (bind_off % 8);
-                }
+        for (i = 0; i < num_binds; i++) {
+            if (binds[i].is_null) {
+                current_bits |= 1 << (i % 8);
             }
 
-            CHECKED(trilogy_builder_write_uint8(builder, nb));
+            // If we hit a byte boundary, write the bits we have so far and continue
+            if ((i % 8) == 7) {
+                CHECKED(trilogy_builder_write_uint8(builder, current_bits))
+
+                current_bits = 0;
+            }
+        }
+
+        // If there would have been any remainder bits, finally write those as well
+        if (num_binds % 8) {
+            CHECKED(trilogy_builder_write_uint8(builder, current_bits))
         }
 
         // new params bound flag
