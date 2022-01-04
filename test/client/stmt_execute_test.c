@@ -317,8 +317,6 @@ TEST test_stmt_execute_recv_closed_socket()
         err = trilogy_read_full_column(&conn, param);
 
         if (err < 0) {
-            free(params);
-
             return err;
         }
     }
@@ -333,8 +331,6 @@ TEST test_stmt_execute_recv_closed_socket()
         err = trilogy_read_full_column(&conn, column);
 
         if (err < 0) {
-            free(column_defs);
-
             return err;
         }
     }
