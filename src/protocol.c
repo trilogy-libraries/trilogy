@@ -782,7 +782,12 @@ int trilogy_build_stmt_execute_packet(trilogy_builder_t *builder, uint32_t stmt_
 
         for (i = 0; i < num_binds; i++) {
             CHECKED(trilogy_builder_write_uint8(builder, binds[i].type));
-            CHECKED(trilogy_builder_write_uint8(builder, 0x0));
+
+            if (binds[i].is_unsigned) {
+                CHECKED(trilogy_builder_write_uint8(builder, 0x80));
+            } else {
+                CHECKED(trilogy_builder_write_uint8(builder, 0x00));
+            }
         }
 
         for (i = 0; i < num_binds; i++) {
@@ -1011,6 +1016,10 @@ int trilogy_parse_stmt_row_packet(const uint8_t *buff, size_t len, trilogy_colum
             out_values[i].is_null = false;
 
             out_values[i].type = columns[i].type;
+
+            if (columns[i].flags & TRILOGY_COLUMN_FLAG_UNSIGNED) {
+                out_values[i].is_unsigned = true;
+            }
 
             switch (columns[i].type) {
             case TRILOGY_TYPE_STRING:

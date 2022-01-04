@@ -623,6 +623,7 @@ typedef struct {
 
 typedef struct {
     bool is_null;
+    bool is_unsigned;
 
     TRILOGY_TYPE_t type;
 
