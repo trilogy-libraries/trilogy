@@ -120,10 +120,20 @@ int trilogy_builder_write_uint64(trilogy_builder_t *builder, uint64_t val)
     return TRILOGY_OK;
 }
 
+#ifndef TRILOGY_FLOAT_BUF
+#define TRILOGY_FLOAT_BUF
+
 typedef union {
     float f;
     uint32_t u;
 } trilogy_float_buf_t;
+
+typedef union {
+    double d;
+    uint64_t u;
+} trilogy_double_buf_t;
+
+#endif
 
 int trilogy_builder_write_float(trilogy_builder_t *builder, float val)
 {
@@ -138,11 +148,6 @@ int trilogy_builder_write_float(trilogy_builder_t *builder, float val)
 
     return TRILOGY_OK;
 }
-
-typedef union {
-    double d;
-    uint64_t u;
-} trilogy_double_buf_t;
 
 int trilogy_builder_write_double(trilogy_builder_t *builder, double val)
 {
