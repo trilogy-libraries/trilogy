@@ -917,10 +917,8 @@ int trilogy_stmt_read_row(trilogy_conn_t *conn, trilogy_stmt_t *stmt, trilogy_co
 
 int trilogy_stmt_reset_send(trilogy_conn_t *conn, trilogy_stmt_t *stmt)
 {
-    int err = 0;
-
     trilogy_builder_t builder;
-    err = begin_command_phase(&builder, conn, 0);
+    int err = begin_command_phase(&builder, conn, 0);
     if (err < 0) {
         return err;
     }
