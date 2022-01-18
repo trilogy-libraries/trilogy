@@ -631,8 +631,12 @@ static VALUE execute_read_query(VALUE vargs)
             }
         }
 
+#ifdef HAVE_RB_INTERNED_STR
+        VALUE column_name = rb_interned_str(column.name, column.name_len);
+#else
         VALUE column_name = rb_str_new(column.name, column.name_len);
         OBJ_FREEZE(column_name);
+#endif
 
         rb_ary_push(column_names, column_name);
 
