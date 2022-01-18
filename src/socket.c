@@ -307,7 +307,7 @@ fail:
 static ssize_t ssl_io_return(struct trilogy_sock *sock, ssize_t ret)
 {
     if (ret < 0) {
-        int rc = SSL_get_error(sock->ssl, ret);
+        int rc = SSL_get_error(sock->ssl, (int)ret);
         if (rc == SSL_ERROR_WANT_WRITE || rc == SSL_ERROR_WANT_READ) {
             return (ssize_t)TRILOGY_AGAIN;
         } else if (rc == SSL_ERROR_SYSCALL && errno != 0) {
@@ -375,7 +375,7 @@ static int trilogy_tls_version_map[] = {0, TLS1_VERSION, TLS1_1_VERSION, TLS1_2_
 #endif
 };
 
-int trilogy_set_min_proto_version(SSL_CTX *ctx, trilogy_tls_version_t version)
+long trilogy_set_min_proto_version(SSL_CTX *ctx, trilogy_tls_version_t version)
 {
     int ssl_ver = trilogy_tls_version_map[version];
     if (ssl_ver == 0) {
@@ -385,7 +385,7 @@ int trilogy_set_min_proto_version(SSL_CTX *ctx, trilogy_tls_version_t version)
     return SSL_CTX_set_min_proto_version(ctx, ssl_ver);
 }
 
-int trilogy_set_max_proto_version(SSL_CTX *ctx, trilogy_tls_version_t version)
+long trilogy_set_max_proto_version(SSL_CTX *ctx, trilogy_tls_version_t version)
 {
     int ssl_ver = trilogy_tls_version_map[version];
     if (ssl_ver == 0) {
