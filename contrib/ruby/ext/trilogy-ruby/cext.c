@@ -931,7 +931,7 @@ void Init_cext()
     rb_trilogy_cast_init();
 
 // server_status flags
-#define XX(name, code) rb_const_set(Trilogy, rb_intern(#name + strlen("TRILOGY_")), LONG2NUM(name));
+#define XX(name, code) rb_const_set(Trilogy, rb_intern((char *)#name + strlen("TRILOGY_")), LONG2NUM(name));
     TRILOGY_SERVER_STATUS(XX)
 #undef XX
 }
