@@ -14,10 +14,8 @@
 
 #define TRILOGY_RB_TIMEOUT 1
 
-VALUE
-rb_cTrilogyError;
-
-static VALUE Trilogy_DatabaseError, Trilogy_Result;
+VALUE Trilogy_CastError;
+static VALUE Trilogy_ProtocolError, Trilogy_Result, Trilogy_SSLError, Trilogy_QueryError, Trilogy_TimeoutError;
 
 static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, id_connect_timeout, id_read_timeout,
     id_write_timeout, id_keepalive_enabled, id_keepalive_idle, id_keepalive_interval, id_keepalive_count,
@@ -88,11 +86,12 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
 
     switch (rc) {
     case TRILOGY_SYSERR:
+        // TODO: syserr should be wrapped too.
         rb_syserr_fail_str(errno, rbmsg);
 
     case TRILOGY_ERR: {
         VALUE message = rb_str_new(ctx->conn.error_message, ctx->conn.error_message_len);
-        VALUE exc = rb_exc_new3(Trilogy_DatabaseError,
+        VALUE exc = rb_exc_new3(Trilogy_ProtocolError,
                                 rb_sprintf("%" PRIsVALUE ": %d %" PRIsVALUE, rbmsg, ctx->conn.error_code, message));
 
         rb_ivar_set(exc, rb_intern("@error_code"), INT2FIX(ctx->conn.error_code));
@@ -105,6 +104,7 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
         unsigned long ossl_error = ERR_get_error();
         ERR_clear_error();
         if (ERR_GET_LIB(ossl_error) == ERR_LIB_SYS) {
+            // TODO: syserr should be wrapped too.
             rb_syserr_fail_str(ERR_GET_REASON(ossl_error), rbmsg);
         }
         // We can't recover from OpenSSL level errors if there's
@@ -112,11 +112,11 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
         if (ctx->conn.socket != NULL) {
             trilogy_sock_shutdown(ctx->conn.socket);
         }
-        rb_raise(rb_cTrilogyError, "%" PRIsVALUE ": SSL Error: %s", rbmsg, ERR_reason_error_string(ossl_error));
+        rb_raise(Trilogy_SSLError, "%" PRIsVALUE ": SSL Error: %s", rbmsg, ERR_reason_error_string(ossl_error));
     }
 
     default:
-        rb_raise(rb_cTrilogyError, "%" PRIsVALUE ": %s", rbmsg, trilogy_error(rc));
+        rb_raise(Trilogy_QueryError, "%" PRIsVALUE ": %s", rbmsg, trilogy_error(rc));
     }
 }
 
@@ -129,6 +129,7 @@ static VALUE allocate_trilogy(VALUE klass)
     ctx->query_flags = TRILOGY_FLAGS_DEFAULT;
 
     if (trilogy_init(&ctx->conn) < 0) {
+        // TODO: syserr should be wrapped too.
         rb_syserr_fail(errno, "trilogy_init");
     }
 
@@ -145,7 +146,7 @@ static int flush_writes(struct trilogy_ctx *ctx)
         }
 
         if (trilogy_sock_wait_write(ctx->conn.socket) < 0) {
-            rb_syserr_fail(ETIMEDOUT, "trilogy_flush_writes");
+            rb_raise(Trilogy_TimeoutError, "trilogy_flush_writes");
         }
     }
 }
@@ -279,7 +280,7 @@ static void auth_switch(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake)
         }
 
         if (trilogy_sock_wait_read(ctx->conn.socket) < 0) {
-            rb_syserr_fail(ETIMEDOUT, "trilogy_auth_recv");
+            rb_raise(Trilogy_TimeoutError, "trilogy_auth_recv");
         }
     }
 }
@@ -305,7 +306,7 @@ static void authenticate(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake
             }
         } else {
             if (ssl_mode != TRILOGY_SSL_PREFERRED_NOVERIFY) {
-                rb_raise(rb_cTrilogyError, "SSL required, not supported by server");
+                rb_raise(Trilogy_SSLError, "SSL required, not supported by server");
             }
         }
     }
@@ -332,7 +333,7 @@ static void authenticate(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake
         }
 
         if (trilogy_sock_wait_read(ctx->conn.socket) < 0) {
-            rb_syserr_fail(ETIMEDOUT, "trilogy_auth_recv");
+            rb_raise(Trilogy_TimeoutError, "trilogy_auth_recv");
         }
     }
 
@@ -482,7 +483,7 @@ static VALUE rb_trilogy_initialize(VALUE self, VALUE opts)
 
     int rc = try_connect(ctx, &handshake, &connopt);
     if (rc == TRILOGY_RB_TIMEOUT) {
-        rb_syserr_fail(ETIMEDOUT, "trilogy_connect_recv");
+        rb_raise(Trilogy_TimeoutError, "trilogy_connect_recv");
     }
     if (rc != TRILOGY_OK) {
         if (connopt.path) {
@@ -529,7 +530,7 @@ static VALUE rb_trilogy_change_db(VALUE self, VALUE database)
         }
 
         if (trilogy_sock_wait_read(ctx->conn.socket) < 0) {
-            rb_syserr_fail(ETIMEDOUT, "trilogy_change_db_recv");
+            rb_raise(Trilogy_TimeoutError, "trilogy_change_db_recv");
         }
     }
 
@@ -604,7 +605,7 @@ static VALUE read_query_response(VALUE vargs)
         }
 
         if (trilogy_sock_wait_read(ctx->conn.socket) < 0) {
-            rb_syserr_fail(ETIMEDOUT, "trilogy_query_recv");
+            rb_raise(Trilogy_TimeoutError, "trilogy_query_recv");
         }
     }
 
@@ -650,7 +651,7 @@ static VALUE read_query_response(VALUE vargs)
             }
 
             if (trilogy_sock_wait_read(ctx->conn.socket) < 0) {
-                rb_syserr_fail(ETIMEDOUT, "trilogy_read_column");
+                rb_raise(Trilogy_TimeoutError, "trilogy_read_column");
             }
         }
 
@@ -678,7 +679,7 @@ static VALUE read_query_response(VALUE vargs)
 
         if (rc == TRILOGY_AGAIN) {
             if (trilogy_sock_wait_read(ctx->conn.socket) < 0) {
-                rb_syserr_fail(ETIMEDOUT, "trilogy_read_row");
+                rb_raise(Trilogy_TimeoutError, "trilogy_read_row");
             }
             continue;
         }
@@ -809,7 +810,7 @@ static VALUE rb_trilogy_ping(VALUE self)
         }
 
         if (trilogy_sock_wait_read(ctx->conn.socket) < 0) {
-            rb_syserr_fail(ETIMEDOUT, "trilogy_ping_recv");
+            rb_raise(Trilogy_TimeoutError, "trilogy_ping_recv");
         }
     }
 
@@ -945,8 +946,7 @@ static VALUE rb_trilogy_server_version(VALUE self) { return rb_str_new_cstr(get_
 
 void Init_cext()
 {
-    VALUE Trilogy = rb_define_class("Trilogy", rb_cObject);
-
+    VALUE Trilogy = rb_const_get(rb_cObject, rb_intern("Trilogy"));
     rb_define_alloc_func(Trilogy, allocate_trilogy);
 
     rb_define_method(Trilogy, "initialize", rb_trilogy_initialize, 1);
@@ -988,23 +988,26 @@ void Init_cext()
     rb_define_const(Trilogy, "QUERY_FLAGS_FLATTEN_ROWS", INT2NUM(TRILOGY_FLAGS_FLATTEN_ROWS));
     rb_define_const(Trilogy, "QUERY_FLAGS_DEFAULT", INT2NUM(TRILOGY_FLAGS_DEFAULT));
 
-    rb_cTrilogyError = rb_define_class_under(Trilogy, "Error", rb_eStandardError);
-    rb_global_variable(&rb_cTrilogyError);
+    Trilogy_ProtocolError = rb_const_get(Trilogy, rb_intern("ProtocolError"));
+    rb_global_variable(&Trilogy_ProtocolError);
 
-    Trilogy_DatabaseError = rb_define_class_under(Trilogy, "DatabaseError", rb_cTrilogyError);
-    rb_global_variable(&Trilogy_DatabaseError);
+    Trilogy_SSLError = rb_const_get(Trilogy, rb_intern("SSLError"));
+    rb_global_variable(&Trilogy_SSLError);
 
-    rb_define_attr(Trilogy_DatabaseError, "error_code", 1, 0);
-    rb_define_attr(Trilogy_DatabaseError, "error_message", 1, 0);
+    Trilogy_QueryError = rb_const_get(Trilogy, rb_intern("QueryError"));
+    rb_global_variable(&Trilogy_QueryError);
 
-    Trilogy_Result = rb_define_class_under(Trilogy, "Result", rb_cObject);
+    Trilogy_TimeoutError = rb_const_get(Trilogy, rb_intern("TimeoutError"));
+    rb_global_variable(&Trilogy_TimeoutError);
+
+    Trilogy_Result = rb_const_get(Trilogy, rb_intern("Result"));
     rb_global_variable(&Trilogy_Result);
 
+    Trilogy_CastError = rb_const_get(Trilogy, rb_intern("CastError"));
+    rb_global_variable(&Trilogy_CastError);
+
     rb_define_attr(Trilogy_Result, "affected_rows", 1, 0);
-    rb_define_attr(Trilogy_Result, "fields", 1, 0);
     rb_define_attr(Trilogy_Result, "last_insert_id", 1, 0);
-    rb_define_attr(Trilogy_Result, "rows", 1, 0);
-    rb_define_attr(Trilogy_Result, "query_time", 1, 0);
 
     id_socket = rb_intern("socket");
     id_host = rb_intern("host");

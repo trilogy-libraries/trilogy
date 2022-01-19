@@ -1,7 +1,51 @@
-require "trilogy/cext"
 require "trilogy/version"
 
 class Trilogy
+  # Trilogy::Error is the base error type. All errors raised by Trilogy
+  # should be descendants of Trilogy::Error
+  module Error
+  end
+
+  # Trilogy::ConnectionError is the base error type for all potentially transient
+  # network errors.
+  module ConnectionError
+    include Error
+  end
+
+  class BaseError < StandardError
+    include Error
+  end
+
+  # Trilogy::ClientError is the base error type for invalid queries or parameters
+  # that shouldn't be retried.
+  class ClientError < BaseError
+    include Error
+  end
+
+  class QueryError < ClientError
+  end
+
+  class CastError < ClientError
+  end
+
+  class ProtocolError < BaseError
+    include ConnectionError
+
+    attr_reader :error_code, :error_message
+  end
+
+  class SSLError < BaseError
+    include ConnectionError
+  end
+
+  class ConnectionClosed < IOError
+    include ConnectionError
+  end
+
+  class TimeoutError < Errno::ETIMEDOUT
+    include ConnectionError
+  end
+
   def in_transaction?
     (server_status & SERVER_STATUS_IN_TRANS) != 0
   end
@@ -28,34 +72,38 @@ class Trilogy
   ensure
     self.query_flags = old_flags
   end
-end
 
-Trilogy::Result.class_eval do
-  def count
-    rows.count
-  end
+  class Result
+    attr_reader :fields, :rows, :query_time
 
-  def each_hash
-    return enum_for(:each_hash) unless block_given?
-
-    rows.each do |row|
-      this_row = {}
-
-      idx = 0
-      row.each do |col|
-        this_row[fields[idx]] = col
-        idx += 1
-      end
-
-      yield this_row
+    def count
+      rows.count
     end
 
-    self
-  end
+    def each_hash
+      return enum_for(:each_hash) unless block_given?
 
-  def each(&bk)
-    rows.each(&bk)
-  end
+      rows.each do |row|
+        this_row = {}
 
-  include Enumerable
+        idx = 0
+        row.each do |col|
+          this_row[fields[idx]] = col
+          idx += 1
+        end
+
+        yield this_row
+      end
+
+      self
+    end
+
+    def each(&bk)
+      rows.each(&bk)
+    end
+
+    include Enumerable
+  end
 end
+
+require "trilogy/cext"
