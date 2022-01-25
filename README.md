@@ -17,7 +17,7 @@ It's currently in production use on github.com.
 
 * Blocking client API wrapping the non-blocking API
 
-* No dependencies outside of POSIX and the C standard library
+* No dependencies outside of POSIX, the C standard library & OpenSSL
 
 * Minimal dynamic allocation
 
