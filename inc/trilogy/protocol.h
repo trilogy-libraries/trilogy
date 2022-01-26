@@ -564,6 +564,10 @@ typedef struct {
     size_t last_gtid_len;
 } trilogy_ok_packet_t;
 
+/* trilogy_stmt_ok_packet_t - Represents a MySQL binary protocol prepare response packet.
+ *
+ * See https://dev.mysql.com/doc/internals/en/com-stmt-prepare-response.html for more detail.
+ */
 typedef struct {
     uint32_t id;
     uint16_t column_count;
