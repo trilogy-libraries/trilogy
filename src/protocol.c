@@ -823,9 +823,9 @@ int trilogy_build_stmt_execute_packet(trilogy_builder_t *builder, uint32_t stmt_
             case TRILOGY_TYPE_TIME: {
                 uint8_t field_len = 0;
 
-                if (val.as.date.time.micro_seconds) {
+                if (val.as.time.micro_seconds) {
                     field_len = 12;
-                } else if (val.as.date.time.hour || val.as.date.time.minute || val.as.date.time.second) {
+                } else if (val.as.time.hour || val.as.time.minute || val.as.time.second) {
                     field_len = 8;
                 } else {
                     field_len = 0;
@@ -834,18 +834,18 @@ int trilogy_build_stmt_execute_packet(trilogy_builder_t *builder, uint32_t stmt_
                 CHECKED(trilogy_builder_write_uint8(builder, field_len));
 
                 if (field_len > 0) {
-                    CHECKED(trilogy_builder_write_uint8(builder, val.as.date.time.is_negative));
+                    CHECKED(trilogy_builder_write_uint8(builder, val.as.time.is_negative));
 
-                    CHECKED(trilogy_builder_write_uint32(builder, val.as.date.time.days));
+                    CHECKED(trilogy_builder_write_uint32(builder, val.as.time.days));
 
-                    CHECKED(trilogy_builder_write_uint8(builder, val.as.date.time.hour));
+                    CHECKED(trilogy_builder_write_uint8(builder, val.as.time.hour));
 
-                    CHECKED(trilogy_builder_write_uint8(builder, val.as.date.time.minute));
+                    CHECKED(trilogy_builder_write_uint8(builder, val.as.time.minute));
 
-                    CHECKED(trilogy_builder_write_uint8(builder, val.as.date.time.second));
+                    CHECKED(trilogy_builder_write_uint8(builder, val.as.time.second));
 
                     if (field_len > 8) {
-                        CHECKED(trilogy_builder_write_uint32(builder, val.as.date.time.micro_seconds));
+                        CHECKED(trilogy_builder_write_uint32(builder, val.as.time.micro_seconds));
                     }
                 }
 
@@ -856,9 +856,9 @@ int trilogy_build_stmt_execute_packet(trilogy_builder_t *builder, uint32_t stmt_
             case TRILOGY_TYPE_TIMESTAMP: {
                 uint8_t field_len = 0;
 
-                if (val.as.date.time.micro_seconds) {
+                if (val.as.time.micro_seconds) {
                     field_len = 11;
-                } else if (val.as.date.time.hour || val.as.date.time.minute || val.as.date.time.second) {
+                } else if (val.as.time.hour || val.as.time.minute || val.as.time.second) {
                     field_len = 7;
                 } else if (val.as.date.year || val.as.date.month || val.as.date.day) {
                     field_len = 4;
@@ -876,14 +876,14 @@ int trilogy_build_stmt_execute_packet(trilogy_builder_t *builder, uint32_t stmt_
                     CHECKED(trilogy_builder_write_uint8(builder, val.as.date.day));
 
                     if (field_len > 4) {
-                        CHECKED(trilogy_builder_write_uint8(builder, val.as.date.time.hour));
+                        CHECKED(trilogy_builder_write_uint8(builder, val.as.time.hour));
 
-                        CHECKED(trilogy_builder_write_uint8(builder, val.as.date.time.minute));
+                        CHECKED(trilogy_builder_write_uint8(builder, val.as.time.minute));
 
-                        CHECKED(trilogy_builder_write_uint8(builder, val.as.date.time.second));
+                        CHECKED(trilogy_builder_write_uint8(builder, val.as.time.second));
 
                         if (field_len > 7) {
-                            CHECKED(trilogy_builder_write_uint32(builder, val.as.date.time.micro_seconds));
+                            CHECKED(trilogy_builder_write_uint32(builder, val.as.time.micro_seconds));
                         }
                     }
                 }
@@ -1079,10 +1079,10 @@ int trilogy_parse_stmt_row_packet(const uint8_t *buff, size_t len, trilogy_colum
                 out_values[i].as.date.year = 0;
                 out_values[i].as.date.month = 0;
                 out_values[i].as.date.day = 0;
-                out_values[i].as.date.time.hour = 0;
-                out_values[i].as.date.time.minute = 0;
-                out_values[i].as.date.time.second = 0;
-                out_values[i].as.date.time.micro_seconds = 0;
+                out_values[i].as.time.hour = 0;
+                out_values[i].as.time.minute = 0;
+                out_values[i].as.time.second = 0;
+                out_values[i].as.time.micro_seconds = 0;
 
                 switch (time_len) {
                 case 0:
@@ -1097,19 +1097,19 @@ int trilogy_parse_stmt_row_packet(const uint8_t *buff, size_t len, trilogy_colum
                     CHECKED(trilogy_reader_get_uint16(&reader, &out_values[i].as.date.year));
                     CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.month));
                     CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.day));
-                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.time.hour));
-                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.time.minute));
-                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.time.second));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.hour));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.minute));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.second));
 
                     break;
                 case 11:
                     CHECKED(trilogy_reader_get_uint16(&reader, &out_values[i].as.date.year));
                     CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.month));
                     CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.day));
-                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.time.hour));
-                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.time.minute));
-                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.time.second));
-                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.date.time.micro_seconds));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.hour));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.minute));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.second));
+                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.time.micro_seconds));
 
                     break;
                 default:
@@ -1123,12 +1123,12 @@ int trilogy_parse_stmt_row_packet(const uint8_t *buff, size_t len, trilogy_colum
 
                 CHECKED(trilogy_reader_get_uint8(&reader, &time_len));
 
-                out_values[i].as.date.time.is_negative = false;
-                out_values[i].as.date.time.days = 0;
-                out_values[i].as.date.time.hour = 0;
-                out_values[i].as.date.time.minute = 0;
-                out_values[i].as.date.time.second = 0;
-                out_values[i].as.date.time.micro_seconds = 0;
+                out_values[i].as.time.is_negative = false;
+                out_values[i].as.time.days = 0;
+                out_values[i].as.time.hour = 0;
+                out_values[i].as.time.minute = 0;
+                out_values[i].as.time.second = 0;
+                out_values[i].as.time.micro_seconds = 0;
 
                 switch (time_len) {
                 case 0:
@@ -1138,13 +1138,13 @@ int trilogy_parse_stmt_row_packet(const uint8_t *buff, size_t len, trilogy_colum
 
                     CHECKED(trilogy_reader_get_uint8(&reader, &is_negative));
 
-                    out_values[i].as.date.time.is_negative = is_negative == 1;
+                    out_values[i].as.time.is_negative = is_negative == 1;
 
-                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.date.time.days));
-                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.time.hour));
-                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.time.minute));
-                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.time.second));
-                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.date.time.micro_seconds));
+                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.time.days));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.hour));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.minute));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.second));
+                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.time.micro_seconds));
 
                     break;
                 }
@@ -1153,13 +1153,13 @@ int trilogy_parse_stmt_row_packet(const uint8_t *buff, size_t len, trilogy_colum
 
                     CHECKED(trilogy_reader_get_uint8(&reader, &is_negative));
 
-                    out_values[i].as.date.time.is_negative = is_negative == 1;
+                    out_values[i].as.time.is_negative = is_negative == 1;
 
-                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.date.time.days));
-                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.time.hour));
-                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.time.minute));
-                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.time.second));
-                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.date.time.micro_seconds));
+                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.time.days));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.hour));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.minute));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.second));
+                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.time.micro_seconds));
 
                     break;
                 }

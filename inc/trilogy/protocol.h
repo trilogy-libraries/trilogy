@@ -652,13 +652,14 @@ typedef struct {
         struct {
             uint16_t year;
             uint8_t month, day;
-            struct {
-                bool is_negative;
-                uint32_t days;
-                uint8_t hour, minute, second;
-                uint32_t micro_seconds;
-            } time;
         } date;
+
+        struct {
+            bool is_negative;
+            uint32_t days;
+            uint8_t hour, minute, second;
+            uint32_t micro_seconds;
+        } time;
     } as;
 } trilogy_binary_value_t;
 
