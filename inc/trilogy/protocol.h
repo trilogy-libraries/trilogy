@@ -621,39 +621,125 @@ typedef struct {
     size_t data_len;
 } trilogy_value_t;
 
+/* trilogy_binary_value_t - MySQL binary protocol value type
+ *
+ * See https://dev.mysql.com/doc/internals/en/binary-protocol-value.html for more detail.
+ */
 typedef struct {
+    // Flag denoting the value is NULL.
     bool is_null;
+
+    /* Flag denoting the numeric value is unsigned.
+     * If this is true, the unsigned numerical value types should be used
+     * from the `as` union below.
+     *
+     * For example, if the value's MySQL type is TRILOGY_TYPE_LONGLONG and
+     * `is_unsigned` is `true`, the caller should use the `.as.uint64` field
+     * below to access the properly unsigned value.
+     */
     bool is_unsigned;
 
+    // The MySQL column type of this value.
     TRILOGY_TYPE_t type;
 
+    /* This union is used for accessing the underlying binary type for the value.
+     * Each field member is documented with the MySQL column/value type it maps to.
+     */
     union {
+        /* MySQL types that use this field:
+         *
+         * TRILOGY_TYPE_DOUBLE
+         */
         double dbl;
 
+        /* MySQL types that use this field:
+         *
+         * TRILOGY_TYPE_LONGLONG
+         *
+         * Refer to the `is_unsigned` field above to see which member below should
+         * be used to access the value.
+         */
         int64_t int64;
         uint64_t uint64;
 
+        /* MySQL types that use this field:
+         *
+         * TRILOGY_TYPE_FLOAT
+         */
         float flt;
 
+        /* MySQL types that use this field:
+         *
+         * TRILOGY_TYPE_LONG
+         * TRILOGY_TYPE_INT24
+         *
+         * Refer to the `is_unsigned` field above to see which member below should
+         * be used to access the value.
+         */
         uint32_t uint32;
         int32_t int32;
 
+        /* MySQL types that use this field:
+         *
+         * TRILOGY_TYPE_SHORT
+         *
+         * Refer to the `is_unsigned` field above to see which member below should
+         * be used to access the value.
+         */
         uint16_t uint16;
         int16_t int16;
 
+        /* MySQL types that use this field:
+         *
+         * TRILOGY_TYPE_TINY
+         *
+         * Refer to the `is_unsigned` field above to see which member below should
+         * be used to access the value.
+         */
         uint8_t uint8;
         int8_t int8;
 
+        /* MySQL types that use this field:
+         *
+         * TRILOGY_TYPE_STRING
+         * TRILOGY_TYPE_VARCHAR
+         * TRILOGY_TYPE_VAR_STRING
+         * TRILOGY_TYPE_ENUM
+         * TRILOGY_TYPE_SET
+         * TRILOGY_TYPE_LONG_BLOB
+         * TRILOGY_TYPE_MEDIUM_BLOB
+         * TRILOGY_TYPE_BLOB
+         * TRILOGY_TYPE_TINY_BLOB
+         * TRILOGY_TYPE_GEOMETRY
+         * TRILOGY_TYPE_BIT
+         * TRILOGY_TYPE_DECIMAL
+         * TRILOGY_TYPE_NEWDECIMAL
+         */
         struct {
             const void *data;
             size_t len;
         } str;
 
+        /* MySQL types that use this field:
+         *
+         * TRILOGY_TYPE_DATE
+         * TRILOGY_TYPE_DATETIME
+         * TRILOGY_TYPE_TIMESTAMP
+         */
         struct {
+            /* MySQL types that use this field:
+             *
+             * TRILOGY_TYPE_YEAR
+             */
             uint16_t year;
+
             uint8_t month, day;
         } date;
 
+        /* MySQL types that use this field:
+         *
+         * TRILOGY_TYPE_TIME
+         */
         struct {
             bool is_negative;
             uint32_t days;
