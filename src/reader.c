@@ -95,26 +95,14 @@ int trilogy_reader_get_uint64(trilogy_reader_t *reader, uint64_t *out)
     return TRILOGY_OK;
 }
 
-#ifndef TRILOGY_FLOAT_BUF
-#define TRILOGY_FLOAT_BUF
-
-typedef union {
-    float f;
-    uint32_t u;
-} trilogy_float_buf_t;
-
-typedef union {
-    double d;
-    uint64_t u;
-} trilogy_double_buf_t;
-
-#endif
-
 int trilogy_reader_get_float(trilogy_reader_t *reader, float *out)
 {
     CHECK(4);
 
-    trilogy_float_buf_t float_val;
+    union {
+        float f;
+        uint32_t u;
+    } float_val;
 
     int rc = trilogy_reader_get_uint32(reader, &float_val.u);
     if (rc != TRILOGY_OK) {
@@ -130,7 +118,10 @@ int trilogy_reader_get_double(trilogy_reader_t *reader, double *out)
 {
     CHECK(8);
 
-    trilogy_double_buf_t double_val;
+    union {
+        double d;
+        uint64_t u;
+    } double_val;
 
     int rc = trilogy_reader_get_uint64(reader, &double_val.u);
     if (rc != TRILOGY_OK) {
