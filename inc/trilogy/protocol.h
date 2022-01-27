@@ -726,19 +726,19 @@ typedef struct {
 
         /* MySQL types that use this field:
          *
+         * TRILOGY_TYPE_YEAR
+         */
+        uint16_t year;
+
+        /* MySQL types that use this field:
+         *
          * TRILOGY_TYPE_DATE
          * TRILOGY_TYPE_DATETIME
          * TRILOGY_TYPE_TIMESTAMP
          */
         struct {
-            /* MySQL types that use this field:
-             *
-             * TRILOGY_TYPE_YEAR
-             */
             uint16_t year;
-
             uint8_t month, day;
-
             struct {
                 uint8_t hour, minute, second;
                 uint32_t micro_seconds;
