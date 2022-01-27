@@ -738,6 +738,11 @@ typedef struct {
             uint16_t year;
 
             uint8_t month, day;
+
+            struct {
+                uint8_t hour, minute, second;
+                uint32_t micro_seconds;
+            } datetime;
         } date;
 
         /* MySQL types that use this field:
