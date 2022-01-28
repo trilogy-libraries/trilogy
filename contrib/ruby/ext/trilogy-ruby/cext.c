@@ -21,9 +21,9 @@ static VALUE Trilogy_DatabaseError, Trilogy_Result;
 
 static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, id_connect_timeout, id_read_timeout,
     id_write_timeout, id_keepalive_enabled, id_keepalive_idle, id_keepalive_interval, id_keepalive_count,
-    id_ivar_fields, id_ivar_rows, id_ivar_query_time, id_password, id_database, id_ssl_ca, id_ssl_capath, id_ssl_cert,
-    id_ssl_cipher, id_ssl_crl, id_ssl_crlpath, id_ssl_key, id_ssl_mode, id_tls_ciphersuites, id_tls_min_version,
-    id_tls_max_version;
+    id_ivar_affected_rows, id_ivar_fields, id_ivar_last_insert_id, id_ivar_rows, id_ivar_query_time, id_password,
+    id_database, id_ssl_ca, id_ssl_capath, id_ssl_cert, id_ssl_cipher, id_ssl_crl, id_ssl_crlpath, id_ssl_key,
+    id_ssl_mode, id_tls_ciphersuites, id_tls_min_version, id_tls_max_version;
 
 struct trilogy_ctx {
     trilogy_conn_t conn;
@@ -606,6 +606,10 @@ static VALUE execute_read_query(VALUE vargs)
     rb_ivar_set(result, id_ivar_query_time, DBL2NUM(query_time));
 
     if (rc == TRILOGY_OK) {
+        rb_ivar_set(result, id_ivar_last_insert_id, ULL2NUM(ctx->conn.last_insert_id));
+
+        rb_ivar_set(result, id_ivar_affected_rows, ULL2NUM(ctx->conn.affected_rows));
+
         return result;
     }
 
@@ -894,7 +898,9 @@ void Init_cext()
     Trilogy_Result = rb_define_class_under(Trilogy, "Result", rb_cObject);
     rb_global_variable(&Trilogy_Result);
 
+    rb_define_attr(Trilogy_Result, "affected_rows", 1, 0);
     rb_define_attr(Trilogy_Result, "fields", 1, 0);
+    rb_define_attr(Trilogy_Result, "last_insert_id", 1, 0);
     rb_define_attr(Trilogy_Result, "rows", 1, 0);
     rb_define_attr(Trilogy_Result, "query_time", 1, 0);
 
@@ -924,7 +930,9 @@ void Init_cext()
     id_tls_min_version = rb_intern("tls_min_version");
     id_tls_max_version = rb_intern("tls_max_version");
 
+    id_ivar_affected_rows = rb_intern("@affected_rows");
     id_ivar_fields = rb_intern("@fields");
+    id_ivar_last_insert_id = rb_intern("@last_insert_id");
     id_ivar_rows = rb_intern("@rows");
     id_ivar_query_time = rb_intern("@query_time");
 
