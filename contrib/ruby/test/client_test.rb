@@ -153,9 +153,20 @@ class ClientTest < TrilogyTest
     create_test_table(client)
 
     client.query "TRUNCATE trilogy_test"
-    result = client.query "INSERT INTO trilogy_test (varchar_test) VALUES ('a')"
-    assert result
+    result_a = client.query "INSERT INTO trilogy_test (varchar_test) VALUES ('a')"
+    assert result_a
     assert_equal 1, client.last_insert_id
+
+    result_b = client.query "INSERT INTO trilogy_test (varchar_test) VALUES ('b')"
+    assert result_b
+    assert_equal 2, client.last_insert_id
+
+    result_select = client.query("SELECT varchar_test FROM trilogy_test")
+    assert_equal 0, client.last_insert_id
+
+    assert_equal 1, result_a.last_insert_id
+    assert_equal 2, result_b.last_insert_id
+    assert_nil result_select.last_insert_id
   ensure
     ensure_closed client
   end
@@ -166,11 +177,18 @@ class ClientTest < TrilogyTest
 
     client.query("INSERT INTO trilogy_test (varchar_test, int_test) VALUES ('a', 1)")
 
-    client.query("UPDATE trilogy_test SET int_test = 1 WHERE varchar_test = 'a'")
+    result_unchanged = client.query("UPDATE trilogy_test SET int_test = 1 WHERE varchar_test = 'a'")
     assert_equal 0, client.affected_rows
 
-    client.query("UPDATE trilogy_test SET int_test = 2 WHERE varchar_test = 'a'")
+    result_changed = client.query("UPDATE trilogy_test SET int_test = 2 WHERE varchar_test = 'a'")
     assert_equal 1, client.affected_rows
+
+    result_select = client.query("SELECT int_test FROM trilogy_test WHERE varchar_test = 'a'")
+    assert_equal 0, client.affected_rows
+
+    assert_equal 0, result_unchanged.affected_rows
+    assert_equal 1, result_changed.affected_rows
+    assert_nil result_select.affected_rows
   ensure
     ensure_closed client
   end
@@ -181,11 +199,18 @@ class ClientTest < TrilogyTest
 
     client.query("INSERT INTO trilogy_test (varchar_test, int_test) VALUES ('a', 1)")
 
-    client.query("UPDATE trilogy_test SET int_test = 1 WHERE varchar_test = 'a'")
+    result_unchanged = client.query("UPDATE trilogy_test SET int_test = 1 WHERE varchar_test = 'a'")
     assert_equal 1, client.affected_rows
 
-    client.query("UPDATE trilogy_test SET int_test = 2 WHERE varchar_test = 'a'")
+    result_changed = client.query("UPDATE trilogy_test SET int_test = 2 WHERE varchar_test = 'a'")
     assert_equal 1, client.affected_rows
+
+    result_select = client.query("SELECT int_test FROM trilogy_test WHERE varchar_test = 'a'")
+    assert_equal 0, client.affected_rows
+
+    assert_equal 1, result_unchanged.affected_rows
+    assert_equal 1, result_changed.affected_rows
+    assert_nil result_select.affected_rows
   ensure
     ensure_closed client
   end
