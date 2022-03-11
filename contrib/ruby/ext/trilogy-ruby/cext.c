@@ -140,6 +140,11 @@ static struct timeval double_to_timeval(double secs)
     };
 }
 
+static double timeval_to_double(struct timeval tv)
+{
+    return (double)tv.tv_sec + ((double)tv.tv_usec) / 1000000.0;
+}
+
 static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
 {
     struct timeval *timeout = NULL;
@@ -844,6 +849,38 @@ static VALUE rb_trilogy_query_flags_set(VALUE self, VALUE query_flags)
     return get_ctx(self)->query_flags = NUM2UINT(query_flags);
 }
 
+static VALUE rb_trilogy_read_timeout(VALUE self) {
+    struct trilogy_ctx *ctx = get_open_ctx(self);
+    return DBL2NUM(timeval_to_double(ctx->conn.socket->opts.read_timeout));
+}
+
+static VALUE rb_trilogy_read_timeout_set(VALUE self, VALUE read_timeout)
+{
+    struct trilogy_ctx *ctx = get_open_ctx(self);
+    if (read_timeout == Qnil) {
+        ctx->conn.socket->opts.read_timeout = double_to_timeval(0.0);
+    } else {
+        ctx->conn.socket->opts.read_timeout = double_to_timeval(NUM2DBL(read_timeout));
+    }
+    return read_timeout;
+}
+
+static VALUE rb_trilogy_write_timeout(VALUE self) {
+    struct trilogy_ctx *ctx = get_open_ctx(self);
+    return DBL2NUM(timeval_to_double(ctx->conn.socket->opts.write_timeout));
+}
+
+static VALUE rb_trilogy_write_timeout_set(VALUE self, VALUE write_timeout)
+{
+    struct trilogy_ctx *ctx = get_open_ctx(self);
+    if (write_timeout == Qnil) {
+        ctx->conn.socket->opts.write_timeout = double_to_timeval(0.0);
+    } else {
+        ctx->conn.socket->opts.write_timeout = double_to_timeval(NUM2DBL(write_timeout));
+    }
+    return write_timeout;
+}
+
 static VALUE rb_trilogy_server_status(VALUE self) { return LONG2FIX(get_open_ctx(self)->conn.server_status); }
 
 static VALUE rb_trilogy_server_version(VALUE self) { return rb_str_new_cstr(get_open_ctx(self)->server_version); }
@@ -866,6 +903,10 @@ void Init_cext()
     rb_define_method(Trilogy, "last_gtid", rb_trilogy_last_gtid, 0);
     rb_define_method(Trilogy, "query_flags", rb_trilogy_query_flags, 0);
     rb_define_method(Trilogy, "query_flags=", rb_trilogy_query_flags_set, 1);
+    rb_define_method(Trilogy, "read_timeout", rb_trilogy_read_timeout, 0);
+    rb_define_method(Trilogy, "read_timeout=", rb_trilogy_read_timeout_set, 1);
+    rb_define_method(Trilogy, "write_timeout", rb_trilogy_write_timeout, 0);
+    rb_define_method(Trilogy, "write_timeout=", rb_trilogy_write_timeout_set, 1);
     rb_define_method(Trilogy, "server_status", rb_trilogy_server_status, 0);
     rb_define_method(Trilogy, "server_version", rb_trilogy_server_version, 0);
     rb_define_const(Trilogy, "TLS_VERSION_10", INT2NUM(TRILOGY_TLS_VERSION_10));

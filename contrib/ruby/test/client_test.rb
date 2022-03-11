@@ -289,6 +289,55 @@ class ClientTest < TrilogyTest
     ensure_closed client
   end
 
+  def test_adjustable_read_timeout
+    client = new_tcp_client(read_timeout: 5)
+    assert client.query("SELECT SLEEP(0.2)");
+    client.read_timeout = 0.1
+    assert_equal 0.1, client.read_timeout
+    assert_raises Errno::ETIMEDOUT do
+      client.query("SELECT SLEEP(1)")
+    end
+  ensure
+    ensure_closed client
+  end
+
+  def test_read_timeout_closed_connection
+    client = new_tcp_client(read_timeout: 5)
+    client.close
+    ensure_closed client
+
+    assert_raises IOError do
+      client.read_timeout
+    end
+
+    assert_raises IOError do
+      client.read_timeout = 42
+    end
+  end
+
+  def test_adjustable_write_timeout
+    client = new_tcp_client(write_timeout: 5)
+    assert_equal 5.0, client.write_timeout
+    client.write_timeout = 0.1
+    assert_equal 0.1, client.write_timeout
+  ensure
+    ensure_closed client
+  end
+
+  def test_write_timeout_closed_connection
+    client = new_tcp_client
+    client.close
+    ensure_closed client
+
+    assert_raises IOError do
+      client.write_timeout
+    end
+
+    assert_raises IOError do
+      client.write_timeout = 42
+    end
+  end
+
   def test_connect_timeout
     serv = TCPServer.new(0)
     port = serv.addr[1]
