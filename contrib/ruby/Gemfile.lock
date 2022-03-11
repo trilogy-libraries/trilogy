@@ -22,6 +22,3 @@ DEPENDENCIES
   mysql2
   rake-compiler (~> 1.0)
   trilogy!
-
-BUNDLED WITH
-   2.3.4
