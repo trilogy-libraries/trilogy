@@ -161,7 +161,7 @@ static VALUE Trilogy_BaseConnectionError, Trilogy_ProtocolError, Trilogy_SSLErro
 
 static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, id_connect_timeout, id_read_timeout,
     id_write_timeout, id_keepalive_enabled, id_keepalive_idle, id_keepalive_interval, id_keepalive_count,
-    id_ivar_affected_rows, id_ivar_fields, id_ivar_last_insert_id, id_ivar_rows, id_ivar_query_time, id_password,
+    id_ivar_affected_rows, id_ivar_fields, id_ivar_last_insert_id, id_ivar_rows, id_ivar_query_time, id_password, id_ivar_in_transaction,
     id_database, id_enable_cleartext_plugin, id_ssl_ca, id_ssl_capath, id_ssl_cert, id_ssl_cipher, id_ssl_crl, id_ssl_crlpath, id_ssl_key,
     id_ssl_mode, id_tls_ciphersuites, id_tls_min_version, id_tls_max_version, id_multi_statement, id_multi_result,
     id_from_code, id_from_errno, id_connection_options, id_max_allowed_packet;
@@ -944,6 +944,9 @@ static VALUE read_query_response(VALUE vargs)
 
     rb_ivar_set(result, id_ivar_query_time, DBL2NUM(query_time));
 
+    rb_ivar_set(result, id_ivar_in_transaction,
+        (ctx->conn.server_status & TRILOGY_SERVER_STATUS_IN_TRANS) ? Qtrue : Qfalse);
+
     if (rc == TRILOGY_OK) {
         rb_ivar_set(result, id_ivar_last_insert_id, ULL2NUM(ctx->conn.last_insert_id));
 
@@ -1431,6 +1434,14 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
     rb_global_variable(&Trilogy_AuthPluginError);
     Trilogy_AuthPluginError = rb_const_get(Trilogy, rb_intern("AuthPluginError"));
 
+    rb_define_attr(Trilogy_Result, "affected_rows", 1, 0);
+    rb_define_attr(Trilogy_Result, "fields", 1, 0);
+    rb_define_attr(Trilogy_Result, "last_insert_id", 1, 0);
+    rb_define_attr(Trilogy_Result, "rows", 1, 0);
+    rb_define_attr(Trilogy_Result, "query_time", 1, 0);
+    rb_define_attr(Trilogy_Result, "in_transaction", 1, 0);
+    rb_define_alias(Trilogy_Result, "in_transaction?", "in_transaction");
+
     id_socket = rb_intern("socket");
     id_host = rb_intern("host");
     id_port = rb_intern("port");
@@ -1468,6 +1479,7 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
     id_ivar_rows = rb_intern("@rows");
     id_ivar_query_time = rb_intern("@query_time");
     id_connection_options = rb_intern("@connection_options");
+    id_ivar_in_transaction = rb_intern("@in_transaction");
 
     rb_trilogy_cast_init();
 
