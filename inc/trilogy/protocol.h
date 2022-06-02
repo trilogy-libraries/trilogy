@@ -565,8 +565,6 @@ typedef struct {
 } trilogy_ok_packet_t;
 
 /* trilogy_stmt_ok_packet_t - Represents a MySQL binary protocol prepare response packet.
- *
- * See https://dev.mysql.com/doc/internals/en/com-stmt-prepare-response.html for more detail.
  */
 typedef struct {
     uint32_t id;
@@ -627,7 +625,6 @@ typedef struct {
 
 /* trilogy_binary_value_t - MySQL binary protocol value type
  *
- * See https://dev.mysql.com/doc/internals/en/binary-protocol-value.html for more detail.
  */
 typedef struct {
     // Flag denoting the value is NULL.
