@@ -26,6 +26,13 @@ class ClientTest < TrilogyTest
     end
   end
 
+  def test_trilogy_connect_with_native_password_auth_switch
+    client = new_tcp_client username: "native"
+    refute_nil client
+  ensure
+    ensure_closed client
+  end
+
   def test_trilogy_connect_tcp_fixnum_port
     assert_raises TypeError do
       new_tcp_client port: "13306"
