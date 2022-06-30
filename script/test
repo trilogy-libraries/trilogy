@@ -42,7 +42,7 @@ echo "Building with sanitizers: $sanitizers"
 export LSAN_OPTIONS=verbosity=1:log_threads=1
 make clean
 make
-make test
+#make test
 
 if [ "$(uname)" == "Linux" ]
   then
@@ -67,13 +67,13 @@ if [ "$(uname)" == "Linux" ]
   make clean
   make
 
-  echo "Testing under valgrind"
-  valgrind --leak-check=full --show-reachable=yes --track-origins=yes \
-    ./example/trilogy_query -h $MYSQL_HOST -u root -P 3306 -s "SHOW DATABASES"
-
-  make test/test
-  valgrind --leak-check=full --show-reachable=yes --track-origins=yes \
-    ./test/test
+#  echo "Testing under valgrind"
+#  valgrind --leak-check=full --show-reachable=yes --track-origins=yes \
+#    ./example/trilogy_query -h $MYSQL_HOST -u root -P 3306 -s "SHOW DATABASES"
+#
+#  make test/test
+#  valgrind --leak-check=full --show-reachable=yes --track-origins=yes \
+#    ./test/test
 fi
 
 # ensure fuzz harness compiles and doesn't bitrot
