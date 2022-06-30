@@ -579,10 +579,12 @@ int trilogy_build_auth_switch_response_packet(trilogy_builder_t *builder, const 
     unsigned int auth_response_len = 0;
     uint8_t auth_response[EVP_MAX_MD_SIZE];
 
-    if (!strcmp("caching_sha2_password", auth_plugin)) {
-        trilogy_pack_scramble_sha2_hash(scramble, pass, pass_len, auth_response, &auth_response_len);
-    } else {
-        trilogy_pack_scramble_native_hash(scramble, pass, pass_len, auth_response, &auth_response_len);
+    if (pass_len > 0) {
+        if (!strcmp("caching_sha2_password", auth_plugin)) {
+            trilogy_pack_scramble_sha2_hash(scramble, pass, pass_len, auth_response, &auth_response_len);
+        } else {
+            trilogy_pack_scramble_native_hash(scramble, pass, pass_len, auth_response, &auth_response_len);
+        }
     }
 
     CHECKED(trilogy_builder_write_buffer(builder, auth_response, auth_response_len));
