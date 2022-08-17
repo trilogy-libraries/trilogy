@@ -99,8 +99,8 @@ TEST test_parse_handshake_no_secure_connection_flag()
 
     trilogy_handshake_t packet;
 
-    handshake_packet[21] &= ~TRILOGY_CAPABILITIES_SECURE_CONNECTION;
-    handshake_packet[22] &= ~(TRILOGY_CAPABILITIES_SECURE_CONNECTION >> 8);
+    handshake_packet[21] &= (~TRILOGY_CAPABILITIES_SECURE_CONNECTION) & 0xff;
+    handshake_packet[22] &= ((~TRILOGY_CAPABILITIES_SECURE_CONNECTION) >> 8) & 0xff;
     int err = trilogy_parse_handshake_packet(handshake_packet, sizeof(handshake_packet), &packet);
     ASSERT_ERR(TRILOGY_PROTOCOL_VIOLATION, err);
 
