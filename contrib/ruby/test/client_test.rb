@@ -414,7 +414,7 @@ class ClientTest < TrilogyTest
   end
 
   def test_timeout_deadlines
-    assert_elapsed(0.1, 0.03) do
+    assert_elapsed(0.1, 0.3) do
       client = new_tcp_client
 
       assert_raises Timeout::Error do
