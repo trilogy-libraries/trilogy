@@ -43,5 +43,6 @@ trap cleanup EXIT
 
 export CI_MODE=true
 
+docker-compose rm -s -f -v
 output_fold "Bootstrapping container..." docker-compose build
 output_fold "Running tests..." docker-compose run --rm app
