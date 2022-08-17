@@ -6,9 +6,17 @@ require "timeout"
 require "resolv"
 
 class SslTest < TrilogyTest
+  def server_supported_tls_versions
+    client = new_tcp_client(ssl: false)
+    result = client.query("SHOW GLOBAL VARIABLES LIKE 'tls_version'")
+    result.first[1].split(",")
+  end
 
-  MYSQL_8_OR_NEWER = ENV["MYSQL_VERSION"] >= "8"
-  TLS_13_SUPPORT = MYSQL_8_OR_NEWER && OpenSSL::OPENSSL_VERSION_NUMBER >= 0x1010100f
+  def tls_1_3_support?
+    server_support = server_supported_tls_versions.include?("TLSv1.3")
+    client_support = defined?(OpenSSL::SSL::TLS1_3_VERSION)
+    server_support && client_support
+  end
 
   def test_trilogy_connect_db_without_ssl
     client = new_tcp_client(database: "test", ssl: false)
@@ -34,40 +42,44 @@ class SslTest < TrilogyTest
     ensure_closed client
   end
 
-  if TLS_13_SUPPORT
-    def test_trilogy_connect_ssl_config_tls13
-      client = new_tcp_client(database: "test", ssl: true, tls_min_version: Trilogy::TLS_VERSION_13, tls_max_version: Trilogy::TLS_VERSION_13)
-      result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_version'"
-      assert_equal [["Ssl_version", "TLSv1.3"]], result.to_a
-    ensure
-      ensure_closed client
-    end
+  def test_trilogy_connect_ssl_config_tls13
+    return skip unless tls_1_3_support?
 
-    def test_trilogy_connect_ssl_config_cipher_tls13_aesgcm128
-      client = new_tcp_client(database: "test", ssl: true, tls_min_version: Trilogy::TLS_VERSION_13, tls_max_version: Trilogy::TLS_VERSION_13, tls_ciphersuites: "TLS_AES_128_GCM_SHA256")
-      result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_cipher'"
-      assert_equal [["Ssl_cipher", "TLS_AES_128_GCM_SHA256"]], result.to_a
-    ensure
-      ensure_closed client
-    end
-
-    def test_trilogy_connect_ssl_config_cipher_tls13_aesgcm256
-      client = new_tcp_client(database: "test", ssl: true, tls_min_version: Trilogy::TLS_VERSION_13, tls_max_version: Trilogy::TLS_VERSION_13, tls_ciphersuites: "TLS_AES_256_GCM_SHA384")
-      result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_cipher'"
-      assert_equal [["Ssl_cipher", "TLS_AES_256_GCM_SHA384"]], result.to_a
-    ensure
-      ensure_closed client
-    end
+    client = new_tcp_client(database: "test", ssl: true, tls_min_version: Trilogy::TLS_VERSION_13, tls_max_version: Trilogy::TLS_VERSION_13)
+    result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_version'"
+    assert_equal [["Ssl_version", "TLSv1.3"]], result.to_a
+  ensure
+    ensure_closed client
   end
 
-  if MYSQL_8_OR_NEWER
-    def test_trilogy_connect_ssl_config_tls10
-      err = assert_raises Trilogy::Error do
-        new_tcp_client(database: "test", ssl: true, tls_min_version: Trilogy::TLS_VERSION_10,
-                              tls_max_version: Trilogy::TLS_VERSION_10, ssl_cipher: "ECDHE-RSA-AES128-SHA")
-      end
-      assert_includes err.message, "protocol"
+  def test_trilogy_connect_ssl_config_cipher_tls13_aesgcm128
+    return skip unless tls_1_3_support?
+
+    client = new_tcp_client(database: "test", ssl: true, tls_min_version: Trilogy::TLS_VERSION_13, tls_max_version: Trilogy::TLS_VERSION_13, tls_ciphersuites: "TLS_AES_128_GCM_SHA256")
+    result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_cipher'"
+    assert_equal [["Ssl_cipher", "TLS_AES_128_GCM_SHA256"]], result.to_a
+  ensure
+    ensure_closed client
+  end
+
+  def test_trilogy_connect_ssl_config_cipher_tls13_aesgcm256
+    return skip unless tls_1_3_support?
+
+    client = new_tcp_client(database: "test", ssl: true, tls_min_version: Trilogy::TLS_VERSION_13, tls_max_version: Trilogy::TLS_VERSION_13, tls_ciphersuites: "TLS_AES_256_GCM_SHA384")
+    result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_cipher'"
+    assert_equal [["Ssl_cipher", "TLS_AES_256_GCM_SHA384"]], result.to_a
+  ensure
+    ensure_closed client
+  end
+
+  def test_trilogy_connect_ssl_config_tls10
+    return skip if server_supported_tls_versions.include?("TLSv1.1")
+
+    err = assert_raises Trilogy::Error do
+      new_tcp_client(database: "test", ssl: true, tls_min_version: Trilogy::TLS_VERSION_10,
+                            tls_max_version: Trilogy::TLS_VERSION_10, ssl_cipher: "ECDHE-RSA-AES128-SHA")
     end
+    assert_includes err.message, "protocol"
   end
 
   def test_trilogy_connect_ssl_config_cipher_aesgcm128
