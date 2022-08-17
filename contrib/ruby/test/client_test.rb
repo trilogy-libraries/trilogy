@@ -1,7 +1,4 @@
-require File.expand_path("../setup", __FILE__)
-
-require "trilogy"
-require "timeout"
+require "test_helper"
 
 class ClientTest < TrilogyTest
   def test_trilogy_connected_host

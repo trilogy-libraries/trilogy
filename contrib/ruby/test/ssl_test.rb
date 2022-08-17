@@ -1,4 +1,4 @@
-require File.expand_path("../setup", __FILE__)
+require "test_helper"
 
 require "openssl"
 require "trilogy"
