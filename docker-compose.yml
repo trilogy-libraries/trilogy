@@ -1,7 +1,7 @@
 version: "3.5"
 services:
   db:
-    image: "mysql:${MYSQL_VERSION}"
+    image: "mysql:${MYSQL_VERSION}-debian"
     command:
     - --sql_mode=NO_ENGINE_SUBSTITUTION
     - --server-id=1

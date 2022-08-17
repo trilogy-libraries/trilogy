@@ -6,6 +6,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         mysql: ["5.7", "8"]
         dockerfile: ["Dockerfile.test.buster", "Dockerfile.test.stretch", "Dockerfile.test.focal", "Dockerfile.test.bionic"]
