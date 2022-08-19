@@ -32,7 +32,7 @@ class TrilogyTest < Minitest::Test
       username: DEFAULT_USER,
       password: DEFAULT_PASS,
       ssl: true,
-      ssl_mode: Trilogy::SSL_REQUIRED_NOVERIFY,
+      ssl_mode: Trilogy::SSL_PREFERRED_NOVERIFY,
       tls_min_version: Trilogy::TLS_VERSION_12,
     }.merge(opts)
 
@@ -51,6 +51,26 @@ class TrilogyTest < Minitest::Test
     c = Trilogy.new defaults
     c.query "SET SESSION sql_mode = ''"
     c
+  end
+
+  @@server_global_variables = Hash.new do |h, k|
+    client = Trilogy.new(
+      host: DEFAULT_HOST,
+      port: DEFAULT_PORT,
+      username: DEFAULT_USER,
+      password: DEFAULT_PASS,
+    )
+    name = k
+    result = client.query("SHOW GLOBAL VARIABLES LIKE '#{client.escape name}'")
+    if result.count == 0
+      h[k] = nil
+    else
+      h[k] = result.rows[0][1]
+    end
+  end
+
+  def server_global_variable(name)
+    @@server_global_variables[name]
   end
 
   def ensure_closed(socket)
