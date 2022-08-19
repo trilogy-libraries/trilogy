@@ -12,7 +12,6 @@ class TrilogyTest < Minitest::Test
   DEFAULT_PORT = (port = ENV["MYSQL_PORT"].to_i) && port != 0 ? port : 3306
   DEFAULT_USER = ENV["MYSQL_USER"] || "root"
   DEFAULT_PASS = ENV["MYSQL_PASS"]
-  DEFAULT_SOCK = ENV["MYSQL_SOCK"]
 
   def assert_equal_timestamp(time1, time2)
     assert_equal time1.to_i, time2.to_i
@@ -42,11 +41,11 @@ class TrilogyTest < Minitest::Test
     c
   end
 
-  def new_unix_client(opts = {})
+  def new_unix_client(socket, opts = {})
     defaults = {
       username: DEFAULT_USER,
       password: DEFAULT_PASS,
-      socket: DEFAULT_SOCK,
+      socket: socket,
     }.merge(opts)
 
     c = Trilogy.new defaults
