@@ -36,6 +36,8 @@ jobs:
         brew services start mysql@${{ matrix.mysql }}
         sleep 5
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot -e 'CREATE DATABASE test'
+        $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < docker-entrypoint-initdb.d/native_password_user.sql
+        $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < docker-entrypoint-initdb.d/x509_user.sql
     - name: Install dependencies
       run: |
         cd contrib/ruby

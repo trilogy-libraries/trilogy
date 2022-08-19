@@ -23,7 +23,6 @@ services:
       dockerfile: "${DOCKERFILE}"
     environment:
       MYSQL_HOST: db.local
-      MYSQL_VERSION: ${MYSQL_VERSION}
       TRILOGY_TEST_CERTS: "/db-data"
     depends_on:
       - db

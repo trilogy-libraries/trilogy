@@ -1,9 +1,7 @@
-require "rubygems" if !defined?(Gem)
-require "bundler/setup"
+require "trilogy"
 require "socket"
 require "timeout"
 
-require "timeout"
 require "minitest/autorun"
 
 $LOAD_PATH.unshift File.expand_path("../../lib", __FILE__)

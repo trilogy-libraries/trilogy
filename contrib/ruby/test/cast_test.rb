@@ -1,6 +1,4 @@
-require File.expand_path("../setup", __FILE__)
-
-require "trilogy"
+require "test_helper"
 
 class CastTest < TrilogyTest
   def setup

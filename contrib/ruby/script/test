@@ -3,8 +3,4 @@ set -e
 cd "$(dirname "$0")/.."
 
 # run entire test suite
-exec ruby \
-    -r "$(pwd)/test/setup" \
-    -e "ARGV.each { |f| require(f) }" \
-    -v \
-    -- ${*:-`find $(pwd)/test -name '*_test.rb'`}
+bundle exec rake test
