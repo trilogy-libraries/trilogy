@@ -87,7 +87,7 @@ TEST test_blocking_query()
     ASSERT_EQ(0, column.original_name_len);
     ASSERT_EQ(TRILOGY_CHARSET_BINARY, column.charset);
     ASSERT(column.len == 1 || column.len == 2);
-    ASSERT_EQ(TRILOGY_TYPE_LONGLONG, column.type);
+    ASSERT(column.type == TRILOGY_TYPE_LONGLONG || column.type == TRILOGY_TYPE_LONG);
     ASSERT(column.flags & TRILOGY_COLUMN_FLAG_BINARY);
     ASSERT(column.flags & TRILOGY_COLUMN_FLAG_NOT_NULL);
     ASSERT_EQ(0, column.decimals);

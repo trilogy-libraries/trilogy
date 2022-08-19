@@ -99,8 +99,8 @@ TEST test_parse_handshake_no_secure_connection_flag()
 
     trilogy_handshake_t packet;
 
-    handshake_packet[21] &= ~TRILOGY_CAPABILITIES_SECURE_CONNECTION;
-    handshake_packet[22] &= ~(TRILOGY_CAPABILITIES_SECURE_CONNECTION >> 8);
+    handshake_packet[21] &= (~TRILOGY_CAPABILITIES_SECURE_CONNECTION) & 0xff;
+    handshake_packet[22] &= ((~TRILOGY_CAPABILITIES_SECURE_CONNECTION) >> 8) & 0xff;
     int err = trilogy_parse_handshake_packet(handshake_packet, sizeof(handshake_packet), &packet);
     ASSERT_ERR(TRILOGY_PROTOCOL_VIOLATION, err);
 
@@ -121,7 +121,7 @@ TEST test_parse_handshake_invalid_null_filler()
     PASS();
 }
 
-TEST test_parse_handshake_invalid_long_null_filler()
+TEST test_parse_handshake_ignores_reserved_filler()
 {
     uint8_t handshake_packet[sizeof(valid_handshake_packet)];
     memcpy(handshake_packet, valid_handshake_packet, sizeof(valid_handshake_packet));
@@ -130,7 +130,7 @@ TEST test_parse_handshake_invalid_long_null_filler()
 
     handshake_packet[29] = 0xff;
     int err = trilogy_parse_handshake_packet(handshake_packet, sizeof(handshake_packet), &packet);
-    ASSERT_ERR(TRILOGY_PROTOCOL_VIOLATION, err);
+    ASSERT_OK(err);
 
     PASS();
 }
@@ -143,7 +143,7 @@ int parse_handshake_test()
     RUN_TEST(test_parse_handshake_no_protocol41_flag);
     RUN_TEST(test_parse_handshake_no_secure_connection_flag);
     RUN_TEST(test_parse_handshake_invalid_null_filler);
-    RUN_TEST(test_parse_handshake_invalid_long_null_filler);
+    RUN_TEST(test_parse_handshake_ignores_reserved_filler);
 
     return 0;
 }

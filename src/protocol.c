@@ -261,16 +261,7 @@ int trilogy_parse_handshake_packet(const uint8_t *buff, size_t len, trilogy_hand
     // This space is reserved. It should be all NULL bytes but some tools or
     // future versions of MySQL-compatible clients may use it. This library
     // opts to skip the validation as some servers don't respect the protocol.
-    //
-    static const uint8_t null_filler[10] = {0};
-
-    const void *str;
-    CHECKED(trilogy_reader_get_buffer(&reader, 10, &str));
-
-    if (memcmp(str, null_filler, 10) != 0) {
-        // corrupt handshake packet
-        return TRILOGY_PROTOCOL_VIOLATION;
-    }
+    CHECKED(trilogy_reader_get_buffer(&reader, 10, NULL));
 
     if (out_packet->capabilities & TRILOGY_CAPABILITIES_SECURE_CONNECTION && auth_data_len > 8) {
         uint8_t remaining_auth_data_len = auth_data_len - 8;

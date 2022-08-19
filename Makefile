@@ -3,7 +3,7 @@ TEST_SOURCES = $(shell find test -name '*.c')
 OBJS = $(SOURCES:.c=.o)
 FUZZ_OBJ = test/fuzz.o
 
-CFLAGS ?= -O1
+CFLAGS ?= -O1 -ggdb3
 CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 -fstack-protector
 CFLAGS += -Wall -Werror -Wextra -pedantic -Wsign-conversion -Wno-missing-field-initializers -std=gnu99 -iquote inc
 
