@@ -5,6 +5,23 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## 2.1.2
+
+2022-10-04
+
+### Fixed
+
+  - Don't scramble passwords when responding to auth switch request. #21
+  - Allow connecting to MariaDB. #22
+
+## 2.1.1
+
+2022-06-06
+
+### Fixed
+
+  - Verify exact length of auth_data_len
+
 ## 2.1.0
 
 2022-03-11
