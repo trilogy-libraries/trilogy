@@ -258,14 +258,7 @@ static int read_auth_switch_packet(trilogy_conn_t *conn, trilogy_handshake_t *ha
     return TRILOGY_AUTH_SWITCH;
 }
 
-static int read_generic_response(trilogy_conn_t *conn)
-{
-    int rc = read_packet(conn);
-
-    if (rc < 0) {
-        return rc;
-    }
-
+static int handle_generic_response(trilogy_conn_t *conn) {
     switch (current_packet_type(conn)) {
     case TRILOGY_PACKET_OK:
         return read_ok_packet(conn);
@@ -276,6 +269,17 @@ static int read_generic_response(trilogy_conn_t *conn)
     default:
         return TRILOGY_UNEXPECTED_PACKET;
     }
+}
+
+static int read_generic_response(trilogy_conn_t *conn)
+{
+    int rc = read_packet(conn);
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    return handle_generic_response(conn);
 }
 
 int trilogy_connect_send(trilogy_conn_t *conn, const trilogy_sockopt_t *opts)
@@ -403,6 +407,9 @@ void trilogy_auth_clear_password(trilogy_conn_t *conn)
     }
 }
 
+#define FAST_AUTH_OK 3
+#define FAST_AUTH_FAIL 4
+
 int trilogy_auth_recv(trilogy_conn_t *conn, trilogy_handshake_t *handshake)
 {
     int rc = read_packet(conn);
@@ -412,13 +419,62 @@ int trilogy_auth_recv(trilogy_conn_t *conn, trilogy_handshake_t *handshake)
     }
 
     switch (current_packet_type(conn)) {
-    case TRILOGY_PACKET_OK:
-        trilogy_auth_clear_password(conn);
-        return read_ok_packet(conn);
+    case TRILOGY_PACKET_AUTH_MORE_DATA: {
+        uint8_t byte = conn->packet_buffer.buff[1];
+        switch (byte) {
+            case FAST_AUTH_OK:
+                break;
+            case FAST_AUTH_FAIL:
+                {
+                    trilogy_builder_t builder;
+                    int err = begin_command_phase(&builder, conn, conn->packet_parser.sequence_number);
 
-    case TRILOGY_PACKET_ERR:
+                    if (err < 0) {
+                        return err;
+                    }
+
+                    err = trilogy_build_auth_clear_password(&builder, conn->socket->opts.password, conn->socket->opts.password_len);
+
+                    if (err < 0) {
+                        return err;
+                    }
+
+                    int rc = begin_write(conn);
+
+                    while (rc == TRILOGY_AGAIN) {
+                        rc = trilogy_sock_wait_write(conn->socket);
+                        if (rc != TRILOGY_OK) {
+                            return rc;
+                        }
+
+                        rc = trilogy_flush_writes(conn);
+                    }
+                    if (rc != TRILOGY_OK) {
+                        return rc;
+                    }
+
+                    break;
+                }
+            default:
+                return TRILOGY_UNEXPECTED_PACKET;
+        }
+        while (1) {
+            rc = read_packet(conn);
+
+            if (rc == TRILOGY_OK) {
+                break;
+            }
+            else if (rc == TRILOGY_AGAIN) {
+                rc = trilogy_sock_wait_read(conn->socket);
+            }
+
+            if (rc != TRILOGY_OK) {
+                return rc;
+            }
+        }
         trilogy_auth_clear_password(conn);
-        return read_err_packet(conn);
+        return handle_generic_response(conn);
+    }
 
     case TRILOGY_PACKET_EOF:
         // EOF is returned here if an auth switch is requested.
@@ -426,9 +482,11 @@ int trilogy_auth_recv(trilogy_conn_t *conn, trilogy_handshake_t *handshake)
         // in a follow up call to this function after the switch.
         return read_auth_switch_packet(conn, handshake);
 
+    case TRILOGY_PACKET_OK:
+    case TRILOGY_PACKET_ERR:
     default:
         trilogy_auth_clear_password(conn);
-        return TRILOGY_UNEXPECTED_PACKET;
+        return handle_generic_response(conn);
     }
 
     return read_generic_response(conn);

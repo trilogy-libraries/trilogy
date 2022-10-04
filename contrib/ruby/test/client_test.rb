@@ -23,36 +23,46 @@ class ClientTest < TrilogyTest
     end
   end
 
-  def test_trilogy_connect_with_auth_switch
-    client_with_version = new_tcp_client.server_version
+  def has_caching_sha2?
+    server_version = new_tcp_client.server_version
+    server_version.split(".", 2)[0].to_i >= 8
+  end
 
-    if client_with_version >= "8.0"
-      client = new_tcp_client username: "caching_sha2", password: "password"
-    else
-      client = new_tcp_client username: "native"
-    end
+  def test_connect_native_password
+    client = new_tcp_client username: "native"
 
     refute_nil client
   ensure
     ensure_closed client
   end
 
-  def test_connection_error
-    client_with_version = new_tcp_client.server_version
+  def test_connect_caching_sha2
+    return skip unless has_caching_sha2?
 
-    if client_with_version >= "8.0"
-      err = assert_raises Trilogy::ConnectionError do
-        new_tcp_client(username: "caching_sha2", password: "incorrect")
-      end
+    # Ensure correct setup
+    assert_equal [["caching_sha2_password"]], new_tcp_client.query("SELECT plugin FROM mysql.user WHERE user = 'caching_sha2'").rows
 
-      assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
-    else
-      err = assert_raises Trilogy::ConnectionError do
-        new_tcp_client(username: "native", password: "incorrect")
-      end
+    client = new_tcp_client username: "caching_sha2", password: "password"
 
-      assert_includes err.message, "Access denied for user 'native"
+    refute_nil client
+  ensure
+    ensure_closed client
+  end
+
+  def test_connection_error_native
+    err = assert_raises Trilogy::ConnectionError do
+      new_tcp_client(username: "native", password: "incorrect")
     end
+    assert_includes err.message, "Access denied for user 'native"
+  end
+
+  def test_connection_error_caching_sha2
+    return skip unless has_caching_sha2?
+
+    err = assert_raises Trilogy::ConnectionError do
+      new_tcp_client(username: "caching_sha2", password: "incorrect")
+    end
+    assert_includes err.message, "Access denied for user 'caching_sha2"
   end
 
   def test_trilogy_connect_tcp_to_wrong_port

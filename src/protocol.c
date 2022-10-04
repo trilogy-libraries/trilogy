@@ -593,7 +593,16 @@ int trilogy_build_auth_packet(trilogy_builder_t *builder, const char *user, cons
 
     trilogy_builder_finalize(builder);
 
-    return TRILOGY_OK;
+fail:
+    return rc;
+}
+
+int trilogy_build_auth_clear_password(trilogy_builder_t *builder, const char *pass, size_t pass_len) {
+    int rc = TRILOGY_OK;
+
+    CHECKED(trilogy_builder_write_buffer(builder, pass, pass_len));
+    CHECKED(trilogy_builder_write_uint8(builder, 0));
+    trilogy_builder_finalize(builder);
 
 fail:
     return rc;
