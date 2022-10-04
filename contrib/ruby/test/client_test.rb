@@ -41,11 +41,9 @@ class ClientTest < TrilogyTest
     client_with_version = new_tcp_client.server_version
 
     if client_with_version >= "8.0"
-      err = assert_raises Trilogy::ConnectionError do
+      assert_raises_connection_error do
         new_tcp_client(username: "caching_sha2", password: "incorrect")
       end
-
-      assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
     else
       err = assert_raises Trilogy::ConnectionError do
         new_tcp_client(username: "native", password: "incorrect")

@@ -403,6 +403,9 @@ void trilogy_auth_clear_password(trilogy_conn_t *conn)
     }
 }
 
+#define FAST_AUTH_OK 3
+#define FAST_AUTH_FAIL 4
+
 int trilogy_auth_recv(trilogy_conn_t *conn, trilogy_handshake_t *handshake)
 {
     int rc = read_packet(conn);
@@ -416,6 +419,57 @@ int trilogy_auth_recv(trilogy_conn_t *conn, trilogy_handshake_t *handshake)
         trilogy_auth_clear_password(conn);
         return read_ok_packet(conn);
 
+    case TRILOGY_PACKET_AUTH_MORE_DATA: {
+        uint8_t byte = conn->packet_buffer.buff[1];
+        switch (byte) {
+            case FAST_AUTH_OK:
+                break;
+            case FAST_AUTH_FAIL:
+                {
+                    trilogy_builder_t builder;
+                    int err = begin_command_phase(&builder, conn, conn->packet_parser.sequence_number);
+
+                    if (err < 0) {
+                        return err;
+                    }
+
+                    err = trilogy_build_auth_clear_password(&builder, conn->socket->opts.password, conn->socket->opts.password_len);
+
+                    if (err < 0) {
+                        return err;
+                    }
+
+                    int rc = begin_write(conn);
+
+                    while (rc == TRILOGY_AGAIN) {
+                        rc = trilogy_sock_wait_write(conn->socket);
+                        if (rc != TRILOGY_OK) {
+                            return rc;
+                        }
+
+                        rc = trilogy_flush_writes(conn);
+                    }
+
+                    break;
+                }
+            default:
+                return TRILOGY_UNEXPECTED_PACKET;
+        }
+        while (1) {
+            rc = read_packet(conn);
+
+            if (rc == TRILOGY_OK) {
+                return rc;
+            }
+            else if (rc == TRILOGY_AGAIN) {
+                rc = trilogy_sock_wait_read(conn->socket);
+            }
+
+            if (rc != TRILOGY_OK) {
+                return rc;
+            }
+        }
+    }
     case TRILOGY_PACKET_ERR:
         trilogy_auth_clear_password(conn);
         return read_err_packet(conn);
