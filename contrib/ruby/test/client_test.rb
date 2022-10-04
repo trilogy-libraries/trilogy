@@ -30,6 +30,13 @@ class ClientTest < TrilogyTest
     ensure_closed client
   end
 
+  def test_trilogy_connect_with_caching_sha2_password_auth_switch
+    client = new_tcp_client username: "caching_sha2", password: "password"
+    refute_nil client
+  ensure
+    ensure_closed client
+  end
+
   def test_trilogy_connect_tcp_to_wrong_port
     e = assert_raises Trilogy::ConnectionError do
       new_tcp_client port: 13307
