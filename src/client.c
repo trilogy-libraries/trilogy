@@ -418,6 +418,10 @@ int trilogy_auth_recv(trilogy_conn_t *conn, trilogy_handshake_t *handshake)
         trilogy_auth_clear_password(conn);
         return read_ok_packet(conn);
 
+    case TRILOGY_PACKET_AUTH_MORE_DATA:
+       trilogy_auth_clear_password(conn);
+       return read_packet(conn);
+
     case TRILOGY_PACKET_ERR:
         trilogy_auth_clear_password(conn);
         return read_err_packet(conn);

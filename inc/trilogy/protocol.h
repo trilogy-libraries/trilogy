@@ -367,6 +367,7 @@ typedef enum {
 // Typical response packet types
 typedef enum {
     TRILOGY_PACKET_OK = 0x0,
+    TRILOGY_PACKET_AUTH_MORE_DATA = 0x01,
     TRILOGY_PACKET_EOF = 0xfe,
     TRILOGY_PACKET_ERR = 0xff,
     TRILOGY_PACKET_UNKNOWN
