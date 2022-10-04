@@ -370,11 +370,6 @@ typedef enum {
 #undef XX
 } TRILOGY_COLUMN_FLAG_t;
 
-/*
- * Data between client and server is exchanged in packets of max 16MByte size.
- */
-#define TRILOGY_MAX_PROTO_PACKET_LEN 0xffffff
-
 // Typical response packet types
 typedef enum {
     TRILOGY_PACKET_OK = 0x0,

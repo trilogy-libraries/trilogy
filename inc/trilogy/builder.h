@@ -26,7 +26,7 @@ typedef struct {
  * buffer  - A pre-initialized trilogy_buffer_t pointer
  * seq     - The initial sequence number for the packet to be built. This is
  *           the initial number because the builder API will automatically
- *           split buffers that are larger than TRILOGY_MAX_PROTO_PACKET_LEN into
+ *           split buffers that are larger than TRILOGY_MAX_PACKET_LEN into
  *           multiple packets and increment the sequence number in each packet
  *           following the initial.
  *
