@@ -826,6 +826,17 @@ static VALUE rb_trilogy_close(VALUE self)
     return Qnil;
 }
 
+static VALUE rb_trilogy_closed(VALUE self)
+{
+    struct trilogy_ctx *ctx = get_ctx(self);
+
+    if (ctx->conn.socket == NULL) {
+        return Qtrue;
+    } else {
+        return Qfalse;
+    }
+}
+
 static VALUE rb_trilogy_last_insert_id(VALUE self) { return ULL2NUM(get_open_ctx(self)->conn.last_insert_id); }
 
 static VALUE rb_trilogy_affected_rows(VALUE self) { return ULL2NUM(get_open_ctx(self)->conn.affected_rows); }
@@ -897,6 +908,7 @@ void Init_cext()
     rb_define_method(Trilogy, "ping", rb_trilogy_ping, 0);
     rb_define_method(Trilogy, "escape", rb_trilogy_escape, 1);
     rb_define_method(Trilogy, "close", rb_trilogy_close, 0);
+    rb_define_method(Trilogy, "closed?", rb_trilogy_closed, 0);
     rb_define_method(Trilogy, "last_insert_id", rb_trilogy_last_insert_id, 0);
     rb_define_method(Trilogy, "affected_rows", rb_trilogy_affected_rows, 0);
     rb_define_method(Trilogy, "warning_count", rb_trilogy_warning_count, 0);

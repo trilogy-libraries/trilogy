@@ -283,6 +283,18 @@ class ClientTest < TrilogyTest
     ensure_closed client
   end
 
+  def test_trilogy_closed?
+    client = new_tcp_client
+
+    refute_predicate client, :closed?
+
+    client.close
+
+    assert_predicate client, :closed?
+  ensure
+    ensure_closed client
+  end
+
   def test_read_timeout
     client = new_tcp_client(read_timeout: 0.1)
 
