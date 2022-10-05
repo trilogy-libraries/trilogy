@@ -1,4 +1,4 @@
 .git
-.gitignore
+.gitignore >>ID
 .env*
 Dockerfile
