@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Added
+  - Add `#closed?` method to Ruby binding. #30
+
 ## 2.1.2
 
 2022-10-04
