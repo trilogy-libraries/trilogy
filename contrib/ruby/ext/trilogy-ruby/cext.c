@@ -31,10 +31,38 @@ struct trilogy_ctx {
     unsigned int query_flags;
 };
 
+static void free_trilogy(void *ptr)
+{
+    struct trilogy_ctx *ctx = ptr;
+    if (ctx->conn.socket != NULL) {
+        trilogy_free(&ctx->conn);
+    }
+    xfree(ptr);
+}
+
+static size_t trilogy_memsize(const void *ptr) {
+    const struct trilogy_ctx *ctx = ptr;
+    size_t memsize = sizeof(struct trilogy_ctx);
+    if (ctx->conn.socket != NULL) {
+        memsize += sizeof(trilogy_sock_t);
+    }
+    return memsize;
+}
+
+const rb_data_type_t trilogy_data_type = {
+    .wrap_struct_name = "trilogy",
+    .function = {
+        .dmark = NULL,
+        .dfree = free_trilogy,
+        .dsize = trilogy_memsize,
+    },
+    .flags = RUBY_TYPED_FREE_IMMEDIATELY | RUBY_TYPED_WB_PROTECTED
+};
+
 static struct trilogy_ctx *get_ctx(VALUE obj)
 {
     struct trilogy_ctx *ctx;
-    Data_Get_Struct(obj, struct trilogy_ctx, ctx);
+    TypedData_Get_Struct(obj, struct trilogy_ctx, &trilogy_data_type, ctx);
     return ctx;
 }
 
@@ -91,21 +119,11 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
     }
 }
 
-static void free_trilogy(struct trilogy_ctx *ctx)
-{
-    if (ctx->conn.socket != NULL) {
-        trilogy_free(&ctx->conn);
-    }
-    xfree(ctx);
-}
-
 static VALUE allocate_trilogy(VALUE klass)
 {
     struct trilogy_ctx *ctx;
 
-    VALUE obj = Data_Make_Struct(klass, struct trilogy_ctx, NULL, free_trilogy, ctx);
-
-    memset(ctx->server_version, 0, sizeof(ctx->server_version));
+    VALUE obj = TypedData_Make_Struct(klass, struct trilogy_ctx, &trilogy_data_type, ctx);
 
     ctx->query_flags = TRILOGY_FLAGS_DEFAULT;
 

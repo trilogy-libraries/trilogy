@@ -638,4 +638,10 @@ class ClientTest < TrilogyTest
     end
     assert_equal "trilogy_connect - unable to connect to mysql.invalid:3306: TRILOGY_DNS_ERR", ex.message
   end
+
+  def test_memsize
+    require 'objspace'
+    client = new_tcp_client
+    assert_kind_of Integer, ObjectSpace.memsize_of(client)
+  end
 end
