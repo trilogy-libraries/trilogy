@@ -6,10 +6,20 @@ require "timeout"
 require "resolv"
 
 class SslTest < TrilogyTest
+  def setup
+    super
+
+    if server_global_variable("have_ssl") != "YES"
+      skip "SSL is disabled on the server"
+    end
+  end
+
+  def tcp_client_defaults
+    super.merge(ssl_mode: Trilogy::SSL_REQUIRED_NOVERIFY)
+  end
+
   def server_supported_tls_versions
-    client = new_tcp_client(ssl: false)
-    result = client.query("SHOW GLOBAL VARIABLES LIKE 'tls_version'")
-    result.first[1].split(",")
+    server_global_variable("tls_version").split(",")
   end
 
   def tls_1_3_support?

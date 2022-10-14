@@ -46,7 +46,11 @@ class ClientTest < TrilogyTest
   def test_trilogy_connect_unix_socket
     return skip unless ["127.0.0.1", "localhost"].include?(DEFAULT_HOST)
 
-    client = new_unix_client
+    socket = new_tcp_client.query("SHOW VARIABLES LIKE 'socket'").to_a[0][1]
+
+    assert File.exist?(socket), "cound not find socket at #{socket}"
+
+    client = new_unix_client(socket)
     refute_nil client
   ensure
     ensure_closed client
@@ -103,6 +107,8 @@ class ClientTest < TrilogyTest
 
   def test_trilogy_query_values_vs_query_allocations
     client = new_tcp_client
+    client.query_with_flags("SELECT 1", client.query_flags) # warm up
+
     row_count = 1000
     sql = (1..row_count).map{|i| "SELECT #{i}" }.join(" UNION ")
 

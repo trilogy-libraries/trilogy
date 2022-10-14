@@ -12,7 +12,6 @@ class TrilogyTest < Minitest::Test
   DEFAULT_PORT = (port = ENV["MYSQL_PORT"].to_i) && port != 0 ? port : 3306
   DEFAULT_USER = ENV["MYSQL_USER"] || "root"
   DEFAULT_PASS = ENV["MYSQL_PASS"]
-  DEFAULT_SOCK = ENV["MYSQL_SOCK"]
 
   def assert_equal_timestamp(time1, time2)
     assert_equal time1.to_i, time2.to_i
@@ -33,7 +32,7 @@ class TrilogyTest < Minitest::Test
       username: DEFAULT_USER,
       password: DEFAULT_PASS,
       ssl: true,
-      ssl_mode: Trilogy::SSL_REQUIRED_NOVERIFY,
+      ssl_mode: Trilogy::SSL_PREFERRED_NOVERIFY,
       tls_min_version: Trilogy::TLS_VERSION_12,
     }.merge(opts)
 
@@ -42,16 +41,36 @@ class TrilogyTest < Minitest::Test
     c
   end
 
-  def new_unix_client(opts = {})
+  def new_unix_client(socket, opts = {})
     defaults = {
       username: DEFAULT_USER,
       password: DEFAULT_PASS,
-      socket: DEFAULT_SOCK,
+      socket: socket,
     }.merge(opts)
 
     c = Trilogy.new defaults
     c.query "SET SESSION sql_mode = ''"
     c
+  end
+
+  @@server_global_variables = Hash.new do |h, k|
+    client = Trilogy.new(
+      host: DEFAULT_HOST,
+      port: DEFAULT_PORT,
+      username: DEFAULT_USER,
+      password: DEFAULT_PASS,
+    )
+    name = k
+    result = client.query("SHOW GLOBAL VARIABLES LIKE '#{client.escape name}'")
+    if result.count == 0
+      h[k] = nil
+    else
+      h[k] = result.rows[0][1]
+    end
+  end
+
+  def server_global_variable(name)
+    @@server_global_variables[name]
   end
 
   def ensure_closed(socket)
