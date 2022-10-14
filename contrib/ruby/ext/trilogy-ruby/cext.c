@@ -46,6 +46,7 @@ static size_t trilogy_memsize(const void *ptr) {
     if (ctx->conn.socket != NULL) {
         memsize += sizeof(trilogy_sock_t);
     }
+    memsize += ctx->conn.packet_buffer.cap;
     return memsize;
 }
 
