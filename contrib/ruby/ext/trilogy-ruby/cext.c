@@ -96,6 +96,7 @@ static void free_trilogy(struct trilogy_ctx *ctx)
     if (ctx->conn.socket != NULL) {
         trilogy_free(&ctx->conn);
     }
+    xfree(ctx);
 }
 
 static VALUE allocate_trilogy(VALUE klass)
