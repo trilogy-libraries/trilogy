@@ -142,6 +142,7 @@ class ClientTest < TrilogyTest
     assert_equal [{ "a" => 1, "b" => 2 }], result.each_hash.to_a
     assert_equal [[1, 2]], result.to_a
     assert_kind_of Float, result.query_time
+    refute_predicate result, :in_transaction?
     assert_in_delta 0.1, result.query_time, 0.1
   ensure
     ensure_closed client
@@ -221,6 +222,24 @@ class ClientTest < TrilogyTest
     assert_equal 1, result_unchanged.affected_rows
     assert_equal 1, result_changed.affected_rows
     assert_nil result_select.affected_rows
+  ensure
+    ensure_closed client
+  end
+
+  def test_trilogy_in_transaction_flag_on_result
+    client = new_tcp_client
+    create_test_table(client)
+
+    refute_predicate client.query("SELECT 1"), :in_transaction?
+    refute_predicate client.query("INSERT INTO trilogy_test (varchar_test, int_test) VALUES ('a', 1)"), :in_transaction?
+
+    assert_predicate client.query("BEGIN"), :in_transaction?
+    assert_predicate client.query("INSERT INTO trilogy_test (varchar_test, int_test) VALUES ('b', 2)"), :in_transaction?
+
+    refute_predicate client.query("COMMIT"), :in_transaction?
+
+    assert_predicate client.query("BEGIN"), :in_transaction?
+    refute_predicate client.query("ROLLBACK"), :in_transaction?
   ensure
     ensure_closed client
   end
