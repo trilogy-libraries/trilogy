@@ -34,6 +34,12 @@ if client.ping
   result.each_hash do |user|
     p user
   end
+
+  # Multi-statement
+
+  results = []
+  results << client.query("SELECT name FROM users WHERE id = 1; SELECT name FROM users WHERE id = 2")
+  results << client.next_result while client.more_results_exist?
 end
 ```
 
