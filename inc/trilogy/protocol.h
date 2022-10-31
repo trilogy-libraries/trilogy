@@ -121,9 +121,7 @@
      * query/ prepared statement.                                                                                      \
      */                                                                                                                \
     XX(TRILOGY_CAPABILITIES_MULTI_STATEMENTS, 0x00010000)                                                              \
-    /* Not implemented.                                                                                                \
-     *                                                                                                                 \
-     * From server: the server is capable of sending multiple result sets from                                         \
+    /* From server: the server is capable of sending multiple result sets from                                         \
      * a query.                                                                                                        \
      *                                                                                                                 \
      * From client: tells the server it's capable of handling multiple result                                          \

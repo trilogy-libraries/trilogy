@@ -118,6 +118,71 @@ class ClientTest < TrilogyTest
     assert_equal query_allocations - row_count, flatten_rows_allocations
   end
 
+  def test_trilogy_more_results_exist?
+    client = new_tcp_client(multi_statement: true)
+    create_test_table(client)
+
+    refute_predicate client, :more_results_exist?
+    result = client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
+    refute_predicate client, :more_results_exist?
+
+
+    result = client.query("INSERT INTO trilogy_test (int_test) VALUES ('4'); INSERT INTO trilogy_test (int_test) VALUES ('1')")
+    assert_predicate client, :more_results_exist?
+  end
+
+  def test_trilogy_next_result
+    client = new_tcp_client(multi_statement: true)
+    create_test_table(client)
+
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('3')")
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('1')")
+
+    results = []
+
+    results << client.query("SELECT id, int_test FROM trilogy_test WHERE id = 1; SELECT id, int_test FROM trilogy_test WHERE id IN (2, 3); SELECT id, int_test FROM trilogy_test")
+
+    while (client.more_results_exist?) do
+      results << client.next_result
+    end
+
+    assert_equal 3, results.length
+
+    rs1, rs2, rs3 = results
+
+    assert_equal [[1, 4]], rs1.rows
+    assert_equal [[2, 3], [3, 1]], rs2.rows
+    assert_equal [[1, 4], [2, 3], [3, 1]], rs3.rows
+  end
+
+  def test_trilogy_next_result_when_no_more_results_exist
+    client = new_tcp_client(multi_statement: true)
+    create_test_table(client)
+
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
+
+    result = client.query("SELECT id, int_test FROM trilogy_test")
+    next_result = client.next_result
+
+    assert_equal [{ "id" => 1, "int_test" => 4 }], result.each_hash.to_a
+
+    assert_nil next_result
+  end
+
+  def test_trilogy_next_result_raises_when_response_has_error
+    client = new_tcp_client(multi_statement: true)
+    create_test_table(client)
+
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
+
+    _rs1 = client.query("SELECT id, int_test FROM trilogy_test; SELECT non_existent_column FROM trilogy_test")
+
+    assert_raises(Trilogy::DatabaseError) do
+      client.next_result
+    end
+  end
+
   def test_trilogy_query_values
     client = new_tcp_client
     create_test_table(client)
