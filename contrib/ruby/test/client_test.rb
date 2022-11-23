@@ -725,11 +725,13 @@ class ClientTest < TrilogyTest
     client.query("INSERT INTO trilogy_test (int_test) VALUES ('1')")
 
     result = client.query("SELECT SUM(int_test) FROM trilogy_test")
-    assert result.rows[0][0].is_a?(Integer)
+    sum = result.rows[0][0]
+
+    assert sum.is_a?(Integer)
+    assert_equal 8, sum
   end
 
   def test_trilogy_decimal_sum_query
-    client = new_tcp_client
     client = new_tcp_client
     create_test_table(client)
 
@@ -738,6 +740,9 @@ class ClientTest < TrilogyTest
     client.query("INSERT INTO trilogy_test (decimal_test) VALUES ('1')")
 
     result = client.query("SELECT SUM(decimal_test) FROM trilogy_test")
-    assert result.rows[0][0].is_a?(BigDecimal)
+    sum = result.rows[0][0]
+
+    assert sum.is_a?(BigDecimal)
+    assert_equal 8, sum
   end
 end
