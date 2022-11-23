@@ -7,7 +7,7 @@
 
 #define CAST_STACK_SIZE 64
 
-static ID id_BigDecimal, id_new, id_local, id_localtime, id_utc;
+static ID id_BigDecimal, id_Integer, id_new, id_local, id_localtime, id_utc;
 
 static const char *ruby_encoding_name_map[] = {
     [TRILOGY_ENCODING_ARMSCII8] = NULL,
@@ -142,12 +142,12 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
         }
         case TRILOGY_TYPE_DECIMAL:
         case TRILOGY_TYPE_NEWDECIMAL: {
+            // TODO - optimize so we don't have to allocate a ruby string for
+            // decimal columns
+            VALUE str = rb_str_new(value->data, value->data_len);
             if (column->decimals == 0) {
-                return rb_cstr2inum(value->data, 10);
+                return rb_funcall(rb_mKernel, id_Integer, 1, str);
             } else {
-                // TODO - optimize so we don't have to allocate a ruby string for
-                // decimal columns
-                VALUE str = rb_str_new(value->data, value->data_len);
                 return rb_funcall(rb_mKernel, id_BigDecimal, 1, str);
             }
         }
@@ -269,6 +269,7 @@ void rb_trilogy_cast_init(void)
     rb_require("date");
 
     id_BigDecimal = rb_intern("BigDecimal");
+    id_Integer = rb_intern("Integer");
     id_new = rb_intern("new");
     id_local = rb_intern("local");
     id_localtime = rb_intern("localtime");
