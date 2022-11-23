@@ -142,10 +142,14 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
         }
         case TRILOGY_TYPE_DECIMAL:
         case TRILOGY_TYPE_NEWDECIMAL: {
-            // TODO - optimize so we don't have to allocate a ruby string for
-            // decimal columns
-            VALUE str = rb_str_new(value->data, value->data_len);
-            return rb_funcall(rb_mKernel, id_BigDecimal, 1, str);
+            if (column->decimals == 0) {
+                return rb_cstr2inum(value->data, 10);
+            } else {
+                // TODO - optimize so we don't have to allocate a ruby string for
+                // decimal columns
+                VALUE str = rb_str_new(value->data, value->data_len);
+                return rb_funcall(rb_mKernel, id_BigDecimal, 1, str);
+            }
         }
         case TRILOGY_TYPE_FLOAT:
         case TRILOGY_TYPE_DOUBLE: {

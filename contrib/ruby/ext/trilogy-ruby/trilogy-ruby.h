@@ -23,6 +23,7 @@ struct column_info {
     TRILOGY_CHARSET_t charset;
     uint32_t len;
     uint16_t flags;
+    uint8_t decimals;
 };
 
 extern VALUE rb_cTrilogyError;
