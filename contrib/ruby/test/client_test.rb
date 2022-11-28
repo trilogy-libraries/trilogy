@@ -715,4 +715,34 @@ class ClientTest < TrilogyTest
     client = new_tcp_client
     assert_kind_of Integer, ObjectSpace.memsize_of(client)
   end
+
+  def test_trilogy_int_sum_query
+    client = new_tcp_client
+    create_test_table(client)
+
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('3')")
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('1')")
+
+    result = client.query("SELECT SUM(int_test) FROM trilogy_test")
+    sum = result.rows[0][0]
+
+    assert sum.is_a?(Integer)
+    assert_equal 8, sum
+  end
+
+  def test_trilogy_decimal_sum_query
+    client = new_tcp_client
+    create_test_table(client)
+
+    client.query("INSERT INTO trilogy_test (decimal_test) VALUES ('4')")
+    client.query("INSERT INTO trilogy_test (decimal_test) VALUES ('3')")
+    client.query("INSERT INTO trilogy_test (decimal_test) VALUES ('1')")
+
+    result = client.query("SELECT SUM(decimal_test) FROM trilogy_test")
+    sum = result.rows[0][0]
+
+    assert sum.is_a?(BigDecimal)
+    assert_equal 8, sum
+  end
 end

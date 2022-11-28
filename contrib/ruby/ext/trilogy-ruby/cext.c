@@ -667,6 +667,7 @@ static VALUE read_query_response(VALUE vargs)
         column_info[i].flags = column.flags;
         column_info[i].len = column.len;
         column_info[i].charset = column.charset;
+        column_info[i].decimals = column.decimals;
     }
 
     trilogy_value_t *row_values = ALLOC_N(trilogy_value_t, column_count);
