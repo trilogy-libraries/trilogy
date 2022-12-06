@@ -178,7 +178,7 @@ class ClientTest < TrilogyTest
 
     _rs1 = client.query("SELECT id, int_test FROM trilogy_test; SELECT non_existent_column FROM trilogy_test")
 
-    assert_raises(Trilogy::DatabaseError) do
+    assert_raises(Trilogy::ProtocolError) do
       client.next_result
     end
   end
@@ -514,7 +514,7 @@ class ClientTest < TrilogyTest
   def test_database_error
     client = new_tcp_client
 
-    err = assert_raises Trilogy::DatabaseError do
+    err = assert_raises Trilogy::ProtocolError do
       client.query("not legit sqle")
     end
 
@@ -642,7 +642,7 @@ class ClientTest < TrilogyTest
       write_side.close
     end
 
-    ex = assert_raises Trilogy::DatabaseError do
+    ex = assert_raises Trilogy::ProtocolError do
       new_tcp_client(host: "127.0.0.1", port: fake_port)
     end
 
@@ -657,7 +657,7 @@ class ClientTest < TrilogyTest
 
     connection_id = client.query("SELECT CONNECTION_ID()").to_a.first.first
 
-    assert_raises Trilogy::DatabaseError do
+    assert_raises Trilogy::ProtocolError do
       client.query("SELECT /*+ MAX_EXECUTION_TIME(10) */ WAIT_FOR_EXECUTED_GTID_SET('01e4737c-9752-11e8-a17a-d40393d98615:1-76747', 1.01)")
     end
 
