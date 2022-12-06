@@ -21,7 +21,7 @@ static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, 
     id_write_timeout, id_keepalive_enabled, id_keepalive_idle, id_keepalive_interval, id_keepalive_count,
     id_ivar_affected_rows, id_ivar_fields, id_ivar_last_insert_id, id_ivar_rows, id_ivar_query_time, id_password,
     id_database, id_ssl_ca, id_ssl_capath, id_ssl_cert, id_ssl_cipher, id_ssl_crl, id_ssl_crlpath, id_ssl_key,
-    id_ssl_mode, id_tls_ciphersuites, id_tls_min_version, id_tls_max_version, id_multi_statement;
+    id_ssl_mode, id_tls_ciphersuites, id_tls_min_version, id_tls_max_version, id_multi_statement, id_from_code;
 
 struct trilogy_ctx {
     trilogy_conn_t conn;
@@ -91,12 +91,7 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
 
     case TRILOGY_ERR: {
         VALUE message = rb_str_new(ctx->conn.error_message, ctx->conn.error_message_len);
-        VALUE exc = rb_exc_new3(Trilogy_ProtocolError,
-                                rb_sprintf("%" PRIsVALUE ": %d %" PRIsVALUE, rbmsg, ctx->conn.error_code, message));
-
-        rb_ivar_set(exc, rb_intern("@error_code"), INT2FIX(ctx->conn.error_code));
-        rb_ivar_set(exc, rb_intern("@error_message"), message);
-
+        VALUE exc = rb_funcall(Trilogy_ProtocolError, id_from_code, 2, message, INT2NUM(ctx->conn.error_code));
         rb_exc_raise(exc);
     }
 
@@ -1035,7 +1030,7 @@ void Init_cext()
     id_tls_min_version = rb_intern("tls_min_version");
     id_tls_max_version = rb_intern("tls_max_version");
     id_multi_statement = rb_intern("multi_statement");
-
+    id_from_code = rb_intern("from_code");
     id_ivar_affected_rows = rb_intern("@affected_rows");
     id_ivar_fields = rb_intern("@fields");
     id_ivar_last_insert_id = rb_intern("@last_insert_id");

@@ -28,10 +28,42 @@ class Trilogy
   class CastError < ClientError
   end
 
-  class ProtocolError < BaseError
+
+  class TimeoutError < Errno::ETIMEDOUT
     include ConnectionError
+  end
+
+  class ProtocolError < BaseError
+    ERROR_CODES = {
+      1205 => TimeoutError, # ER_LOCK_WAIT_TIMEOUT
+      1044 => ConnectionError, # ER_DBACCESS_DENIED_ERROR
+      1045 => ConnectionError, # ER_ACCESS_DENIED_ERROR
+      1152 => ConnectionError, # ER_ABORTING_CONNECTION
+      1153 => ConnectionError, # ER_NET_PACKET_TOO_LARGE
+      1154 => ConnectionError, # ER_NET_READ_ERROR_FROM_PIPE
+      1155 => ConnectionError, # ER_NET_FCNTL_ERROR
+      1156 => ConnectionError, # ER_NET_PACKETS_OUT_OF_ORDER
+      1157 => ConnectionError, # ER_NET_UNCOMPRESS_ERROR
+      1158 => ConnectionError, # ER_NET_READ_ERROR
+      1159 => ConnectionError, # ER_NET_READ_INTERRUPTED
+      1160 => ConnectionError, # ER_NET_ERROR_ON_WRITE
+      1161 => ConnectionError, # ER_NET_WRITE_INTERRUPTED
+      1927 => ConnectionError, # ER_CONNECTION_KILLED
+    }
 
     attr_reader :error_code, :error_message
+
+    class << self
+      def from_code(message, code)
+        ERROR_CODES.fetch(code, self).new(message, code)
+      end
+    end
+
+    def initialize(error_message, error_code)
+      super("#{error_code}: #{error_message}")
+      @error_code = error_code
+      @error_message = error_message
+    end
   end
 
   class SSLError < BaseError
@@ -39,10 +71,6 @@ class Trilogy
   end
 
   class ConnectionClosed < IOError
-    include ConnectionError
-  end
-
-  class TimeoutError < Errno::ETIMEDOUT
     include ConnectionError
   end
 
