@@ -9,7 +9,7 @@ jobs:
       matrix:
         mysql: ["5.7", "8.0"]
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Setup MySQL
       run: |
         brew install mysql@${{ matrix.mysql }}
@@ -28,7 +28,7 @@ jobs:
       matrix:
         mysql: ["5.7", "8.0"]
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Setup MySQL
       run: |
         brew install mysql@${{ matrix.mysql }}
