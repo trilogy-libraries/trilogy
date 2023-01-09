@@ -123,11 +123,10 @@ class ClientTest < TrilogyTest
     create_test_table(client)
 
     refute_predicate client, :more_results_exist?
-    result = client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
+    _ = client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
     refute_predicate client, :more_results_exist?
 
-
-    result = client.query("INSERT INTO trilogy_test (int_test) VALUES ('4'); INSERT INTO trilogy_test (int_test) VALUES ('1')")
+    _ = client.query("INSERT INTO trilogy_test (int_test) VALUES ('4'); INSERT INTO trilogy_test (int_test) VALUES ('1')")
     assert_predicate client, :more_results_exist?
   end
 
@@ -180,6 +179,41 @@ class ClientTest < TrilogyTest
 
     assert_raises(Trilogy::DatabaseError) do
       client.next_result
+    end
+  end
+
+  def test_trilogy_abandon_results
+    client = new_tcp_client(multi_statement: true)
+    create_test_table(client)
+
+    client.query(<<~QUERY)
+      INSERT INTO trilogy_test (int_test) VALUES ('4');
+      INSERT INTO trilogy_test (int_test) VALUES ('5');
+      INSERT INTO trilogy_test (int_test) VALUES ('6')
+    QUERY
+
+    assert_predicate client, :more_results_exist?
+    result_count = client.abandon_results!
+
+    assert_equal 2, result_count
+
+    refute_predicate client, :more_results_exist?
+  end
+
+  def test_trilogy_abandon_results_raises_when_response_has_error
+    client = new_tcp_client(multi_statement: true)
+    create_test_table(client)
+
+     client.query(<<~QUERY)
+      INSERT INTO trilogy_test (int_test) VALUES ('4');
+      INSERT INTO trilogy_test (non_existent_column) VALUES ('5');
+      INSERT INTO trilogy_test (int_test) VALUES ('6')
+    QUERY
+
+    assert_predicate client, :more_results_exist?
+
+    assert_raises(Trilogy::DatabaseError) do
+      client.abandon_results!
     end
   end
 

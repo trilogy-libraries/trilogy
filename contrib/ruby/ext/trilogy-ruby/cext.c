@@ -764,6 +764,20 @@ static VALUE rb_trilogy_more_results_exist(VALUE self)
     }
 }
 
+static VALUE rb_trilogy_abandon_results(VALUE self)
+{
+    struct trilogy_ctx *ctx = get_open_ctx(self);
+
+    int count = 0;
+
+    while(ctx->conn.server_status & TRILOGY_SERVER_STATUS_MORE_RESULTS_EXISTS) {
+        VALUE result = execute_read_query_response(ctx);
+        count++;
+    }
+
+    return INT2NUM(count);
+}
+
 static VALUE rb_trilogy_query(VALUE self, VALUE query)
 {
     struct trilogy_ctx *ctx = get_open_ctx(self);
@@ -970,6 +984,7 @@ void Init_cext()
     rb_define_method(Trilogy, "server_version", rb_trilogy_server_version, 0);
     rb_define_method(Trilogy, "more_results_exist?", rb_trilogy_more_results_exist, 0);
     rb_define_method(Trilogy, "next_result", rb_trilogy_next_result, 0);
+    rb_define_method(Trilogy, "abandon_results!", rb_trilogy_abandon_results, 0);
     rb_define_const(Trilogy, "TLS_VERSION_10", INT2NUM(TRILOGY_TLS_VERSION_10));
     rb_define_const(Trilogy, "TLS_VERSION_11", INT2NUM(TRILOGY_TLS_VERSION_11));
     rb_define_const(Trilogy, "TLS_VERSION_12", INT2NUM(TRILOGY_TLS_VERSION_12));
