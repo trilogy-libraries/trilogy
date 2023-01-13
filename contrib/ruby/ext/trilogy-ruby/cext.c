@@ -16,7 +16,7 @@
 
 VALUE Trilogy_CastError;
 static VALUE Trilogy_BaseConnectionError, Trilogy_ProtocolError, Trilogy_SSLError, Trilogy_QueryError,
-    Trilogy_TimeoutError, Trilogy_Result;
+    Trilogy_ConnectionClosedError, Trilogy_TimeoutError, Trilogy_Result;
 
 static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, id_connect_timeout, id_read_timeout,
     id_write_timeout, id_keepalive_enabled, id_keepalive_idle, id_keepalive_interval, id_keepalive_count,
@@ -71,7 +71,7 @@ static struct trilogy_ctx *get_open_ctx(VALUE obj)
     struct trilogy_ctx *ctx = get_ctx(obj);
 
     if (ctx->conn.socket == NULL) {
-        rb_raise(rb_eIOError, "connection closed");
+        rb_raise(Trilogy_ConnectionClosedError, "Attempted to use closed connection");
     }
 
     return ctx;
@@ -1002,6 +1002,9 @@ void Init_cext()
 
     Trilogy_BaseConnectionError = rb_const_get(Trilogy, rb_intern("BaseConnectionError"));
     rb_global_variable(&Trilogy_BaseConnectionError);
+
+    Trilogy_ConnectionClosedError = rb_const_get(Trilogy, rb_intern("ConnectionClosed"));
+    rb_global_variable(&Trilogy_ConnectionClosedError);
 
     Trilogy_Result = rb_const_get(Trilogy, rb_intern("Result"));
     rb_global_variable(&Trilogy_Result);

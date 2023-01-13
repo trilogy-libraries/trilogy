@@ -73,7 +73,7 @@ class ClientTest < TrilogyTest
     client = new_tcp_client
     assert client.ping
     client.close
-    assert_raises IOError do
+    assert_raises Trilogy::ConnectionClosed do
       client.ping
     end
   ensure
@@ -91,7 +91,7 @@ class ClientTest < TrilogyTest
     client = new_tcp_client
     assert client.change_db "test"
     client.close
-    assert_raises IOError do
+    assert_raises Trilogy::ConnectionClosed do
       refute client.change_db "test"
     end
   ensure
@@ -216,7 +216,7 @@ class ClientTest < TrilogyTest
     client = new_tcp_client
     assert client.query "SELECT 1"
     client.close
-    assert_raises IOError do
+    assert_raises Trilogy::ConnectionClosed do
       refute client.query "SELECT 1"
     end
   ensure
@@ -393,11 +393,11 @@ class ClientTest < TrilogyTest
     client.close
     ensure_closed client
 
-    assert_raises IOError do
+    assert_raises Trilogy::ConnectionClosed do
       client.read_timeout
     end
 
-    assert_raises IOError do
+    assert_raises Trilogy::ConnectionClosed do
       client.read_timeout = 42
     end
   end
@@ -416,11 +416,11 @@ class ClientTest < TrilogyTest
     client.close
     ensure_closed client
 
-    assert_raises IOError do
+    assert_raises Trilogy::ConnectionClosed do
       client.write_timeout
     end
 
-    assert_raises IOError do
+    assert_raises Trilogy::ConnectionClosed do
       client.write_timeout = 42
     end
   end
@@ -537,6 +537,18 @@ class ClientTest < TrilogyTest
     end
 
     assert_includes err.message, "Access denied for user 'foo'"
+  end
+
+  def test_connection_closed_error
+    client = new_tcp_client
+
+    client.close
+
+    err = assert_raises Trilogy::ConnectionClosed do
+      client.query("SELECT 1");
+    end
+
+    assert_equal "Attempted to use closed connection", err.message
   end
 
   def test_database_error
