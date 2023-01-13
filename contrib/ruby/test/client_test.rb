@@ -518,14 +518,17 @@ class ClientTest < TrilogyTest
     create_test_table(client_1)
     client_2.change_db("test")
 
-    client_1.query("SET GLOBAL innodb_lock_wait_timeout = 2;")
     client_1.query("INSERT INTO trilogy_test (varchar_test) VALUES ('a')")
     client_1.query("BEGIN")
     client_1.query("SELECT * FROM trilogy_test FOR UPDATE")
 
+    client_2.query("SET SESSION innodb_lock_wait_timeout = 1;")
     assert_raises Trilogy::TimeoutError do
       client_2.query("SELECT * FROM trilogy_test FOR UPDATE")
     end
+  ensure
+    ensure_closed(client_1)
+    ensure_closed(client_2)
   end
 
   def test_connection_error
