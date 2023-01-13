@@ -71,7 +71,7 @@ static void cstr_from_value(char *buf, const trilogy_value_t *value, const char 
 {
 
     if (value->data_len > CAST_STACK_SIZE - 1) {
-        rb_raise(rb_cTrilogyError, errmsg, (int)value->data_len, (char *)value->data);
+        rb_raise(Trilogy_CastError, errmsg, (int)value->data_len, (char *)value->data);
     }
 
     memcpy(buf, value->data, value->data_len);
@@ -160,7 +160,7 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
             double dbl = strtod(cstr, &err);
 
             if (*err != 0) {
-                rb_raise(rb_cTrilogyError, "Invalid double value: %.*s", (int)value->data_len, (char *)value->data);
+                rb_raise(Trilogy_CastError, "Invalid double value: %.*s", (int)value->data_len, (char *)value->data);
             }
             return rb_float_new(dbl);
         }
@@ -184,7 +184,7 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
             }
 
             if (month < 1 || day < 1) {
-                rb_raise(rb_cTrilogyError, "Invalid date: %.*s", (int)value->data_len, (char *)value->data);
+                rb_raise(Trilogy_CastError, "Invalid date: %.*s", (int)value->data_len, (char *)value->data);
             }
 
             // pad out msec_char with zeroes at the end as it could be at any
@@ -215,7 +215,7 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
             }
 
             if (month < 1 || day < 1) {
-                rb_raise(rb_cTrilogyError, "Invalid date: %.*s", (int)value->data_len, (char *)value->data);
+                rb_raise(Trilogy_CastError, "Invalid date: %.*s", (int)value->data_len, (char *)value->data);
             }
 
             return rb_funcall(Date, id_new, 3, INT2NUM(year), INT2NUM(month), INT2NUM(day));

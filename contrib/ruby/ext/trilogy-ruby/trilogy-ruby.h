@@ -26,7 +26,7 @@ struct column_info {
     uint8_t decimals;
 };
 
-extern VALUE rb_cTrilogyError;
+extern VALUE Trilogy_CastError;
 
 VALUE
 rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *column,

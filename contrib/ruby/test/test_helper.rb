@@ -7,6 +7,12 @@ require "minitest/autorun"
 $LOAD_PATH.unshift File.expand_path("../../lib", __FILE__)
 $LOAD_PATH.unshift File.expand_path("../", __FILE__)
 
+if GC.respond_to?(:verify_compaction_references)
+  # This method was added in Ruby 3.0.0. Calling it this way asks the GC to
+  # move objects around, helping to find object movement bugs.
+  GC.verify_compaction_references(double_heap: true, toward: :empty)
+end
+
 class TrilogyTest < Minitest::Test
   DEFAULT_HOST = ENV["MYSQL_HOST"] || "127.0.0.1"
   DEFAULT_PORT = (port = ENV["MYSQL_PORT"].to_i) && port != 0 ? port : 3306
