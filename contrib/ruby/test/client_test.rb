@@ -369,7 +369,7 @@ class ClientTest < TrilogyTest
   def test_read_timeout
     client = new_tcp_client(read_timeout: 0.1)
 
-    assert_raises Errno::ETIMEDOUT do
+    assert_raises Trilogy::TimeoutError do
       client.query("SELECT SLEEP(1)")
     end
   ensure
@@ -381,7 +381,7 @@ class ClientTest < TrilogyTest
     assert client.query("SELECT SLEEP(0.2)");
     client.read_timeout = 0.1
     assert_equal 0.1, client.read_timeout
-    assert_raises Errno::ETIMEDOUT do
+    assert_raises Trilogy::TimeoutError do
       client.query("SELECT SLEEP(1)")
     end
   ensure
@@ -429,7 +429,7 @@ class ClientTest < TrilogyTest
     serv = TCPServer.new(0)
     port = serv.addr[1]
 
-    assert_raises Errno::ETIMEDOUT do
+    assert_raises Trilogy::TimeoutError do
       new_tcp_client(host: "127.0.0.1", port: port, connect_timeout: 0.1)
     end
   ensure
