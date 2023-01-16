@@ -37,10 +37,10 @@ class ClientTest < TrilogyTest
   end
 
   def test_trilogy_connect_tcp_to_wrong_port
-    e = assert_raises Errno::ECONNREFUSED do
+    e = assert_raises Trilogy::ConnectionError do
       new_tcp_client port: 13307
     end
-    assert_equal "Connection refused - trilogy_connect - unable to connect to #{DEFAULT_HOST}:13307", e.message
+    assert_equal "trilogy_connect - unable to connect to #{DEFAULT_HOST}:13307", e.message
   end
 
   def test_trilogy_connect_unix_socket
@@ -123,11 +123,10 @@ class ClientTest < TrilogyTest
     create_test_table(client)
 
     refute_predicate client, :more_results_exist?
-    result = client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
     refute_predicate client, :more_results_exist?
 
-
-    result = client.query("INSERT INTO trilogy_test (int_test) VALUES ('4'); INSERT INTO trilogy_test (int_test) VALUES ('1')")
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('4'); INSERT INTO trilogy_test (int_test) VALUES ('1')")
     assert_predicate client, :more_results_exist?
   end
 
@@ -738,7 +737,7 @@ class ClientTest < TrilogyTest
     _, fake_port = fake_server.addr
     fake_server.close
 
-    assert_raises Errno::ECONNREFUSED do
+    assert_raises Trilogy::ConnectionError do
       new_tcp_client(host: "127.0.0.1", port: fake_port)
     end
   end

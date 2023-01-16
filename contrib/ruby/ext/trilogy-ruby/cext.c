@@ -87,8 +87,12 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
 
     switch (rc) {
     case TRILOGY_SYSERR:
-        // TODO: syserr should be wrapped too.
-        rb_syserr_fail_str(errno, rbmsg);
+        if (errno == ECONNREFUSED || errno == ECONNRESET) {
+            rb_raise(Trilogy_BaseConnectionError, "%" PRIsVALUE, rbmsg);
+        } else {
+            // TODO: All syserr should be wrapped.
+            rb_syserr_fail_str(errno, rbmsg);
+        }
 
     case TRILOGY_ERR: {
         VALUE message = rb_str_new(ctx->conn.error_message, ctx->conn.error_message_len);
@@ -100,8 +104,14 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
         unsigned long ossl_error = ERR_get_error();
         ERR_clear_error();
         if (ERR_GET_LIB(ossl_error) == ERR_LIB_SYS) {
-            // TODO: syserr should be wrapped too.
-            rb_syserr_fail_str(ERR_GET_REASON(ossl_error), rbmsg);
+            int err_reason = ERR_GET_REASON(ossl_error);
+
+            if (err_reason == ECONNREFUSED || err_reason == ECONNRESET) {
+                rb_raise(Trilogy_BaseConnectionError, "%" PRIsVALUE, rbmsg);
+            } else {
+                // TODO: All syserr should be wrapped.
+                rb_syserr_fail_str(err_reason, rbmsg);
+            }
         }
         // We can't recover from OpenSSL level errors if there's
         // an active connection.
@@ -129,8 +139,13 @@ static VALUE allocate_trilogy(VALUE klass)
     ctx->query_flags = TRILOGY_FLAGS_DEFAULT;
 
     if (trilogy_init(&ctx->conn) < 0) {
-        // TODO: syserr should be wrapped too.
-        rb_syserr_fail(errno, "trilogy_init");
+        if (errno == ECONNREFUSED || errno == ECONNRESET) {
+            rb_raise(Trilogy_BaseConnectionError, "trilogy_init");
+        } else {
+            // TODO: All syserr should be wrapped.
+            VALUE rbmsg = rb_str_new("trilogy_init", 13);
+            rb_syserr_fail_str(errno, rbmsg);
+        }
     }
 
     return obj;
