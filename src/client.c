@@ -259,10 +259,12 @@ static int read_auth_switch_packet(trilogy_conn_t *conn, trilogy_handshake_t *ha
         return rc;
     }
 
-    if (strcmp("mysql_native_password", auth_switch_packet.auth_plugin) &&
-        strcmp("caching_sha2_password", auth_switch_packet.auth_plugin)) {
-        // Only support native password & caching sha2 password here.
-        return TRILOGY_PROTOCOL_VIOLATION;
+    if (conn->socket->opts.password_len > 0) {
+        if (strcmp("mysql_native_password", auth_switch_packet.auth_plugin) &&
+            strcmp("caching_sha2_password", auth_switch_packet.auth_plugin)) {
+            // Only support native password & caching sha2 password here.
+            return TRILOGY_PROTOCOL_VIOLATION;
+        }
     }
 
     memcpy(handshake->auth_plugin, auth_switch_packet.auth_plugin, sizeof(auth_switch_packet.auth_plugin));
