@@ -56,6 +56,7 @@ class Trilogy
       1205 => TimeoutError, # ER_LOCK_WAIT_TIMEOUT
       1044 => BaseConnectionError, # ER_DBACCESS_DENIED_ERROR
       1045 => BaseConnectionError, # ER_ACCESS_DENIED_ERROR
+      1064 => QueryError, # ER_PARSE_ERROR
       1152 => BaseConnectionError, # ER_ABORTING_CONNECTION
       1153 => BaseConnectionError, # ER_NET_PACKET_TOO_LARGE
       1154 => BaseConnectionError, # ER_NET_READ_ERROR_FROM_PIPE

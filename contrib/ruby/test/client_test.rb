@@ -550,13 +550,14 @@ class ClientTest < TrilogyTest
     assert_equal "Attempted to use closed connection", err.message
   end
 
-  def test_database_error
+  def test_query_error
     client = new_tcp_client
 
-    err = assert_raises Trilogy::ProtocolError do
+    err = assert_raises Trilogy::QueryError do
       client.query("not legit sqle")
     end
 
+    assert_equal 1064, err.error_code
     assert_includes err.message, "You have an error in your SQL syntax"
 
     # test that the connection is not closed due to 'routine' errors
