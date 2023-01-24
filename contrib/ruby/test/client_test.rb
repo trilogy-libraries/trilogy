@@ -531,6 +531,7 @@ class ClientTest < TrilogyTest
   end
 
   def test_connection_error
+    skip("Test fails intermittently with TRILOGY_PROTOCOL_VIOLATION. See https://github.com/github/trilogy/pull/42")
     err = assert_raises Trilogy::ConnectionError do
       new_tcp_client(username: "foo")
     end
