@@ -37,10 +37,10 @@ class ClientTest < TrilogyTest
   end
 
   def test_trilogy_connect_tcp_to_wrong_port
-    e = assert_raises Errno::ECONNREFUSED do
+    e = assert_raises Trilogy::ConnectionError do
       new_tcp_client port: 13307
     end
-    assert_equal "Connection refused - trilogy_connect - unable to connect to #{DEFAULT_HOST}:13307", e.message
+    assert_equal "trilogy_connect - unable to connect to #{DEFAULT_HOST}:13307", e.message
   end
 
   def test_trilogy_connect_unix_socket
@@ -73,7 +73,7 @@ class ClientTest < TrilogyTest
     client = new_tcp_client
     assert client.ping
     client.close
-    assert_raises IOError do
+    assert_raises Trilogy::ConnectionClosed do
       client.ping
     end
   ensure
@@ -91,7 +91,7 @@ class ClientTest < TrilogyTest
     client = new_tcp_client
     assert client.change_db "test"
     client.close
-    assert_raises IOError do
+    assert_raises Trilogy::ConnectionClosed do
       refute client.change_db "test"
     end
   ensure
@@ -123,11 +123,10 @@ class ClientTest < TrilogyTest
     create_test_table(client)
 
     refute_predicate client, :more_results_exist?
-    result = client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
     refute_predicate client, :more_results_exist?
 
-
-    result = client.query("INSERT INTO trilogy_test (int_test) VALUES ('4'); INSERT INTO trilogy_test (int_test) VALUES ('1')")
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('4'); INSERT INTO trilogy_test (int_test) VALUES ('1')")
     assert_predicate client, :more_results_exist?
   end
 
@@ -216,7 +215,7 @@ class ClientTest < TrilogyTest
     client = new_tcp_client
     assert client.query "SELECT 1"
     client.close
-    assert_raises IOError do
+    assert_raises Trilogy::ConnectionClosed do
       refute client.query "SELECT 1"
     end
   ensure
@@ -369,7 +368,7 @@ class ClientTest < TrilogyTest
   def test_read_timeout
     client = new_tcp_client(read_timeout: 0.1)
 
-    assert_raises Errno::ETIMEDOUT do
+    assert_raises Trilogy::TimeoutError do
       client.query("SELECT SLEEP(1)")
     end
   ensure
@@ -381,7 +380,7 @@ class ClientTest < TrilogyTest
     assert client.query("SELECT SLEEP(0.2)");
     client.read_timeout = 0.1
     assert_equal 0.1, client.read_timeout
-    assert_raises Errno::ETIMEDOUT do
+    assert_raises Trilogy::TimeoutError do
       client.query("SELECT SLEEP(1)")
     end
   ensure
@@ -393,11 +392,11 @@ class ClientTest < TrilogyTest
     client.close
     ensure_closed client
 
-    assert_raises IOError do
+    assert_raises Trilogy::ConnectionClosed do
       client.read_timeout
     end
 
-    assert_raises IOError do
+    assert_raises Trilogy::ConnectionClosed do
       client.read_timeout = 42
     end
   end
@@ -416,11 +415,11 @@ class ClientTest < TrilogyTest
     client.close
     ensure_closed client
 
-    assert_raises IOError do
+    assert_raises Trilogy::ConnectionClosed do
       client.write_timeout
     end
 
-    assert_raises IOError do
+    assert_raises Trilogy::ConnectionClosed do
       client.write_timeout = 42
     end
   end
@@ -429,7 +428,7 @@ class ClientTest < TrilogyTest
     serv = TCPServer.new(0)
     port = serv.addr[1]
 
-    assert_raises Errno::ETIMEDOUT do
+    assert_raises Trilogy::TimeoutError do
       new_tcp_client(host: "127.0.0.1", port: port, connect_timeout: 0.1)
     end
   ensure
@@ -532,20 +531,34 @@ class ClientTest < TrilogyTest
   end
 
   def test_connection_error
-    err = assert_raises Trilogy::BaseConnectionError do
+    skip("Test fails intermittently with TRILOGY_PROTOCOL_VIOLATION. See https://github.com/github/trilogy/pull/42")
+    err = assert_raises Trilogy::ConnectionError do
       new_tcp_client(username: "foo")
     end
 
     assert_includes err.message, "Access denied for user 'foo'"
   end
 
-  def test_database_error
+  def test_connection_closed_error
     client = new_tcp_client
 
-    err = assert_raises Trilogy::ProtocolError do
+    client.close
+
+    err = assert_raises Trilogy::ConnectionClosed do
+      client.query("SELECT 1");
+    end
+
+    assert_equal "Attempted to use closed connection", err.message
+  end
+
+  def test_query_error
+    client = new_tcp_client
+
+    err = assert_raises Trilogy::QueryError do
       client.query("not legit sqle")
     end
 
+    assert_equal 1064, err.error_code
     assert_includes err.message, "You have an error in your SQL syntax"
 
     # test that the connection is not closed due to 'routine' errors
@@ -726,16 +739,16 @@ class ClientTest < TrilogyTest
     _, fake_port = fake_server.addr
     fake_server.close
 
-    assert_raises Errno::ECONNREFUSED do
+    assert_raises Trilogy::ConnectionError do
       new_tcp_client(host: "127.0.0.1", port: fake_port)
     end
   end
 
   def test_connection_invalid_dns
-    ex = assert_raises Trilogy::Error do
+    ex = assert_raises Trilogy::ConnectionError do
       new_tcp_client(host: "mysql.invalid", port: 3306)
     end
-    assert_equal "trilogy_connect - unable to connect to mysql.invalid:3306: TRILOGY_DNS_ERR", ex.message
+    assert_equal "trilogy_connect - unable to connect to mysql.invalid:3306: TRILOGY_DNS_ERROR", ex.message
   end
 
   def test_memsize
