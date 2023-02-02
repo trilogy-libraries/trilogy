@@ -531,12 +531,11 @@ class ClientTest < TrilogyTest
   end
 
   def test_connection_error
-    skip("Test fails intermittently with TRILOGY_PROTOCOL_VIOLATION. See https://github.com/github/trilogy/pull/42")
     err = assert_raises Trilogy::ConnectionError do
-      new_tcp_client(username: "foo")
+      new_tcp_client(username: "native", password: "incorrect")
     end
 
-    assert_includes err.message, "Access denied for user 'foo'"
+    assert_includes err.message, "Access denied for user 'native'"
   end
 
   def test_connection_closed_error
