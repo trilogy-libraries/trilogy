@@ -4,15 +4,25 @@
 #include <ruby/encoding.h>
 #include <ruby/io.h>
 #include <ruby/thread.h>
+
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/un.h>
+#include <fcntl.h>
 
 #include <trilogy.h>
 
 #include "trilogy-ruby.h"
 
 #define TRILOGY_RB_TIMEOUT 1
+
+#if defined(HAVE_RB_IO_WAIT) && defined(HAVE_RB_GC_MARK_MOVABLE) && defined(HAVE_RUBY_FIBER_SCHEDULER_H)
+#define TRILOGY_RB_IO_WAIT
+#endif
+
+#ifdef TRILOGY_RB_IO_WAIT
+#include <ruby/fiber/scheduler.h>
+#endif
 
 VALUE Trilogy_CastError;
 static VALUE Trilogy_BaseConnectionError, Trilogy_ProtocolError, Trilogy_SSLError, Trilogy_QueryError,
@@ -26,20 +36,26 @@ static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, 
 
 struct trilogy_ctx {
     trilogy_conn_t conn;
+#ifdef TRILOGY_RB_IO_WAIT
+    VALUE io;
+#endif
+
     char server_version[TRILOGY_SERVER_VERSION_SIZE + 1];
     unsigned int query_flags;
 };
 
-static void free_trilogy(void *ptr)
+static void trilogy_ctx_free(void *ptr)
 {
     struct trilogy_ctx *ctx = ptr;
+
     if (ctx->conn.socket != NULL) {
         trilogy_free(&ctx->conn);
     }
+
     xfree(ptr);
 }
 
-static size_t trilogy_memsize(const void *ptr) {
+static size_t trilogy_ctx_memsize(const void *ptr) {
     const struct trilogy_ctx *ctx = ptr;
     size_t memsize = sizeof(struct trilogy_ctx);
     if (ctx->conn.socket != NULL) {
@@ -49,12 +65,33 @@ static size_t trilogy_memsize(const void *ptr) {
     return memsize;
 }
 
+#ifdef TRILOGY_RB_IO_WAIT
+static void trilogy_ctx_mark(void *ptr)
+{
+    struct trilogy_ctx *ctx = ptr;
+
+    if (RTEST(ctx->io))
+        rb_gc_mark_movable(ctx->io);
+}
+
+static void trilogy_ctx_compact(void *ptr)
+{
+    struct trilogy_ctx *ctx = ptr;
+
+    if (RTEST(ctx->io))
+        ctx->io = rb_gc_location(ctx->io);
+}
+#endif
+
 const rb_data_type_t trilogy_data_type = {
     .wrap_struct_name = "trilogy",
     .function = {
-        .dmark = NULL,
-        .dfree = free_trilogy,
-        .dsize = trilogy_memsize,
+#ifdef TRILOGY_RB_IO_WAIT
+        .dmark = trilogy_ctx_mark,
+        .dcompact = trilogy_ctx_compact,
+#endif
+        .dfree = trilogy_ctx_free,
+        .dsize = trilogy_ctx_memsize,
     },
     .flags = RUBY_TYPED_FREE_IMMEDIATELY | RUBY_TYPED_WB_PROTECTED
 };
@@ -136,6 +173,10 @@ static VALUE allocate_trilogy(VALUE klass)
 
     VALUE obj = TypedData_Make_Struct(klass, struct trilogy_ctx, &trilogy_data_type, ctx);
 
+#ifdef TRILOGY_RB_IO_WAIT
+    ctx->io = Qnil;
+#endif
+
     ctx->query_flags = TRILOGY_FLAGS_DEFAULT;
 
     if (trilogy_init(&ctx->conn) < 0) {
@@ -183,6 +224,7 @@ static double timeval_to_double(struct timeval tv)
 
 static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
 {
+    struct trilogy_ctx *ctx = sock->user_data;
     struct timeval *timeout = NULL;
     int wait_flag = 0;
 
@@ -211,10 +253,23 @@ static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
     }
 
     int fd = trilogy_sock_fd(sock);
+
+#ifdef TRILOGY_RB_IO_WAIT
+    if (ctx->io == Qnil) {
+        ctx->io = rb_io_fdopen(fd, O_RDWR, NULL);
+    }
+
+    VALUE result = rb_io_wait(ctx->io, RB_INT2NUM(wait_flag), rb_fiber_scheduler_make_timeout(timeout));
+    if (RTEST(result)) {
+        return 0;
+    } else {
+        return TRILOGY_SYSERR;
+    }
+#else
     if (rb_wait_for_single_fd(fd, wait_flag, timeout) <= 0)
         return TRILOGY_SYSERR;
-
     return 0;
+#endif
 }
 
 struct nogvl_sock_args {
@@ -251,6 +306,8 @@ static int try_connect(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, 
     /* replace the default wait callback with our GVL-aware callback so we can
 escape the GVL on each wait operation without going through call_without_gvl */
     sock->wait_cb = _cb_ruby_wait;
+    sock->user_data = ctx;
+
     rc = trilogy_connect_send_socket(&ctx->conn, sock);
     if (rc < 0)
         return rc;
@@ -959,7 +1016,7 @@ static VALUE rb_trilogy_server_status(VALUE self) { return LONG2FIX(get_open_ctx
 
 static VALUE rb_trilogy_server_version(VALUE self) { return rb_str_new_cstr(get_open_ctx(self)->server_version); }
 
-void Init_cext()
+void Init_cext(void)
 {
     VALUE Trilogy = rb_const_get(rb_cObject, rb_intern("Trilogy"));
     rb_define_alloc_func(Trilogy, allocate_trilogy);
