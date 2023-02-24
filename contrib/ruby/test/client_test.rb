@@ -62,6 +62,21 @@ class ClientTest < TrilogyTest
     end
   end
 
+  def test_trilogy_connection_options
+    client = new_tcp_client
+
+    expected_connection_options = {
+      host: DEFAULT_HOST,
+      port: DEFAULT_PORT,
+      username: DEFAULT_USER,
+      password: DEFAULT_PASS,
+      ssl: true,
+      ssl_mode: 4,
+      tls_min_version: 3,
+    }
+    assert_equal expected_connection_options, client.connection_options
+  end
+
   def test_trilogy_ping
     client = new_tcp_client
     assert client.ping

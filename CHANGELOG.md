@@ -6,7 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 ## Unreleased
 
 ### Added
-  - Implement multi-statement support on the Ruby binding. 
+  - Implement multi-statement support on the Ruby binding.
+  - Add `#connection_options` method to Ruby binding.
 
 ## 2.2.0
 
