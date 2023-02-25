@@ -415,7 +415,7 @@ static void *no_gvl_resolve(void *data)
     return NULL;
 }
 
-static int try_connect(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, const trilogy_sockopt_t *opts)
+static int try_connect(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, trilogy_sockopt_t *opts)
 {
     trilogy_sock_t *sock = trilogy_sock_new(opts);
     if (sock == NULL) {
@@ -423,6 +423,28 @@ static int try_connect(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, 
     }
 
     struct nogvl_sock_args args = {.rc = 0, .sock = sock};
+
+    // Attempt to resolve a non-numeric hostname using the fiber scheduler if possible.
+#ifdef TRILOGY_RB_IO_WAIT
+    if (opts->hostname != NULL) {
+        VALUE scheduler = rb_fiber_scheduler_current();
+
+        if (scheduler != Qnil) {
+            VALUE addresses = rb_fiber_scheduler_address_resolve(scheduler, rb_str_new_cstr(opts->hostname));
+
+            if (RARRAY_LEN(addresses) == 0) {
+                return TRILOGY_DNS_ERR;
+            }
+
+            free(opts->hostname);
+            opts->hostname = NULL;
+            VALUE address = rb_ary_entry(addresses, 0);
+            StringValue(address);
+
+            opts->hostname = strndup(RSTRING_PTR(address), RSTRING_LEN(address));
+        }
+    }
+#endif
 
     // Do the DNS resolving with the GVL unlocked. At this point all
     // configuration data is copied and available to the trilogy socket.
