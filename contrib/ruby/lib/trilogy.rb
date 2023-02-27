@@ -84,6 +84,10 @@ class Trilogy
     include ConnectionError
   end
 
+  def connection_options
+    @connection_options.dup.freeze
+  end
+
   def in_transaction?
     (server_status & SERVER_STATUS_IN_TRANS) != 0
   end
