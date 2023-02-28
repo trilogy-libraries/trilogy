@@ -83,7 +83,7 @@ Benchmark.ips do |x|
   end
 
   x.report "trilogy query (no-casting)" do
-    trilogy_client.query_options[:cast] = false
+    trilogy_client.query_flags &= ~Trilogy::QUERY_FLAGS_CAST
     result = trilogy_client.query QUERY
     result.to_a
   end
