@@ -65,7 +65,7 @@ The official Ruby bindings are inside of the canonical trilogy repository itself
 The trilogy API was heavily inspired by the mysql2 gem but has a few notable
 differences:
 
-* The `query_options` hash doesn't inherit from the connection options hash.
+* The `query_flags` don't inherit from the connection options hash.
   This means that options like turning on/of casting will need to be set before
   a query and not passed in at connect time.
 * For performance reasons there is no `application_timezone` query option. If
