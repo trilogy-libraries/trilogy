@@ -51,7 +51,15 @@ class Trilogy
     end
   end
 
+  # DatabaseError was replaced by ProtocolError, but we'll keep it around as an
+  # ancestor of ProtocolError for compatibility reasons (e.g. so `rescue DatabaseError`
+  # still works. We can remove this class in the next major release.
+  module DatabaseError
+  end
+
   class ProtocolError < BaseError
+    include DatabaseError
+
     ERROR_CODES = {
       1205 => TimeoutError, # ER_LOCK_WAIT_TIMEOUT
       1044 => BaseConnectionError, # ER_DBACCESS_DENIED_ERROR
