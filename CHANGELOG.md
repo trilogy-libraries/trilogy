@@ -5,9 +5,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.3.0
+
 ### Added
-  - Implement multi-statement support on the Ruby binding.
-  - Add `#connection_options` method to Ruby binding.
+  - Implement multi-statement support on the Ruby binding. #35
+  - Add `#connection_options` method to Ruby binding. #48
+  - Introduced a variety of more detailed error classes. #15 and #41
+
+### Changed
+  - Cast to Integer rather than BigDecimal for column types without decimal digits. #37
+  - Error codes 1044-1045, 1064, 1152-1161, 1205, and 1927 recategorized as `ConnectionError`. #15
 
 ## 2.2.0
 
