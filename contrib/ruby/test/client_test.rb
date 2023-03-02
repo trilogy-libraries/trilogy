@@ -702,6 +702,7 @@ class ClientTest < TrilogyTest
     end
 
     assert_equal 1040, ex.error_code
+    assert ex.is_a?(Trilogy::DatabaseError)
   ensure
     accept_thread.join
     fake_server.close
