@@ -456,6 +456,20 @@ int trilogy_build_auth_switch_response_packet(trilogy_builder_t *builder, const 
  */
 int trilogy_build_change_db_packet(trilogy_builder_t *builder, const char *name, size_t name_len);
 
+/* trilogy_build_set_option_packet - Build a set option command packet. This
+ * command will enable/disable server capabilities for the connection. Options
+ * must be one of `enum_mysql_set_option`.
+ *
+ * builder  - A pointer to a pre-initialized trilogy_builder_t.
+ * option   - An integer corresponding to the operation to perform.
+ *
+ * Return values:
+ *   TRILOGY_OK     - The packet was successfully built and written to the
+ *                    builder's internal buffer.
+ *   TRILOGY_SYSERR - A system error occurred, check errno.
+ */
+int trilogy_build_set_option_packet(trilogy_builder_t *builder, const uint16_t option);
+
 /* trilogy_build_ping_packet - Build a ping command packet.
  *
  * builder - A pointer to a pre-initialized trilogy_builder_t.
