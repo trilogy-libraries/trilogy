@@ -31,11 +31,13 @@ const trilogy_sockopt_t *get_connopt(void) { return &connopt; }
     SUITE(build_change_db_packet_test)                                                                                 \
     SUITE(build_ping_packet_test)                                                                                      \
     SUITE(build_quit_packet_test)                                                                                      \
+    SUITE(build_set_option_packet_test)                                                                                \
     SUITE(build_query_packet_test)                                                                                     \
     SUITE(client_connect_test)                                                                                         \
     SUITE(client_escape_test)                                                                                          \
     SUITE(client_auth_test)                                                                                            \
     SUITE(client_change_db_test)                                                                                       \
+    SUITE(client_set_option_test)                                                                                      \
     SUITE(client_ping_test)
 
 #define XX(name) extern int name();

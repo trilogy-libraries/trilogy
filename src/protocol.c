@@ -10,6 +10,7 @@
 #define TRILOGY_CMD_CHANGE_DB 0x02
 #define TRILOGY_CMD_QUERY 0x03
 #define TRILOGY_CMD_PING 0x0e
+#define TRILOGY_CMD_SET_OPTION 0x1a
 
 #define SCRAMBLE_LEN 20
 
@@ -645,6 +646,22 @@ int trilogy_build_quit_packet(trilogy_builder_t *builder)
 fail:
     return rc;
 }
+
+int trilogy_build_set_option_packet(trilogy_builder_t *builder, const uint16_t option)
+{
+    int rc = TRILOGY_OK;
+
+    CHECKED(trilogy_builder_write_uint8(builder, TRILOGY_CMD_SET_OPTION));
+    CHECKED(trilogy_builder_write_uint16(builder, option));
+
+    trilogy_builder_finalize(builder);
+
+    return TRILOGY_OK;
+
+fail:
+    return rc;
+}
+
 
 int trilogy_build_ssl_request_packet(trilogy_builder_t *builder, TRILOGY_CAPABILITIES_t flags)
 {

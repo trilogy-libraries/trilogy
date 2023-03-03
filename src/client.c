@@ -466,6 +466,25 @@ int trilogy_change_db_send(trilogy_conn_t *conn, const char *name, size_t name_l
 
 int trilogy_change_db_recv(trilogy_conn_t *conn) { return read_generic_response(conn); }
 
+int trilogy_set_option_send(trilogy_conn_t *conn, const uint16_t option)
+{
+    trilogy_builder_t builder;
+    int err = begin_command_phase(&builder, conn, 0);
+    if (err < 0) {
+        return err;
+    }
+
+    err = trilogy_build_set_option_packet(&builder, option);
+
+    if (err < 0) {
+        return err;
+    }
+
+    return begin_write(conn);
+}
+
+int trilogy_set_option_recv(trilogy_conn_t *conn) { return read_generic_response(conn); }
+
 int trilogy_ping_send(trilogy_conn_t *conn)
 {
     trilogy_builder_t builder;

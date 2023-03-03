@@ -299,6 +299,50 @@ int trilogy_change_db_send(trilogy_conn_t *conn, const char *name, size_t name_l
  */
 int trilogy_change_db_recv(trilogy_conn_t *conn);
 
+/* trilogy_set_option_send - Send a set option command to the server. This
+ * will change server capabilities based on the option selected.
+ *
+ * This should only be called while the connection is ready for commands.
+ *
+ * conn     - A connected trilogy_conn_t pointer. Using a disconnected
+ *            trilogy_conn_t is undefined.
+ * option   - The server option to send.
+ *
+ * Return values:
+ *   TRILOGY_OK     - The change database command was successfully sent to the
+ *                    server.
+ *   TRILOGY_AGAIN  - The socket wasn't ready for writing. The caller should wait
+ *                    for writeability using `conn->sock`. Then call
+ *                    trilogy_flush_writes.
+ *   TRILOGY_SYSERR - A system error occurred, check errno.
+ */
+int trilogy_set_option_send(trilogy_conn_t *conn, const uint16_t option);
+
+/* trilogy_set_option_recv - Read the set option command response from the
+ * server.
+ *
+ * This should be called after all data written by trilogy_set_option_send is
+ * flushed to the network. Calling this at any other time during the connection
+ * lifecycle is undefined.
+ *
+ * conn - A connected trilogy_conn_t pointer. Using a disconnected trilogy_conn_t is
+ *        undefined.
+ *
+ * Return values:
+ *   TRILOGY_OK                 - The set option command was successfully
+ *                                sent to the server.
+ *   TRILOGY_AGAIN              - The socket wasn't ready for reading. The
+ *                                caller should wait for readability using
+ *                                `conn->sock`. Then call this function until
+ *                                it returns a different value.
+ *   TRILOGY_UNEXPECTED_PACKET  - The response packet wasn't what was expected.
+ *   TRILOGY_PROTOCOL_VIOLATION - An error occurred while processing a network
+ *                                packet.
+ *   TRILOGY_CLOSED_CONNECTION  - The connection is closed.
+ *   TRILOGY_SYSERR             - A system error occurred, check errno.
+ */
+int trilogy_set_option_recv(trilogy_conn_t *conn);
+
 /* trilogy_query_send - Send a query command to the server.
  *
  * This should only be called while the connection is ready for commands.
