@@ -50,7 +50,8 @@ int trilogy_connect_sock(trilogy_conn_t *conn, trilogy_sock_t *sock);
 /* trilogy_change_db - Change the default database for a connection.
  *
  * conn     - A connected trilogy_conn_t pointer. Using a disconnected
- * trilogy_conn_t is undefined. name     - Name of the database to set as default.
+ *            trilogy_conn_t is undefined.
+ * name     - Name of the database to set as default.
  * name_len - Length of the database name string in bytes.
  *
  * Return values

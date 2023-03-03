@@ -446,7 +446,7 @@ int trilogy_build_auth_switch_response_packet(trilogy_builder_t *builder, const 
  * command will change the default database for the connection.
  *
  * builder  - A pointer to a pre-initialized trilogy_builder_t.
- * name     - The name of the databaset to set as the default.
+ * name     - The name of the database to set as the default.
  * name_len - The length of name in bytes.
  *
  * Return values:
