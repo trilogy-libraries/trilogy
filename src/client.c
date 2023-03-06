@@ -483,7 +483,26 @@ int trilogy_set_option_send(trilogy_conn_t *conn, const uint16_t option)
     return begin_write(conn);
 }
 
-int trilogy_set_option_recv(trilogy_conn_t *conn) { return read_generic_response(conn); }
+int trilogy_set_option_recv(trilogy_conn_t *conn) {
+    int rc = read_packet(conn);
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    switch (current_packet_type(conn)) {
+    case TRILOGY_PACKET_OK:
+    case TRILOGY_PACKET_EOF: // COM_SET_OPTION returns an EOF packet, but it should be treated as an OK packet.
+        return read_ok_packet(conn);
+
+    case TRILOGY_PACKET_ERR:
+        return read_err_packet(conn);
+
+    default:
+        return TRILOGY_UNEXPECTED_PACKET;
+    }
+}
+
 
 int trilogy_ping_send(trilogy_conn_t *conn)
 {

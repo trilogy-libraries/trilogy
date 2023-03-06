@@ -47,7 +47,7 @@ TEST test_set_option_send_closed_socket()
 
     close_socket(&conn);
 
-    const uint16_t option = 1;
+    const uint16_t option = 0;
 
     int err = trilogy_set_option_send(&conn, option);
     ASSERT_ERR(TRILOGY_SYSERR, err);
@@ -62,7 +62,7 @@ TEST test_set_option_recv()
 
     do_connect(&conn);
 
-    const uint16_t option = 0;
+    const uint16_t option = 1;
 
     int err = trilogy_set_option_send(&conn, option);
     while (err == TRILOGY_AGAIN) {
@@ -81,9 +81,7 @@ TEST test_set_option_recv()
         err = trilogy_set_option_recv(&conn);
     }
 
-    printf("%d %s\n", conn.error_code, conn.error_message);
-
-    ASSERT_OK(err); // TODO: Figure out why this assertion fails...
+    ASSERT_OK(err);
 
     trilogy_free(&conn);
     PASS();
