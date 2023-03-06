@@ -396,6 +396,16 @@ typedef enum {
 #undef XX
 } TRILOGY_SESSION_TRACK_TYPE_t;
 
+#define TRILOGY_SET_SERVER_OPTION(XX)                                                                                  \
+    XX(TRILOGY_SET_SERVER_MULTI_STATEMENTS_ON, 0x00)                                                                   \
+    XX(TRILOGY_SET_SERVER_MULTI_STATEMENTS_OFF, 0x01)                                                                  \
+
+typedef enum {
+#define XX(name, code) name = code,
+    TRILOGY_SET_SERVER_OPTION(XX)
+#undef XX
+} TRILOGY_SET_SERVER_OPTION_TYPE_t;
+
 /* trilogy_build_auth_packet - Build a handshake response (or authentication)
  * packet.
  *
