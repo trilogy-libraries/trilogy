@@ -556,6 +556,40 @@ static VALUE rb_trilogy_change_db(VALUE self, VALUE database)
     return Qtrue;
 }
 
+static VALUE rb_trilogy_set_server_option(VALUE self, VALUE option)
+{
+    struct trilogy_ctx *ctx = get_open_ctx(self);
+
+    int rc = trilogy_set_option_send(&ctx->conn, NUM2INT(option));
+
+    if (rc == TRILOGY_AGAIN) {
+        rc = flush_writes(ctx);
+    }
+
+    if (rc != TRILOGY_OK) {
+        handle_trilogy_error(ctx, rc, "trilogy_set_option_send");
+    }
+
+    while (1) {
+        rc = trilogy_set_option_recv(&ctx->conn);
+
+        if (rc == TRILOGY_OK) {
+            break;
+        }
+
+        if (rc != TRILOGY_AGAIN) {
+            handle_trilogy_error(ctx, rc, "trilogy_set_option_recv");
+        }
+
+        if (trilogy_sock_wait_read(ctx->conn.socket) < 0) {
+            rb_raise(Trilogy_TimeoutError, "trilogy_set_option_recv");
+        }
+    }
+
+    return Qtrue;
+}
+
+
 static void load_query_options(unsigned int query_flags, struct rb_trilogy_cast_options *cast_options)
 {
     cast_options->cast = (query_flags & TRILOGY_FLAGS_CAST) != 0;
@@ -989,6 +1023,7 @@ void Init_cext()
     rb_define_method(Trilogy, "server_version", rb_trilogy_server_version, 0);
     rb_define_method(Trilogy, "more_results_exist?", rb_trilogy_more_results_exist, 0);
     rb_define_method(Trilogy, "next_result", rb_trilogy_next_result, 0);
+    rb_define_method(Trilogy, "set_server_option", rb_trilogy_set_server_option, 1);
     rb_define_const(Trilogy, "TLS_VERSION_10", INT2NUM(TRILOGY_TLS_VERSION_10));
     rb_define_const(Trilogy, "TLS_VERSION_11", INT2NUM(TRILOGY_TLS_VERSION_11));
     rb_define_const(Trilogy, "TLS_VERSION_12", INT2NUM(TRILOGY_TLS_VERSION_12));
@@ -1080,5 +1115,10 @@ void Init_cext()
 // server_status flags
 #define XX(name, code) rb_const_set(Trilogy, rb_intern((char *)#name + strlen("TRILOGY_")), LONG2NUM(name));
     TRILOGY_SERVER_STATUS(XX)
+#undef XX
+
+// set_server_option options
+#define XX(name, code) rb_const_set(Trilogy, rb_intern((char *)#name + strlen("TRILOGY_")), LONG2NUM(name));
+    TRILOGY_SET_SERVER_OPTION(XX)
 #undef XX
 }
