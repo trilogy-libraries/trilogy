@@ -23,7 +23,7 @@ TEST test_build_set_option_packet()
     err = trilogy_build_set_option_packet(&builder, option);
     ASSERT_OK(err);
 
-    static const uint8_t expected[] = {0x03, 0x00, 0x00, 0x00, 0x1a, 0x01, 0x00};
+    static const uint8_t expected[] = {0x03, 0x00, 0x00, 0x00, 0x1b, 0x01, 0x00};
 
     ASSERT_MEM_EQ(buff.buff, expected, buff.len);
 
