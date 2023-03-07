@@ -16,7 +16,8 @@
 
 VALUE Trilogy_CastError;
 static VALUE Trilogy_BaseConnectionError, Trilogy_ProtocolError, Trilogy_SSLError, Trilogy_QueryError,
-    Trilogy_ConnectionClosedError, Trilogy_TimeoutError, Trilogy_Result;
+    Trilogy_ConnectionClosedError, Trilogy_ConnectionRefusedError, Trilogy_ConnectionResetError,
+    Trilogy_TimeoutError, Trilogy_Result;
 
 static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, id_connect_timeout, id_read_timeout,
     id_write_timeout, id_keepalive_enabled, id_keepalive_idle, id_keepalive_interval, id_keepalive_count,
@@ -78,6 +79,19 @@ static struct trilogy_ctx *get_open_ctx(VALUE obj)
     return ctx;
 }
 
+NORETURN(static void trilogy_syserr_fail_str(int, VALUE));
+static void trilogy_syserr_fail_str(int e, VALUE msg)
+{
+    if (e == ECONNREFUSED) {
+        rb_raise(Trilogy_ConnectionRefusedError, "%" PRIsVALUE, msg);
+    } else if (e == ECONNRESET) {
+        rb_raise(Trilogy_ConnectionResetError, "%" PRIsVALUE, msg);
+    } else {
+        // TODO: All syserr should be wrapped.
+        rb_syserr_fail_str(e, msg);
+    }
+}
+
 NORETURN(static void handle_trilogy_error(struct trilogy_ctx *, int, const char *, ...));
 static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *msg, ...)
 {
@@ -88,12 +102,7 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
 
     switch (rc) {
     case TRILOGY_SYSERR:
-        if (errno == ECONNREFUSED || errno == ECONNRESET) {
-            rb_raise(Trilogy_BaseConnectionError, "%" PRIsVALUE, rbmsg);
-        } else {
-            // TODO: All syserr should be wrapped.
-            rb_syserr_fail_str(errno, rbmsg);
-        }
+        trilogy_syserr_fail_str(errno, rbmsg);
 
     case TRILOGY_ERR: {
         VALUE message = rb_str_new(ctx->conn.error_message, ctx->conn.error_message_len);
@@ -106,13 +115,7 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
         ERR_clear_error();
         if (ERR_GET_LIB(ossl_error) == ERR_LIB_SYS) {
             int err_reason = ERR_GET_REASON(ossl_error);
-
-            if (err_reason == ECONNREFUSED || err_reason == ECONNRESET) {
-                rb_raise(Trilogy_BaseConnectionError, "%" PRIsVALUE, rbmsg);
-            } else {
-                // TODO: All syserr should be wrapped.
-                rb_syserr_fail_str(err_reason, rbmsg);
-            }
+            trilogy_syserr_fail_str(err_reason, rbmsg);
         }
         // We can't recover from OpenSSL level errors if there's
         // an active connection.
@@ -140,13 +143,8 @@ static VALUE allocate_trilogy(VALUE klass)
     ctx->query_flags = TRILOGY_FLAGS_DEFAULT;
 
     if (trilogy_init(&ctx->conn) < 0) {
-        if (errno == ECONNREFUSED || errno == ECONNRESET) {
-            rb_raise(Trilogy_BaseConnectionError, "trilogy_init");
-        } else {
-            // TODO: All syserr should be wrapped.
-            VALUE rbmsg = rb_str_new("trilogy_init", 13);
-            rb_syserr_fail_str(errno, rbmsg);
-        }
+        VALUE rbmsg = rb_str_new("trilogy_init", 13);
+        trilogy_syserr_fail_str(errno, rbmsg);
     }
 
     return obj;
@@ -1016,6 +1014,12 @@ void Init_cext()
 
     Trilogy_TimeoutError = rb_const_get(Trilogy, rb_intern("TimeoutError"));
     rb_global_variable(&Trilogy_TimeoutError);
+
+    Trilogy_ConnectionRefusedError = rb_const_get(Trilogy, rb_intern("ConnectionRefusedError"));
+    rb_global_variable(&Trilogy_ConnectionRefusedError);
+
+    Trilogy_ConnectionResetError = rb_const_get(Trilogy, rb_intern("ConnectionResetError"));
+    rb_global_variable(&Trilogy_ConnectionResetError);
 
     Trilogy_BaseConnectionError = rb_const_get(Trilogy, rb_intern("BaseConnectionError"));
     rb_global_variable(&Trilogy_BaseConnectionError);
