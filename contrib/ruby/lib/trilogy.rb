@@ -51,6 +51,14 @@ class Trilogy
     end
   end
 
+  class ConnectionRefusedError < Errno::ECONNREFUSED
+    include ConnectionError
+  end
+
+  class ConnectionResetError < Errno::ECONNRESET
+    include ConnectionError
+  end
+
   # DatabaseError was replaced by ProtocolError, but we'll keep it around as an
   # ancestor of ProtocolError for compatibility reasons (e.g. so `rescue DatabaseError`
   # still works. We can remove this class in the next major release.
