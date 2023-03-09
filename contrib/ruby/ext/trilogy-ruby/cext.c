@@ -51,7 +51,7 @@ static size_t trilogy_memsize(const void *ptr) {
     return memsize;
 }
 
-const rb_data_type_t trilogy_data_type = {
+static const rb_data_type_t trilogy_data_type = {
     .wrap_struct_name = "trilogy",
     .function = {
         .dmark = NULL,
@@ -959,7 +959,7 @@ static VALUE rb_trilogy_server_status(VALUE self) { return LONG2FIX(get_open_ctx
 
 static VALUE rb_trilogy_server_version(VALUE self) { return rb_str_new_cstr(get_open_ctx(self)->server_version); }
 
-void Init_cext()
+RUBY_FUNC_EXPORTED void Init_cext()
 {
     VALUE Trilogy = rb_const_get(rb_cObject, rb_intern("Trilogy"));
     rb_define_alloc_func(Trilogy, allocate_trilogy);
