@@ -685,6 +685,9 @@ static VALUE read_query_response(VALUE vargs)
         rb_ivar_set(result, id_ivar_affected_rows, ULL2NUM(ctx->conn.affected_rows));
 
         return result;
+    } else {
+        rb_ivar_set(result, id_ivar_last_insert_id, Qnil);
+        rb_ivar_set(result, id_ivar_affected_rows, Qnil);
     }
 
     struct column_info *column_info = ALLOC_N(struct column_info, column_count);
@@ -1073,9 +1076,6 @@ void Init_cext()
 
     Trilogy_CastError = rb_const_get(Trilogy, rb_intern("CastError"));
     rb_global_variable(&Trilogy_CastError);
-
-    rb_define_attr(Trilogy_Result, "affected_rows", 1, 0);
-    rb_define_attr(Trilogy_Result, "last_insert_id", 1, 0);
 
     id_socket = rb_intern("socket");
     id_host = rb_intern("host");
