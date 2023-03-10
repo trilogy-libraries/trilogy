@@ -46,6 +46,24 @@ TEST test_blocking_change_db()
     PASS();
 }
 
+TEST test_blocking_set_option()
+{
+    trilogy_conn_t conn;
+
+    connect_conn(&conn);
+
+    const uint16_t option = 1;
+
+    int err = trilogy_set_option(&conn, option);
+    ASSERT_OK(err);
+
+    err = trilogy_close(&conn);
+    ASSERT_OK(err);
+
+    trilogy_free(&conn);
+    PASS();
+}
+
 TEST test_blocking_ping()
 {
     trilogy_conn_t conn;
@@ -151,6 +169,7 @@ int blocking_test()
 {
     RUN_TEST(test_blocking_connect);
     RUN_TEST(test_blocking_change_db);
+    RUN_TEST(test_blocking_set_option);
     RUN_TEST(test_blocking_ping);
     RUN_TEST(test_blocking_query);
     RUN_TEST(test_blocking_query_error);
