@@ -139,6 +139,29 @@ int trilogy_change_db(trilogy_conn_t *conn, const char *name, size_t name_len)
     }
 }
 
+int trilogy_set_option(trilogy_conn_t *conn, const uint16_t option)
+{
+    int rc = trilogy_set_option_send(conn, option);
+
+    if (rc == TRILOGY_AGAIN) {
+        rc = flush_full(conn);
+    }
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    while (1) {
+        rc = trilogy_set_option_recv(conn);
+
+        if (rc != TRILOGY_AGAIN) {
+            return rc;
+        }
+
+        CHECKED(trilogy_sock_wait_read(conn->socket));
+    }
+}
+
 int trilogy_ping(trilogy_conn_t *conn)
 {
     int rc = trilogy_ping_send(conn);

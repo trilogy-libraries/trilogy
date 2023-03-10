@@ -64,6 +64,22 @@ int trilogy_connect_sock(trilogy_conn_t *conn, trilogy_sock_t *sock);
  */
 int trilogy_change_db(trilogy_conn_t *conn, const char *name, size_t name_len);
 
+/* trilogy_set_option - Set server options for the connection.
+ *
+ * conn     - A connected trilogy_conn_t pointer. Using a disconnected
+ *            trilogy_conn_t is undefined.
+ * option   - The server option to set. See: TRILOGY_SET_SERVER_OPTION_TYPE_t;
+ *
+ * Return values
+ *   TRILOGY_OK                 - The change db command completed successfully.
+ *   TRILOGY_ERR                - The server returned an error.
+ *   TRILOGY_SYSERR             - A system error occurred, check errno.
+ *   TRILOGY_CLOSED_CONNECTION  - The connection is closed.
+ *   TRILOGY_PROTOCOL_VIOLATION - An error occurred while processing a network
+ *                             packet.
+ */
+int trilogy_set_option(trilogy_conn_t *conn, const uint16_t option);
+
 /* trilogy_query - Send and execute a query.
  *
  * conn             - A connected trilogy_conn_t pointer. Using a disconnected
