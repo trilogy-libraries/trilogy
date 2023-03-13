@@ -128,9 +128,7 @@
      * sets from a query.                                                                                              \
      */                                                                                                                \
     XX(TRILOGY_CAPABILITIES_MULTI_RESULTS, 0x00020000)                                                                 \
-    /* Not implemented.                                                                                                \
-     *                                                                                                                 \
-     * From server: the server is capable of sending multiple result sets from                                         \
+    /* From server: the server is capable of sending multiple result sets from                                         \
      * a prepared statement.                                                                                           \
      *                                                                                                                 \
      * From client: tells the server it's capable of handling multiple result                                          \
@@ -191,7 +189,8 @@ typedef enum {
     /* A convenience bitmask with common client capabilities set. */
     TRILOGY_CAPABILITIES_CLIENT = (TRILOGY_CAPABILITIES_PROTOCOL_41 | TRILOGY_CAPABILITIES_SECURE_CONNECTION |
                                    TRILOGY_CAPABILITIES_DEPRECATE_EOF | TRILOGY_CAPABILITIES_SESSION_TRACK |
-                                   TRILOGY_CAPABILITIES_PLUGIN_AUTH | TRILOGY_CAPABILITIES_TRANSACTIONS)
+                                   TRILOGY_CAPABILITIES_PLUGIN_AUTH | TRILOGY_CAPABILITIES_TRANSACTIONS |
+                                   TRILOGY_CAPABILITIES_MULTI_RESULTS)
 } TRILOGY_CAPABILITIES_t;
 
 #define TRILOGY_SERVER_STATUS(XX)                                                                                      \

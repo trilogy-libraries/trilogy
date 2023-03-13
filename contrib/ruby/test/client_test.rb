@@ -184,6 +184,37 @@ class ClientTest < TrilogyTest
     assert_nil next_result
   end
 
+  def test_trilogy_multiple_results
+    client = new_tcp_client(multi_result: true)
+    create_test_table(client)
+
+    client.query("DROP PROCEDURE IF EXISTS test_proc")
+    client.query("CREATE PROCEDURE test_proc() BEGIN SELECT 1 AS 'set_1'; SELECT 2 AS 'set_2'; END")
+
+    result = client.query("CALL test_proc()")
+
+    assert_equal([{ 'set_1' => 1 }], result.each_hash.to_a)
+    assert client.more_results_exist?
+
+    result = client.next_result
+    assert_equal([{ 'set_2' => 2 }], result.each_hash.to_a)
+
+    result = client.next_result
+    assert_equal([], result.each_hash.to_a)
+
+    refute client.more_results_exist?
+  end
+
+  def test_trilogy_multiple_results_doesnt_allow_multi_statement_queries
+    client = new_tcp_client(multi_result: true)
+    create_test_table(client)
+
+    assert_raises(Trilogy::QueryError) do
+      # Multi statement queries are not supported
+      client.query("SELECT 1 AS 'set_1'; SELECT 2 AS 'set_2';")
+    end
+  end
+
   def test_trilogy_next_result_raises_when_response_has_error
     client = new_tcp_client(multi_statement: true)
     create_test_table(client)
