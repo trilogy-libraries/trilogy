@@ -15,7 +15,7 @@
 #define TRILOGY_RB_TIMEOUT 1
 
 VALUE Trilogy_CastError;
-static VALUE Trilogy_BaseConnectionError, Trilogy_ProtocolError, Trilogy_SSLError, Trilogy_QueryError,
+static VALUE Trilogy_ConnectionError, Trilogy_ProtocolError, Trilogy_SSLError, Trilogy_QueryError,
     Trilogy_ConnectionClosedError, Trilogy_ConnectionRefusedError, Trilogy_ConnectionResetError,
     Trilogy_TimeoutError, Trilogy_Result;
 
@@ -126,7 +126,7 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
     }
 
     case TRILOGY_DNS_ERR: {
-        rb_raise(Trilogy_BaseConnectionError, "%" PRIsVALUE ": TRILOGY_DNS_ERROR", rbmsg);
+        rb_raise(Trilogy_ConnectionError, "%" PRIsVALUE ": TRILOGY_DNS_ERROR", rbmsg);
     }
 
     default:
@@ -1021,8 +1021,8 @@ void Init_cext()
     Trilogy_ConnectionResetError = rb_const_get(Trilogy, rb_intern("ConnectionResetError"));
     rb_global_variable(&Trilogy_ConnectionResetError);
 
-    Trilogy_BaseConnectionError = rb_const_get(Trilogy, rb_intern("BaseConnectionError"));
-    rb_global_variable(&Trilogy_BaseConnectionError);
+    Trilogy_ConnectionError = rb_const_get(Trilogy, rb_intern("ConnectionError"));
+    rb_global_variable(&Trilogy_ConnectionError);
 
     Trilogy_ConnectionClosedError = rb_const_get(Trilogy, rb_intern("ConnectionClosed"));
     rb_global_variable(&Trilogy_ConnectionClosedError);

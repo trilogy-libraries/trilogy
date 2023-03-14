@@ -40,7 +40,7 @@ class ClientTest < TrilogyTest
     e = assert_raises Trilogy::ConnectionError do
       new_tcp_client port: 13307
     end
-    assert_equal "Connection refused - trilogy_connect - unable to connect to #{DEFAULT_HOST}:13307", e.message
+    assert_equal "trilogy_connect - unable to connect to #{DEFAULT_HOST}:13307", e.message
   end
 
   def test_trilogy_connect_unix_socket
@@ -702,7 +702,6 @@ class ClientTest < TrilogyTest
     end
 
     assert_equal 1040, ex.error_code
-    assert ex.is_a?(Trilogy::DatabaseError)
   ensure
     accept_thread.join
     fake_server.close

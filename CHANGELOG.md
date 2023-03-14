@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+### Changed
+- (Breaking change) Trilogy errors all inherit from base Trilogy::Error class. #58
+
 ## 2.3.0
 
 ### Added
