@@ -4,6 +4,7 @@ class Trilogy
   # Trilogy::Error is the base error type. All errors raised by Trilogy
   # should be descendants of Trilogy::Error
   module Error
+    attr_reader :error_code
   end
 
   # Trilogy::ConnectionError is the base error type for all potentially transient
@@ -14,8 +15,6 @@ class Trilogy
 
   class BaseError < StandardError
     include Error
-
-    attr_reader :error_code
 
     def initialize(error_message = nil, error_code = nil)
       message = error_code ? "#{error_code}: #{error_message}" : error_message
@@ -43,8 +42,6 @@ class Trilogy
   class TimeoutError < Errno::ETIMEDOUT
     include ConnectionError
 
-    attr_reader :error_code
-
     def initialize(error_message = nil, error_code = nil)
       super
       @error_code = error_code
@@ -53,10 +50,20 @@ class Trilogy
 
   class ConnectionRefusedError < Errno::ECONNREFUSED
     include ConnectionError
+
+    def initialize(error_message = nil, error_code = nil)
+      super
+      @error_code = error_code
+    end
   end
 
   class ConnectionResetError < Errno::ECONNRESET
     include ConnectionError
+
+    def initialize(error_message = nil, error_code = nil)
+      super
+      @error_code = error_code
+    end
   end
 
   # DatabaseError was replaced by ProtocolError, but we'll keep it around as an
