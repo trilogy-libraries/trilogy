@@ -64,6 +64,7 @@ class CastTest < TrilogyTest
     assert_equal [[false], [true]], results
   end
 
+
   def test_integer_cast
     @client.query(<<-SQL)
       INSERT INTO trilogy_test (small_int_test, medium_int_test, int_test, big_int_test, year_test)
@@ -114,6 +115,46 @@ class CastTest < TrilogyTest
     SQL
 
     assert_equal [[-128, -32768, -8388608, -2147483648, -9223372036854775808, 0]], results
+  end
+
+  def test_sum_result_int_cast
+    @client.query(<<-SQL)
+      INSERT INTO trilogy_test (int_test) VALUES (1), (2), (3)
+    SQL
+
+    results = @client.query(<<-SQL).to_a
+      SELECT int_test FROM trilogy_test ORDER BY id ASC
+    SQL
+
+    assert_equal [ [1], [2], [3] ], results
+
+    results = @client.query(<<-SQL).to_a
+      SELECT SUM(int_test) FROM trilogy_test
+    SQL
+
+    assert_equal [[6]], results
+    assert_kind_of Integer, results[0][0]
+  end
+
+  def test_sum_result_decimal_cast
+    @client.query(<<-SQL)
+      INSERT INTO trilogy_test (int_test) VALUES (1), (2), (3)
+    SQL
+
+    results = @client.query(<<-SQL).to_a
+      SELECT int_test FROM trilogy_test ORDER BY id ASC
+    SQL
+
+    assert_equal [ [1], [2], [3] ], results
+
+    @client.query_flags |= Trilogy::QUERY_FLAGS_CAST_SUM
+
+    results = @client.query(<<-SQL).to_a
+      SELECT SUM(int_test) FROM trilogy_test
+    SQL
+
+    assert_equal [[6]], results
+    assert_kind_of BigDecimal, results[0][0]
   end
 
   def test_float_cast

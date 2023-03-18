@@ -9,6 +9,7 @@
 #define TRILOGY_FLAGS_CAST_BOOLEANS 2
 #define TRILOGY_FLAGS_LOCAL_TIMEZONE 4
 #define TRILOGY_FLAGS_FLATTEN_ROWS 8
+#define TRILOGY_FLAGS_CAST_SUM 16
 #define TRILOGY_FLAGS_DEFAULT (TRILOGY_FLAGS_CAST)
 
 struct rb_trilogy_cast_options {
@@ -16,6 +17,7 @@ struct rb_trilogy_cast_options {
     bool cast_booleans;
     bool database_local_time;
     bool flatten_rows;
+    bool cast_sum;
 };
 
 struct column_info {

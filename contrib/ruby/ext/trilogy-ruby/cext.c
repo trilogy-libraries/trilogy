@@ -594,6 +594,7 @@ static void load_query_options(unsigned int query_flags, struct rb_trilogy_cast_
 {
     cast_options->cast = (query_flags & TRILOGY_FLAGS_CAST) != 0;
     cast_options->cast_booleans = (query_flags & TRILOGY_FLAGS_CAST_BOOLEANS) != 0;
+    cast_options->cast_sum = (query_flags & TRILOGY_FLAGS_CAST_SUM) != 0;
     cast_options->database_local_time = (query_flags & TRILOGY_FLAGS_LOCAL_TIMEZONE) != 0;
     cast_options->flatten_rows = (query_flags & TRILOGY_FLAGS_FLATTEN_ROWS) != 0;
 }
@@ -1038,6 +1039,7 @@ void Init_cext()
     rb_define_const(Trilogy, "QUERY_FLAGS_NONE", INT2NUM(0));
     rb_define_const(Trilogy, "QUERY_FLAGS_CAST", INT2NUM(TRILOGY_FLAGS_CAST));
     rb_define_const(Trilogy, "QUERY_FLAGS_CAST_BOOLEANS", INT2NUM(TRILOGY_FLAGS_CAST_BOOLEANS));
+    rb_define_const(Trilogy, "QUERY_FLAGS_CAST_SUM", INT2NUM(TRILOGY_FLAGS_CAST_SUM));
     rb_define_const(Trilogy, "QUERY_FLAGS_LOCAL_TIMEZONE", INT2NUM(TRILOGY_FLAGS_LOCAL_TIMEZONE));
     rb_define_const(Trilogy, "QUERY_FLAGS_FLATTEN_ROWS", INT2NUM(TRILOGY_FLAGS_FLATTEN_ROWS));
     rb_define_const(Trilogy, "QUERY_FLAGS_DEFAULT", INT2NUM(TRILOGY_FLAGS_DEFAULT));
