@@ -145,7 +145,7 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
             // TODO - optimize so we don't have to allocate a ruby string for
             // decimal columns
             VALUE str = rb_str_new(value->data, value->data_len);
-            if (column->decimals == 0) {
+            if (column->decimals == 0 && !options->cast_decimals_to_bigdecimals) {
                 return rb_funcall(rb_mKernel, id_Integer, 1, str);
             } else {
                 return rb_funcall(rb_mKernel, id_BigDecimal, 1, str);
