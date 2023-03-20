@@ -64,7 +64,6 @@ class CastTest < TrilogyTest
     assert_equal [[false], [true]], results
   end
 
-
   def test_integer_cast
     @client.query(<<-SQL)
       INSERT INTO trilogy_test (small_int_test, medium_int_test, int_test, big_int_test, year_test)
@@ -147,7 +146,7 @@ class CastTest < TrilogyTest
 
     assert_equal [ [1], [2], [3] ], results
 
-    @client.query_flags |= Trilogy::QUERY_FLAGS_CAST_SUM
+    @client.query_flags |= Trilogy::QUERY_FLAGS_CAST_ALL_DECIMALS_TO_BIGDECIMALS
 
     results = @client.query(<<-SQL).to_a
       SELECT SUM(int_test) FROM trilogy_test
