@@ -23,8 +23,8 @@ static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, 
     id_write_timeout, id_keepalive_enabled, id_keepalive_idle, id_keepalive_interval, id_keepalive_count,
     id_ivar_affected_rows, id_ivar_fields, id_ivar_last_insert_id, id_ivar_rows, id_ivar_query_time, id_password,
     id_database, id_ssl_ca, id_ssl_capath, id_ssl_cert, id_ssl_cipher, id_ssl_crl, id_ssl_crlpath, id_ssl_key,
-    id_ssl_mode, id_tls_ciphersuites, id_tls_min_version, id_tls_max_version, id_multi_statement, id_multi_result,
-    id_from_code, id_connection_options;
+    id_ssl_mode, id_tls_ciphersuites, id_tls_min_version, id_tls_max_version, id_multi_statement, id_from_code,
+    id_connection_options;
 
 struct trilogy_ctx {
     trilogy_conn_t conn;
@@ -442,12 +442,8 @@ static VALUE rb_trilogy_initialize(VALUE self, VALUE opts)
         connopt.flags |= TRILOGY_CAPABILITIES_FOUND_ROWS;
     }
 
-    if (RTEST(rb_hash_aref(opts, ID2SYM(id_multi_result)))) {
-        connopt.flags |= TRILOGY_CAPABILITIES_MULTI_RESULTS;
-    }
-
     if (RTEST(rb_hash_aref(opts, ID2SYM(id_multi_statement)))) {
-        connopt.flags |= TRILOGY_CAPABILITIES_MULTI_STATEMENTS | TRILOGY_CAPABILITIES_MULTI_RESULTS;
+        connopt.flags |= TRILOGY_CAPABILITIES_MULTI_STATEMENTS;
     }
 
     if ((val = rb_hash_aref(opts, ID2SYM(id_ssl_ca))) != Qnil) {
@@ -1103,7 +1099,6 @@ void Init_cext()
     id_tls_min_version = rb_intern("tls_min_version");
     id_tls_max_version = rb_intern("tls_max_version");
     id_multi_statement = rb_intern("multi_statement");
-    id_multi_result = rb_intern("multi_result");
     id_from_code = rb_intern("from_code");
     id_ivar_affected_rows = rb_intern("@affected_rows");
     id_ivar_fields = rb_intern("@fields");

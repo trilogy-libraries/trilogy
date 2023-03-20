@@ -5,9 +5,6 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-### Added
-  - Implement multi-result support on the Ruby binding; TRILOGY_CAPABILITIES_MULTI_RESULTS flag enabled by default. #57
-
 ## 2.3.0
 
 ### Added
