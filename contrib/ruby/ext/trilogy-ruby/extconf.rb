@@ -14,4 +14,8 @@ have_library("crypto", "CRYPTO_malloc")
 have_library("ssl", "SSL_new")
 have_func("rb_interned_str", "ruby.h")
 
+have_func("rb_gc_mark_movable", "ruby.h")
+have_func("rb_io_wait", "ruby.h")
+have_header("ruby/fiber/scheduler.h")
+
 create_makefile "trilogy/cext"
