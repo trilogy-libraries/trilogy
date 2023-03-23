@@ -109,6 +109,7 @@ class TrilogyTest < Minitest::Test
       `date_test` DATE DEFAULT NULL,
       `date_time_test` DATETIME DEFAULT NULL,
       `date_time_with_precision_test` DATETIME(3) DEFAULT NULL,
+      `time_with_precision_test` TIME(3) DEFAULT NULL,
       `timestamp_test` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       `time_test` TIME DEFAULT NULL,
       `year_test` YEAR(4) DEFAULT NULL,
