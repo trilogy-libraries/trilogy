@@ -7,9 +7,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ### Added
   - Implement multi-result support on the Ruby binding; TRILOGY_CAPABILITIES_MULTI_RESULTS flag enabled by default. #57
+  - Add `TRILOGY_FLAGS_CAST_ALL_DECIMALS_TO_BIGDECIMALS` flag, which enforces casting to BigDecimal even for column types
+    without decimal digits. #59
 
 ### Fixed
-  - Fix msec values for time columns. #59
+  - Fix msec values for time columns. #61
 
 ## 2.3.0
 
