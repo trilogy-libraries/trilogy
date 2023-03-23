@@ -139,7 +139,7 @@ class Trilogy
   end
 
   class Result
-    attr_reader :fields, :rows, :query_time
+    attr_reader :fields, :rows, :query_time, :affected_rows, :last_insert_id
 
     def count
       rows.count
