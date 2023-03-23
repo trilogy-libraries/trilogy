@@ -240,7 +240,7 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
             // pad out msec_char with zeroes at the end as it could be at any
             // level of precision
             for (size_t i = strlen(msec_char); i < sizeof(msec_char) - 1; i++) {
-                msec_char[i] = 0;
+                msec_char[i] = '0';
             }
 
             return rb_funcall(rb_cTime, options->database_local_time ? id_local : id_utc, 7, INT2NUM(2000), INT2NUM(1),

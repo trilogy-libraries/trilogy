@@ -368,6 +368,23 @@ class CastTest < TrilogyTest
     assert_equal 108000, time.usec
   end
 
+  def test_time_cast_with_precision
+    @client.query(<<-SQL)
+      INSERT INTO trilogy_test (time_with_precision_test)
+      VALUES ("08:38:18.108")
+    SQL
+
+    results = @client.query(<<-SQL).to_a
+      SELECT time_with_precision_test FROM trilogy_test
+    SQL
+
+    time = results[0][0]
+
+    assert_kind_of Time, time
+    assert_equal "2000-01-01 08:38:18 UTC", time.to_s
+    assert_equal 108000, time.usec
+  end
+
   def test_binary_cast
     @client.query(<<-SQL)
       INSERT INTO trilogy_test (binary_test, varbinary_test)
