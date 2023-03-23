@@ -6,7 +6,7 @@ File.binwrite("trilogy.c",
   Dir["#{__dir__}/src/**/*.c"].map { |src| File.binread(src) }.join)
 
 $objs = %w[trilogy.o cast.o cext.o]
-$CFLAGS << " -I #{__dir__}/inc -std=gnu99"
+$CFLAGS << " -I #{__dir__}/inc -std=gnu99 -fvisibility=hidden"
 
 dir_config("openssl")
 
