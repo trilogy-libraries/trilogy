@@ -603,10 +603,6 @@ struct read_query_response_state {
     struct rb_trilogy_cast_options *cast_options;
     struct trilogy_ctx *ctx;
 
-    // to free by caller:
-    struct column_info *column_info;
-    trilogy_value_t *row_values;
-
     // Error state for tracking
     const char *msg;
     int rc;
@@ -687,8 +683,8 @@ static VALUE read_query_response(VALUE vargs)
         return result;
     }
 
-    struct column_info *column_info = ALLOC_N(struct column_info, column_count);
-    args->column_info = column_info;
+    VALUE rb_column_info;
+    struct column_info *column_info = ALLOCV_N(struct column_info, rb_column_info, column_count);
 
     for (uint64_t i = 0; i < column_count; i++) {
         trilogy_column_t column;
@@ -725,8 +721,8 @@ static VALUE read_query_response(VALUE vargs)
         column_info[i].decimals = column.decimals;
     }
 
-    trilogy_value_t *row_values = ALLOC_N(trilogy_value_t, column_count);
-    args->row_values = row_values;
+    VALUE rb_row_values;
+    trilogy_value_t *row_values = ALLOCV_N(trilogy_value_t, rb_row_values, column_count);
 
     while (1) {
         int rc = trilogy_read_row(&ctx->conn, row_values);
@@ -769,18 +765,13 @@ static VALUE execute_read_query_response(struct trilogy_ctx *ctx)
 
     struct read_query_response_state args = {
         .cast_options = &cast_options,
-        .column_info = NULL,
         .ctx = ctx,
-        .row_values = NULL,
         .rc = TRILOGY_OK,
         .msg = NULL,
     };
 
     int state = 0;
     VALUE result = rb_protect(read_query_response, (VALUE)&args, &state);
-
-    xfree(args.column_info);
-    xfree(args.row_values);
 
     // If we have seen an unexpected exception, jump to it so it gets raised.
     if (state) {
