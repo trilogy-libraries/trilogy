@@ -33,7 +33,15 @@ struct trilogy_ctx {
     trilogy_conn_t conn;
     char server_version[TRILOGY_SERVER_VERSION_SIZE + 1];
     unsigned int query_flags;
+    VALUE encoding;
 };
+
+static void mark_trilogy(void *ptr)
+{
+    struct trilogy_ctx *ctx = ptr;
+    rb_gc_mark(ctx->encoding);
+}
+
 
 static void free_trilogy(void *ptr)
 {
@@ -57,7 +65,7 @@ static size_t trilogy_memsize(const void *ptr) {
 static const rb_data_type_t trilogy_data_type = {
     .wrap_struct_name = "trilogy",
     .function = {
-        .dmark = NULL,
+        .dmark = mark_trilogy,
         .dfree = free_trilogy,
         .dsize = trilogy_memsize,
     },
@@ -359,12 +367,13 @@ static void authenticate(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake
     }
 }
 
-static VALUE rb_trilogy_initialize(VALUE self, VALUE opts)
+static VALUE rb_trilogy_initialize(VALUE self, VALUE encoding, VALUE opts)
 {
     struct trilogy_ctx *ctx = get_ctx(self);
     trilogy_sockopt_t connopt = {0};
     trilogy_handshake_t handshake;
     VALUE val;
+    RB_OBJ_WRITE(self, &ctx->encoding, encoding);
 
     Check_Type(opts, T_HASH);
     rb_ivar_set(self, id_connection_options, opts);
@@ -820,7 +829,7 @@ static VALUE rb_trilogy_query(VALUE self, VALUE query)
 {
     struct trilogy_ctx *ctx = get_open_ctx(self);
 
-    StringValue(query);
+    query = rb_str_export_to_enc(query, rb_to_encoding(ctx->encoding));
 
     int rc = trilogy_query_send(&ctx->conn, RSTRING_PTR(query), RSTRING_LEN(query));
 
@@ -1019,7 +1028,7 @@ RUBY_FUNC_EXPORTED void Init_cext()
     VALUE Trilogy = rb_const_get(rb_cObject, rb_intern("Trilogy"));
     rb_define_alloc_func(Trilogy, allocate_trilogy);
 
-    rb_define_method(Trilogy, "initialize", rb_trilogy_initialize, 1);
+    rb_define_private_method(Trilogy, "_initialize", rb_trilogy_initialize, 2);
     rb_define_method(Trilogy, "change_db", rb_trilogy_change_db, 1);
     rb_define_method(Trilogy, "query", rb_trilogy_query, 1);
     rb_define_method(Trilogy, "ping", rb_trilogy_ping, 0);

@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 ### Fixed
   - Fix msec values for time columns. #61
 
+### Changed
+  - Client accepts encoding option. Encode query strings in encoding connection expects. #64
+
 ## 2.3.0
 
 ### Added

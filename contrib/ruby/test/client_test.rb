@@ -919,4 +919,34 @@ class ClientTest < TrilogyTest
     # The client is still usable after a child discarded it.
     assert_equal [1], client.query("SELECT 1").to_a.first
   end
+
+  def test_character_set_encoding_query
+    client = new_tcp_client(encoding: "cp932")
+
+    assert_equal "cp932", client.query("SELECT @@character_set_client").first.first
+    assert_equal "cp932", client.query("SELECT @@character_set_results").first.first
+    assert_equal "cp932", client.query("SELECT @@character_set_connection").first.first
+    assert_equal "cp932_japanese_ci", client.query("SELECT @@collation_connection").first.first
+
+    expected = "こんにちは".encode(Encoding::CP932)
+    assert_equal expected, client.query("SELECT 'こんにちは'").to_a.first.first
+  end
+
+  def test_character_set_encoding_handles_binary_query
+    client = new_tcp_client
+    expected = "\xff".b
+
+    result = client.query("SELECT _binary'#{expected}'").to_a.first.first
+    assert_equal expected, result
+    assert_equal Encoding::BINARY, result.encoding
+
+    result = client.query("SELECT '#{expected}'").to_a.first.first
+    assert_equal expected.dup.force_encoding(client.encoding), result
+    assert_equal client.encoding, result.encoding
+
+    client = new_tcp_client(encoding: "cp932")
+    result = client.query("SELECT '#{expected}'").to_a.first.first
+    assert_equal expected.dup.force_encoding(client.encoding), result
+    assert_equal client.encoding, result.encoding
+  end
 end
