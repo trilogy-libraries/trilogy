@@ -41,6 +41,7 @@ typedef struct {
     char *username;
     char *password;
     size_t password_len;
+    uint8_t encoding;
 
     trilogy_ssl_mode_t ssl_mode;
     trilogy_tls_version_t tls_min_version;
