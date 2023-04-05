@@ -883,4 +883,40 @@ class ClientTest < TrilogyTest
     assert sum.is_a?(BigDecimal)
     assert_equal 8, sum
   end
+
+  def test_close_terminate_parent_connection
+    skip("Fork isn't supported on this platform") unless Process.respond_to?(:fork)
+
+    client = new_tcp_client
+    assert_equal [1], client.query("SELECT 1").to_a.first
+
+    pid = fork do
+      client.close
+      exit!(0) # exit! to bypass minitest at_exit
+    end
+    _, status = Process.wait2(pid)
+    assert_predicate status, :success?
+
+    error = assert_raises Trilogy::QueryError do
+      client.query("SELECT 1")
+    end
+    assert_match "TRILOGY_CLOSED_CONNECTION", error.message
+  end
+
+  def test_discard_doesnt_terminate_parent_connection
+    skip("Fork isn't supported on this platform") unless Process.respond_to?(:fork)
+
+    client = new_tcp_client
+    assert_equal [1], client.query("SELECT 1").to_a.first
+
+    pid = fork do
+      client.discard!
+      exit!(0) # exit! to bypass minitest at_exit
+    end
+    _, status = Process.wait2(pid)
+    assert_predicate status, :success?
+
+    # The client is still usable after a child discarded it.
+    assert_equal [1], client.query("SELECT 1").to_a.first
+  end
 end

@@ -8,6 +8,9 @@
 #include <sys/time.h>
 #include <sys/un.h>
 
+#include <unistd.h>
+#include <fcntl.h>
+
 #include <trilogy.h>
 
 #include "trilogy-ruby.h"
@@ -933,6 +936,32 @@ static VALUE rb_trilogy_closed(VALUE self)
     }
 }
 
+static VALUE rb_trilogy_discard(VALUE self)
+{
+    struct trilogy_ctx *ctx = get_ctx(self);
+    if (ctx->conn.socket == NULL) {
+        return Qnil;
+    }
+
+    int sock_fd = trilogy_sock_fd(ctx->conn.socket);
+    if (sock_fd >= 0) {
+        int null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);
+        if (null_fd < 0) {
+            trilogy_syserr_fail_str(errno, rb_str_new_cstr("Failed to open /dev/null"));
+            return Qfalse;
+        }
+
+        if (dup2(null_fd, sock_fd) < 0) {
+            trilogy_syserr_fail_str(errno, rb_str_new_cstr("dup2 failed"));
+        }
+        close(null_fd);
+    }
+
+    trilogy_free(&ctx->conn);
+
+    return Qtrue;
+}
+
 static VALUE rb_trilogy_last_insert_id(VALUE self) { return ULL2NUM(get_open_ctx(self)->conn.last_insert_id); }
 
 static VALUE rb_trilogy_affected_rows(VALUE self) { return ULL2NUM(get_open_ctx(self)->conn.affected_rows); }
@@ -1004,6 +1033,7 @@ RUBY_FUNC_EXPORTED void Init_cext()
     rb_define_method(Trilogy, "escape", rb_trilogy_escape, 1);
     rb_define_method(Trilogy, "close", rb_trilogy_close, 0);
     rb_define_method(Trilogy, "closed?", rb_trilogy_closed, 0);
+    rb_define_method(Trilogy, "discard!", rb_trilogy_discard, 0);
     rb_define_method(Trilogy, "last_insert_id", rb_trilogy_last_insert_id, 0);
     rb_define_method(Trilogy, "affected_rows", rb_trilogy_affected_rows, 0);
     rb_define_method(Trilogy, "warning_count", rb_trilogy_warning_count, 0);
