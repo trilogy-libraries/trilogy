@@ -939,27 +939,20 @@ static VALUE rb_trilogy_closed(VALUE self)
 static VALUE rb_trilogy_discard(VALUE self)
 {
     struct trilogy_ctx *ctx = get_ctx(self);
+
     if (ctx->conn.socket == NULL) {
-        return Qnil;
+        return Qtrue;
     }
 
-    int sock_fd = trilogy_sock_fd(ctx->conn.socket);
-    if (sock_fd >= 0) {
-        int null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);
-        if (null_fd < 0) {
-            trilogy_syserr_fail_str(errno, rb_str_new_cstr("Failed to open /dev/null"));
-            return Qfalse;
-        }
-
-        if (dup2(null_fd, sock_fd) < 0) {
-            trilogy_syserr_fail_str(errno, rb_str_new_cstr("dup2 failed"));
-        }
-        close(null_fd);
+    int rc = trilogy_discard(&ctx->conn);
+    switch (rc) {
+        case TRILOGY_OK:
+            return Qtrue;
+        case TRILOGY_SYSERR:
+            trilogy_syserr_fail_str(errno, rb_str_new_cstr("Failed to discard connection"));
+            UNREACHABLE_RETURN(Qfalse);
     }
-
-    trilogy_free(&ctx->conn);
-
-    return Qtrue;
+    return Qfalse;
 }
 
 static VALUE rb_trilogy_last_insert_id(VALUE self) { return ULL2NUM(get_open_ctx(self)->conn.last_insert_id); }

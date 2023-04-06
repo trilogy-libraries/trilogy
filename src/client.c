@@ -763,4 +763,13 @@ void trilogy_free(trilogy_conn_t *conn)
     trilogy_buffer_free(&conn->packet_buffer);
 }
 
+int trilogy_discard(trilogy_conn_t *conn)
+{
+    int rc = trilogy_sock_discard(conn->socket);
+    if (rc == TRILOGY_OK) {
+        trilogy_free(conn);
+    }
+    return rc;
+}
+
 #undef CHECKED

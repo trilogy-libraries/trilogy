@@ -587,4 +587,18 @@ int trilogy_close_recv(trilogy_conn_t *conn);
  */
 void trilogy_free(trilogy_conn_t *conn);
 
+/* trilogy_free - Discard the connection and free any internal buffers.
+ *
+ * The server won't be notified that connection was closed. This is useful to
+ * silently close connections that were inherited after forking without disrupting
+ * the parent's process connections.
+ *
+ * conn - A pre-initialized trilogy_conn_t pointer.
+ *
+ * Return values:
+ *   TRILOGY_OK                 - The connection was successfuly discarded and freed.
+ *   TRILOGY_SYSERR             - A system error occurred, check errno. The connection wasn't freed.
+ */
+int trilogy_discard(trilogy_conn_t *conn);
+
 #endif
