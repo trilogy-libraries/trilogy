@@ -621,3 +621,28 @@ fail:
     sock->ssl = NULL;
     return TRILOGY_OPENSSL_ERR;
 }
+
+int trilogy_sock_discard(trilogy_sock_t *_sock)
+{
+    struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
+
+    if (sock->fd < 0) {
+        return TRILOGY_OK;
+    }
+
+    int null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);
+    if (null_fd < 0) {
+        return TRILOGY_SYSERR;
+    }
+
+    if (dup2(null_fd, sock->fd) < 0) {
+        close(null_fd);
+        return TRILOGY_SYSERR;
+    }
+
+    if (close(null_fd) < 0) {
+        return TRILOGY_SYSERR;
+    }
+
+    return TRILOGY_OK;
+}
