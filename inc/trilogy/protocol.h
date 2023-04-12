@@ -90,16 +90,14 @@
      * From client: the client is interactive.                                                                         \
      */                                                                                                                \
     XX(TRILOGY_CAPABILITIES_INTERACTIVE, 0x00000400)                                                                   \
-    /* Not implemented.                                                                                                \
-     *                                                                                                                 \
-     * From server: the server supports ssl.                                                                           \
+    /* From server: the server supports ssl.                                                                           \
      *                                                                                                                 \
      * From client: tells the server it should switch to an ssl connection.                                            \
      */                                                                                                                \
     XX(TRILOGY_CAPABILITIES_SSL, 0x00000800)                                                                           \
-    /* Not used.                                                                                                       \
+    /* From server: the server supports transactions and is capable of reporting transaction status.                   \
      *                                                                                                                 \
-     * This is assumed for the 4.1+ protocol.                                                                          \
+     * From client: the client is aware of servers that support transactions.                                          \
      */                                                                                                                \
     XX(TRILOGY_CAPABILITIES_TRANSACTIONS, 0x00002000)                                                                  \
     /* Not used.                                                                                                       \
@@ -112,9 +110,7 @@
      * scheme. This will always be set.                                                                                \
      */                                                                                                                \
     XX(TRILOGY_CAPABILITIES_SECURE_CONNECTION, 0x00008000)                                                             \
-    /* Not implemented.                                                                                                \
-     *                                                                                                                 \
-     * From server: the server can handle multiple statements per                                                      \
+    /* From server: the server can handle multiple statements per                                                      \
      * query/prepared statement.                                                                                       \
      *                                                                                                                 \
      * From client: tells the server it may send multiple statements per                                               \
