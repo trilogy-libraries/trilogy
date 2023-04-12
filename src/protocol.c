@@ -494,8 +494,8 @@ static void trilogy_pack_scramble_sha2_hash(const char *scramble, const char *pa
 }
 
 int trilogy_build_auth_packet(trilogy_builder_t *builder, const char *user, const char *pass, size_t pass_len,
-                              const char *database, const char *auth_plugin, const char *scramble,
-                              TRILOGY_CAPABILITIES_t flags)
+                              const char *database, TRILOGY_CHARSET_t client_encoding, const char *auth_plugin,
+                              const char *scramble, TRILOGY_CAPABILITIES_t flags)
 {
     int rc = TRILOGY_OK;
 
@@ -506,8 +506,6 @@ int trilogy_build_auth_packet(trilogy_builder_t *builder, const char *user, cons
     capabilities |= TRILOGY_CAPABILITIES_CLIENT;
 
     uint32_t max_packet_len = TRILOGY_MAX_PACKET_LEN;
-
-    uint8_t client_encoding = TRILOGY_CHARSET_UTF8_GENERAL_CI;
 
     unsigned int auth_response_len = 0;
     uint8_t auth_response[EVP_MAX_MD_SIZE];
@@ -663,12 +661,12 @@ fail:
 }
 
 
-int trilogy_build_ssl_request_packet(trilogy_builder_t *builder, TRILOGY_CAPABILITIES_t flags)
+int trilogy_build_ssl_request_packet(trilogy_builder_t *builder, TRILOGY_CAPABILITIES_t flags,
+                                     TRILOGY_CHARSET_t client_encoding)
 {
     static const char zeroes[23] = {0};
 
     const uint32_t max_packet_len = TRILOGY_MAX_PACKET_LEN;
-    const uint8_t client_encoding = TRILOGY_CHARSET_UTF8_GENERAL_CI;
     const uint32_t capabilities = flags | TRILOGY_CAPABILITIES_CLIENT | TRILOGY_CAPABILITIES_SSL;
 
     int rc = TRILOGY_OK;

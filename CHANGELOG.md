@@ -13,6 +13,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 ### Fixed
   - Fix msec values for time columns. #61
 
+### Changed
+  - (BREAKING CHANGE) C API `#trilogy_build_auth_packet` accepts encoding option now. The Ruby binding for the
+    Trilogy client can now accept an `:encoding` option, which will tell the connection to use the specified encoding,
+    and will ensure that outgoing query strings are transcoded appropriately. If no encoding is supplied,
+    utf8mb4 is used by default. #64
+
 ## 2.3.0
 
 ### Added

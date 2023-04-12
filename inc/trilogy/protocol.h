@@ -412,16 +412,18 @@ typedef enum {
  * This should be sent in response to the initial handshake packet the server
  * sends upon connection.
  *
- * builder     - A pointer to a pre-initialized trilogy_builder_t.
- * user        - The username to use for authentication. Must be a C-string.
- * pass        - The password to use for authentication. Optional, and can be NULL.
- * pass_len    - The length of password in bytes.
- * auth_plugin - Plugin authentication mechanism that the server requested.
- * scramble    - The scramble value the server sent in the initial handshake.
- * flags       - Bitmask of TRILOGY_CAPABILITIES_t flags.
- *               The TRILOGY_CAPABILITIES_PROTOCOL_41 and
- *               TRILOGY_CAPABILITIES_SECURE_CONNECTION flags will always be set
- *               internally.
+ * builder          - A pointer to a pre-initialized trilogy_builder_t.
+ * user             - The username to use for authentication. Must be a C-string.
+ * pass             - The password to use for authentication. Optional, and can be NULL.
+ * pass_len         - The length of password in bytes.
+ * database         - The initial database to connect to. Optional, and can be NULL.
+ * client_encoding  - The charset to use for the connection.
+ * auth_plugin      - Plugin authentication mechanism that the server requested.
+ * scramble         - The scramble value the server sent in the initial handshake.
+ * flags            - Bitmask of TRILOGY_CAPABILITIES_t flags.
+ *                    The TRILOGY_CAPABILITIES_PROTOCOL_41 and
+ *                    TRILOGY_CAPABILITIES_SECURE_CONNECTION flags will always be set
+ *                    internally.
  *
  * Return values:
  *   TRILOGY_OK     - The packet was successfully built and written to the
@@ -429,8 +431,8 @@ typedef enum {
  *   TRILOGY_SYSERR - A system error occurred, check errno.
  */
 int trilogy_build_auth_packet(trilogy_builder_t *builder, const char *user, const char *pass, size_t pass_len,
-                              const char *database, const char *auth_plugin, const char *scramble,
-                              TRILOGY_CAPABILITIES_t flags);
+                              const char *database, TRILOGY_CHARSET_t client_encoding, const char *auth_plugin,
+                              const char *scramble, TRILOGY_CAPABILITIES_t flags);
 
 /* trilogy_build_auth_switch_response_packet - Build a response for when
  * authentication switching it requested.
@@ -520,19 +522,21 @@ int trilogy_build_quit_packet(trilogy_builder_t *builder);
  * sends upon connection, where an auth packet would normally be sent. A regular
  * auth packet is to be sent after the SSL handshake completes.
  *
- * builder  - A pointer to a pre-initialized trilogy_builder_t.
- * flags    - Bitmask of TRILOGY_CAPABILITIES_t flags.
- *            The TRILOGY_CAPABILITIES_PROTOCOL_41 and
- *            TRILOGY_CAPABILITIES_SECURE_CONNECTION flags will always be set
- *            internally.
- *            The TRILOGY_CAPABILITIES_SSL flag will also be set.
+ * builder         - A pointer to a pre-initialized trilogy_builder_t.
+ * flags           - Bitmask of TRILOGY_CAPABILITIES_t flags.
+ *                   The TRILOGY_CAPABILITIES_PROTOCOL_41 and
+ *                   TRILOGY_CAPABILITIES_SECURE_CONNECTION flags will always be set
+ *                   internally.
+ *                   The TRILOGY_CAPABILITIES_SSL flag will also be set.
+ * client_encoding - The charset to use for the connection.
  *
  * Return values:
  *   TRILOGY_OK     - The packet was successfully built and written to the
  *                    builder's internal buffer.
  *   TRILOGY_SYSERR - A system error occurred, check errno.
  */
-int trilogy_build_ssl_request_packet(trilogy_builder_t *builder, TRILOGY_CAPABILITIES_t flags);
+int trilogy_build_ssl_request_packet(trilogy_builder_t *builder, TRILOGY_CAPABILITIES_t flags,
+                                     TRILOGY_CHARSET_t client_encoding);
 
 #define TRILOGY_SERVER_VERSION_SIZE 32
 

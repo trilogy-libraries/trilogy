@@ -357,8 +357,9 @@ int trilogy_auth_send(trilogy_conn_t *conn, const trilogy_handshake_t *handshake
     }
 
     rc = trilogy_build_auth_packet(&builder, conn->socket->opts.username, conn->socket->opts.password,
-                                   conn->socket->opts.password_len, conn->socket->opts.database, handshake->auth_plugin,
-                                   handshake->scramble, conn->socket->opts.flags);
+                                   conn->socket->opts.password_len, conn->socket->opts.database,
+                                   conn->socket->opts.encoding, handshake->auth_plugin, handshake->scramble,
+                                   conn->socket->opts.flags);
 
     if (rc < 0) {
         return rc;
@@ -378,7 +379,7 @@ int trilogy_ssl_request_send(trilogy_conn_t *conn)
     }
 
     conn->socket->opts.flags |= TRILOGY_CAPABILITIES_SSL;
-    rc = trilogy_build_ssl_request_packet(&builder, conn->socket->opts.flags);
+    rc = trilogy_build_ssl_request_packet(&builder, conn->socket->opts.flags, conn->socket->opts.encoding);
 
     if (rc < 0) {
         return rc;
