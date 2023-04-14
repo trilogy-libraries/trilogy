@@ -5,10 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.4.0
+
 ### Added
+  - Implement set_option functionality, and add #set_server_option method to the Ruby binding. #52
   - Implement multi-result support on the Ruby binding; TRILOGY_CAPABILITIES_MULTI_RESULTS flag enabled by default. #57
   - Add `TRILOGY_FLAGS_CAST_ALL_DECIMALS_TO_BIGDECIMALS` flag, which enforces casting to BigDecimal even for column types
     without decimal digits. #59
+  - Implement #discard to close child connections without impacting parent. #65
 
 ### Fixed
   - Fix msec values for time columns. #61
@@ -18,7 +22,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
     Trilogy client can now accept an `:encoding` option, which will tell the connection to use the specified encoding,
     and will ensure that outgoing query strings are transcoded appropriately. If no encoding is supplied,
     utf8mb4 is used by default. #64
-  - All SystemCallErrors classified as `Trilogy::Error`.
+  - All SystemCallErrors classified as `Trilogy::Error`. #63
 
 ## 2.3.0
 
