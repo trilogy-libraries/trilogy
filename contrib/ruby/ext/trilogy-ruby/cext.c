@@ -20,14 +20,14 @@
 VALUE Trilogy_CastError;
 static VALUE Trilogy_BaseConnectionError, Trilogy_ProtocolError, Trilogy_SSLError, Trilogy_QueryError,
     Trilogy_ConnectionClosedError, Trilogy_ConnectionRefusedError, Trilogy_ConnectionResetError,
-    Trilogy_TimeoutError, Trilogy_Result;
+    Trilogy_TimeoutError, Trilogy_SyscallError, Trilogy_Result;
 
 static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, id_connect_timeout, id_read_timeout,
     id_write_timeout, id_keepalive_enabled, id_keepalive_idle, id_keepalive_interval, id_keepalive_count,
     id_ivar_affected_rows, id_ivar_fields, id_ivar_last_insert_id, id_ivar_rows, id_ivar_query_time, id_password,
     id_database, id_ssl_ca, id_ssl_capath, id_ssl_cert, id_ssl_cipher, id_ssl_crl, id_ssl_crlpath, id_ssl_key,
     id_ssl_mode, id_tls_ciphersuites, id_tls_min_version, id_tls_max_version, id_multi_statement, id_multi_result,
-    id_from_code, id_connection_options;
+    id_from_code, id_from_errno, id_connection_options;
 
 struct trilogy_ctx {
     trilogy_conn_t conn;
@@ -97,8 +97,8 @@ static void trilogy_syserr_fail_str(int e, VALUE msg)
     } else if (e == ECONNRESET) {
         rb_raise(Trilogy_ConnectionResetError, "%" PRIsVALUE, msg);
     } else {
-        // TODO: All syserr should be wrapped.
-        rb_syserr_fail_str(e, msg);
+        VALUE exc = rb_funcall(Trilogy_SyscallError, id_from_errno, 2, INT2NUM(e), msg);
+        rb_exc_raise(exc);
     }
 }
 
@@ -1099,6 +1099,9 @@ RUBY_FUNC_EXPORTED void Init_cext()
     Trilogy_Result = rb_const_get(Trilogy, rb_intern("Result"));
     rb_global_variable(&Trilogy_Result);
 
+    Trilogy_SyscallError = rb_const_get(Trilogy, rb_intern("SyscallError"));
+    rb_global_variable(&Trilogy_SyscallError);
+
     Trilogy_CastError = rb_const_get(Trilogy, rb_intern("CastError"));
     rb_global_variable(&Trilogy_CastError);
 
@@ -1130,6 +1133,7 @@ RUBY_FUNC_EXPORTED void Init_cext()
     id_multi_statement = rb_intern("multi_statement");
     id_multi_result = rb_intern("multi_result");
     id_from_code = rb_intern("from_code");
+    id_from_errno = rb_intern("from_errno");
     id_ivar_affected_rows = rb_intern("@affected_rows");
     id_ivar_fields = rb_intern("@fields");
     id_ivar_last_insert_id = rb_intern("@last_insert_id");

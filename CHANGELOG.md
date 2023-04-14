@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
     Trilogy client can now accept an `:encoding` option, which will tell the connection to use the specified encoding,
     and will ensure that outgoing query strings are transcoded appropriately. If no encoding is supplied,
     utf8mb4 is used by default. #64
+  - All SystemCallErrors classified as `Trilogy::Error`.
 
 ## 2.3.0
 

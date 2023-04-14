@@ -15,6 +15,27 @@ class Trilogy
     include Error
   end
 
+  # Trilogy may raise various syscall errors, which we treat as Trilogy::Errors.
+  class SyscallError
+    ERRORS = {}
+
+    Errno.constants
+      .map { |c| Errno.const_get(c) }.uniq
+      .select { |c| c.is_a?(Class) && c < SystemCallError }
+      .each do |c|
+        errno_name = c.to_s.split('::').last
+        ERRORS[c::Errno] = const_set(errno_name, Class.new(c) { include Trilogy::Error })
+      end
+
+    ERRORS.freeze
+
+    class << self
+      def from_errno(errno, message)
+        ERRORS[errno].new(message)
+      end
+    end
+  end
+
   class BaseError < StandardError
     include Error
 
@@ -43,29 +64,14 @@ class Trilogy
 
   class TimeoutError < Errno::ETIMEDOUT
     include ConnectionError
-
-    def initialize(error_message = nil, error_code = nil)
-      super
-      @error_code = error_code
-    end
   end
 
   class ConnectionRefusedError < Errno::ECONNREFUSED
     include ConnectionError
-
-    def initialize(error_message = nil, error_code = nil)
-      super
-      @error_code = error_code
-    end
   end
 
   class ConnectionResetError < Errno::ECONNRESET
     include ConnectionError
-
-    def initialize(error_message = nil, error_code = nil)
-      super
-      @error_code = error_code
-    end
   end
 
   # DatabaseError was replaced by ProtocolError, but we'll keep it around as an
