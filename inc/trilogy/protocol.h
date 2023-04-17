@@ -124,7 +124,9 @@
      * sets from a query.                                                                                              \
      */                                                                                                                \
     XX(TRILOGY_CAPABILITIES_MULTI_RESULTS, 0x00020000)                                                                 \
-    /* From server: the server is capable of sending multiple result sets from                                         \
+    /* Not implemented.                                                                                                \
+     *                                                                                                                 \
+     * From server: the server is capable of sending multiple result sets from                                         \
      * a prepared statement.                                                                                           \
      *                                                                                                                 \
      * From client: tells the server it's capable of handling multiple result                                          \
