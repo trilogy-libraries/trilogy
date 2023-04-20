@@ -185,7 +185,7 @@ class ClientTest < TrilogyTest
   end
 
   def test_trilogy_multiple_results
-    client = new_tcp_client(multi_result: true)
+    client = new_tcp_client
     create_test_table(client)
 
     client.query("DROP PROCEDURE IF EXISTS test_proc")
@@ -206,7 +206,7 @@ class ClientTest < TrilogyTest
   end
 
   def test_trilogy_multiple_results_doesnt_allow_multi_statement_queries
-    client = new_tcp_client(multi_result: true)
+    client = new_tcp_client
     create_test_table(client)
 
     assert_raises(Trilogy::QueryError) do
