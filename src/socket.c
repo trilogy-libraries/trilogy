@@ -109,6 +109,9 @@ static int _cb_raw_close(trilogy_sock_t *_sock)
     return rc;
 }
 
+// Close and discard are the same for a raw socket
+#define _cb_raw_discard _cb_raw_close
+
 static int _cb_raw_shutdown(trilogy_sock_t *_sock) { return shutdown(trilogy_sock_fd(_sock), SHUT_RDWR); }
 
 static int set_nonblocking_fd(int sock)
@@ -235,6 +238,7 @@ trilogy_sock_t *trilogy_sock_new(const trilogy_sockopt_t *opts)
     sock->base.wait_cb = _cb_wait;
     sock->base.shutdown_cb = _cb_raw_shutdown;
     sock->base.close_cb = _cb_raw_close;
+    sock->base.discard_cb = _cb_raw_discard;
     sock->base.fd_cb = _cb_raw_fd;
     sock->base.opts = *opts;
 
@@ -347,6 +351,7 @@ static int _cb_ssl_shutdown(trilogy_sock_t *_sock)
     sock->base.write_cb = _cb_raw_write;
     sock->base.shutdown_cb = _cb_raw_shutdown;
     sock->base.close_cb = _cb_raw_close;
+    sock->base.discard_cb = _cb_raw_discard;
     sock->ssl = NULL;
 
     return _cb_raw_shutdown(_sock);
@@ -357,6 +362,16 @@ static int _cb_ssl_close(trilogy_sock_t *_sock)
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
     if (sock->ssl != NULL) {
         SSL_shutdown(sock->ssl);
+        SSL_free(sock->ssl);
+        sock->ssl = NULL;
+    }
+    return _cb_raw_close(_sock);
+}
+
+static int _cb_ssl_discard(trilogy_sock_t *_sock) {
+    struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
+    if (sock->ssl != NULL) {
+        // unlike close, we do not want to send SSL_shutdown
         SSL_free(sock->ssl);
         sock->ssl = NULL;
     }
@@ -614,35 +629,11 @@ int trilogy_sock_upgrade_ssl(trilogy_sock_t *_sock)
     sock->base.write_cb = _cb_ssl_write;
     sock->base.shutdown_cb = _cb_ssl_shutdown;
     sock->base.close_cb = _cb_ssl_close;
+    sock->base.discard_cb = _cb_ssl_discard;
     return TRILOGY_OK;
 
 fail:
     SSL_free(sock->ssl);
     sock->ssl = NULL;
     return TRILOGY_OPENSSL_ERR;
-}
-
-int trilogy_sock_discard(trilogy_sock_t *_sock)
-{
-    struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
-
-    if (sock->fd < 0) {
-        return TRILOGY_OK;
-    }
-
-    int null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);
-    if (null_fd < 0) {
-        return TRILOGY_SYSERR;
-    }
-
-    if (dup2(null_fd, sock->fd) < 0) {
-        close(null_fd);
-        return TRILOGY_SYSERR;
-    }
-
-    if (close(null_fd) < 0) {
-        return TRILOGY_SYSERR;
-    }
-
-    return TRILOGY_OK;
 }

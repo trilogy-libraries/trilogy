@@ -903,6 +903,18 @@ class ClientTest < TrilogyTest
     assert_match "TRILOGY_CLOSED_CONNECTION", error.message
   end
 
+  def test_discard_closes_connection
+    client = new_tcp_client
+
+    assert_equal [1], client.query("SELECT 1").to_a.first
+
+    client.discard!
+
+    assert_raises Trilogy::ConnectionClosed do
+      client.query("SELECT 1")
+    end
+  end
+
   def test_discard_doesnt_terminate_parent_connection
     skip("Fork isn't supported on this platform") unless Process.respond_to?(:fork)
 

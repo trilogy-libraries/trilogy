@@ -76,6 +76,7 @@ typedef struct trilogy_sock_t {
     int (*wait_cb)(struct trilogy_sock_t *self, trilogy_wait_t wait);
     int (*shutdown_cb)(struct trilogy_sock_t *self);
     int (*close_cb)(struct trilogy_sock_t *self);
+    int (*discard_cb)(struct trilogy_sock_t *self);
     int (*fd_cb)(struct trilogy_sock_t *self);
 
     trilogy_sockopt_t opts;
@@ -102,6 +103,7 @@ static inline int trilogy_sock_wait_write(trilogy_sock_t *sock) { return sock->w
 static inline int trilogy_sock_shutdown(trilogy_sock_t *sock) { return sock->shutdown_cb(sock); }
 
 static inline int trilogy_sock_close(trilogy_sock_t *sock) { return sock->close_cb(sock); }
+static inline int trilogy_sock_discard(trilogy_sock_t *sock) { return sock->discard_cb(sock); }
 
 static inline int trilogy_sock_fd(trilogy_sock_t *sock) { return sock->fd_cb(sock); }
 
