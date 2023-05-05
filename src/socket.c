@@ -548,7 +548,7 @@ int trilogy_sock_upgrade_ssl(trilogy_sock_t *_sock)
 
     if (sock->base.opts.ssl_mode == TRILOGY_SSL_VERIFY_IDENTITY && sock->base.opts.hostname == NULL) {
         // If hostname validation is requested and no hostname provided, treat it as an error.
-#if OPENSSL_VERSION_NUMBER >= 0x1010000fL
+#ifdef SSL_F_TLS_PROCESS_SERVER_CERTIFICATE
         ERR_put_error(ERR_LIB_SSL, SSL_F_TLS_PROCESS_SERVER_CERTIFICATE, SSL_R_CERTIFICATE_VERIFY_FAILED, NULL, 0);
 #else
         ERR_put_error(ERR_LIB_SSL, SSL_F_SSL3_GET_SERVER_CERTIFICATE, SSL_R_CERTIFICATE_VERIFY_FAILED, NULL, 0);
