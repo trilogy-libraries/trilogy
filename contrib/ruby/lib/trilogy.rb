@@ -196,6 +196,10 @@ class Trilogy
     @connected_host ||= query_with_flags("select @@hostname", query_flags | QUERY_FLAGS_FLATTEN_ROWS).rows.first
   end
 
+  def max_allowed_packet
+    @max_allowed_packet ||= query_with_flags("select @@max_allowed_packet", query_flags | QUERY_FLAGS_FLATTEN_ROWS).rows.first
+  end
+
   def query_with_flags(sql, flags)
     old_flags = query_flags
     self.query_flags = flags

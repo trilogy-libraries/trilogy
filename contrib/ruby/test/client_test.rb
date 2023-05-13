@@ -740,6 +740,14 @@ class ClientTest < TrilogyTest
     ensure_closed client
   end
 
+  def test_trilogy_max_allowed_packet
+    set_max_allowed_packet(8 * 1024 * 1024)
+
+    client = new_tcp_client
+
+    assert_equal 8 * 1024 * 1024, client.max_allowed_packet
+  end
+
   def test_packet_size
     set_max_allowed_packet(32 * 1024 * 1024)
 
