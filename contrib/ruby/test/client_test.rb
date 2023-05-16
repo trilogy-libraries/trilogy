@@ -748,8 +748,27 @@ class ClientTest < TrilogyTest
     assert_equal 8 * 1024 * 1024, client.max_allowed_packet
   end
 
-  def test_packet_size
-    set_max_allowed_packet(32 * 1024 * 1024)
+  def test_packet_size_lower_than_trilogy_max_packet_len
+    set_max_allowed_packet(4 * 1024 * 1024) # TRILOGY_MAX_PACKET_LEN is 16MB
+
+    client = new_tcp_client
+
+    create_test_table(client)
+    client.query "TRUNCATE trilogy_test"
+
+    result = client.query "INSERT INTO trilogy_test (blob_test) VALUES ('#{"x" * (1 * 1024 * 1024)}')"
+    assert result
+    assert_equal 1, client.last_insert_id
+
+    result = client.query "INSERT INTO trilogy_test (blob_test) VALUES ('#{"x" * (2 * 1024 * 1024)}')"
+    assert result
+    assert_equal 2, client.last_insert_id
+  ensure
+    ensure_closed client
+  end
+
+  def test_packet_size_greater_than_trilogy_max_packet_len
+    set_max_allowed_packet(32 * 1024 * 1024) # TRILOGY_MAX_PACKET_LEN is 16MB
 
     client = new_tcp_client
 
