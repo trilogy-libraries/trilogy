@@ -215,6 +215,18 @@ class ClientTest < TrilogyTest
     end
   end
 
+  def test_trilogy_multiple_results_disabled
+    client = new_tcp_client(multi_result: false)
+    create_test_table(client)
+
+    client.query("DROP PROCEDURE IF EXISTS test_proc")
+    client.query("CREATE PROCEDURE test_proc() BEGIN SELECT 1 AS 'set_1'; SELECT 2 AS 'set_2'; END")
+
+    assert_raises(Trilogy::ProtocolError) do
+      client.query("CALL test_proc()")
+    end
+  end
+
   def test_trilogy_next_result_raises_when_response_has_error
     client = new_tcp_client(multi_statement: true)
     create_test_table(client)
