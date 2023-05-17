@@ -772,9 +772,11 @@ class ClientTest < TrilogyTest
     assert result
     assert_equal 2, client.last_insert_id
 
-    assert_raises Trilogy::QueryError do
+    exception = assert_raises Trilogy::QueryError do
         client.query "INSERT INTO trilogy_test (blob_test) VALUES ('#{"x" * (4 * 1024 * 1024)}')"
     end
+
+    assert_equal exception.message, "Query is too big 4194352 vs #{4 * 1024 * 1024}. Consider increasing max_allowed_packet."
   ensure
     ensure_closed client
   end
