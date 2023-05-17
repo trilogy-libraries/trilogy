@@ -771,11 +771,12 @@ static VALUE read_query_response(VALUE vargs)
 }
 
 static void validate_query_size(VALUE self, VALUE query, ID id_max_allowed_packet) {
-    char *c_query = StringValueCStr(query);
     VALUE max_allowed_packet = rb_ivar_get(self, id_max_allowed_packet);
+    char *c_query = StringValueCStr(query);
+    unsigned long c_query_size = strlen(c_query);
 
-    if (max_allowed_packet != Qnil && strlen(c_query) >= NUM2ULONG(max_allowed_packet)) {
-        rb_raise(Trilogy_QueryError, "Query is too big %lu vs %lu. Consider increasing max_allowed_packet.", strlen(c_query), NUM2ULONG(max_allowed_packet));
+    if (max_allowed_packet != Qnil && c_query_size >= NUM2ULONG(max_allowed_packet)) {
+        rb_raise(Trilogy_QueryError, "Query is too big %lu vs %lu. Consider increasing max_allowed_packet.", c_query_size, NUM2ULONG(max_allowed_packet));
     }
 }
 
