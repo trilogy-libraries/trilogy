@@ -2,6 +2,7 @@
 FROM debian:stretch
 LABEL maintainer="github@github.com"
 
+RUN echo "deb http://archive.debian.org/debian stretch main contrib non-free" > /etc/apt/sources.list
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y build-essential libssl-dev default-libmysqlclient-dev clang valgrind netcat ruby ruby-dev ruby-bundler
 
 WORKDIR /app
