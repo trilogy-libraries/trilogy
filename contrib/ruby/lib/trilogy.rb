@@ -172,6 +172,7 @@ class Trilogy
     encoding = Encoding.find(rb_encoding)
     charset = charset_for_mysql_encoding(mysql_encoding)
     _initialize(encoding, charset, **options)
+    self.max_allowed_packet = options[:max_allowed_packet] || query_with_flags("select @@max_allowed_packet", query_flags | QUERY_FLAGS_FLATTEN_ROWS).rows.first
   end
 
   def connection_options
@@ -194,10 +195,6 @@ class Trilogy
 
   def connected_host
     @connected_host ||= query_with_flags("select @@hostname", query_flags | QUERY_FLAGS_FLATTEN_ROWS).rows.first
-  end
-
-  def max_allowed_packet
-    @max_allowed_packet ||= query_with_flags("select @@max_allowed_packet", query_flags | QUERY_FLAGS_FLATTEN_ROWS).rows.first
   end
 
   def query_with_flags(sql, flags)

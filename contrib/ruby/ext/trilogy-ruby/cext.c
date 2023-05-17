@@ -27,7 +27,7 @@ static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, 
     id_ivar_affected_rows, id_ivar_fields, id_ivar_last_insert_id, id_ivar_rows, id_ivar_query_time, id_password,
     id_database, id_ssl_ca, id_ssl_capath, id_ssl_cert, id_ssl_cipher, id_ssl_crl, id_ssl_crlpath, id_ssl_key,
     id_ssl_mode, id_tls_ciphersuites, id_tls_min_version, id_tls_max_version, id_multi_statement,
-    id_from_code, id_from_errno, id_connection_options;
+    id_from_code, id_from_errno, id_connection_options, id_max_allowed_packet;
 
 struct trilogy_ctx {
     trilogy_conn_t conn;
@@ -770,6 +770,14 @@ static VALUE read_query_response(VALUE vargs)
     return result;
 }
 
+static void validate_query_length(VALUE self, VALUE query, ID id_max_allowed_packet) {
+    VALUE max_allowed_packet = rb_ivar_get(self, id_max_allowed_packet);
+
+    if (max_allowed_packet != Qnil && strlen(query) >= NUM2LONG(max_allowed_packet)) {
+        rb_raise(Trilogy_QueryError, "Query is too big %d vs %d. Consider increasing max_allowed_packet.", strlen(query), NUM2LONG(max_allowed_packet));
+    }
+}
+
 static VALUE execute_read_query_response(struct trilogy_ctx *ctx)
 {
     struct rb_trilogy_cast_options cast_options;
@@ -828,6 +836,8 @@ static VALUE rb_trilogy_query(VALUE self, VALUE query)
 
     StringValue(query);
     query = rb_str_export_to_enc(query, rb_to_encoding(ctx->encoding));
+
+    validate_query_length(self, StringValueCStr(query), id_max_allowed_packet);
 
     int rc = trilogy_query_send(&ctx->conn, RSTRING_PTR(query), RSTRING_LEN(query));
 
@@ -1068,6 +1078,8 @@ RUBY_FUNC_EXPORTED void Init_cext()
     rb_define_const(Trilogy, "QUERY_FLAGS_FLATTEN_ROWS", INT2NUM(TRILOGY_FLAGS_FLATTEN_ROWS));
     rb_define_const(Trilogy, "QUERY_FLAGS_DEFAULT", INT2NUM(TRILOGY_FLAGS_DEFAULT));
 
+    rb_define_attr(Trilogy, "max_allowed_packet", 1, 1);
+
     Trilogy_ProtocolError = rb_const_get(Trilogy, rb_intern("ProtocolError"));
     rb_global_variable(&Trilogy_ProtocolError);
 
@@ -1135,6 +1147,7 @@ RUBY_FUNC_EXPORTED void Init_cext()
     id_ivar_rows = rb_intern("@rows");
     id_ivar_query_time = rb_intern("@query_time");
     id_connection_options = rb_intern("@connection_options");
+    id_max_allowed_packet = rb_intern("@max_allowed_packet");
 
     rb_trilogy_cast_init();
 
