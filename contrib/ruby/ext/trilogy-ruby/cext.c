@@ -771,10 +771,11 @@ static VALUE read_query_response(VALUE vargs)
 }
 
 static void validate_query_length(VALUE self, VALUE query, ID id_max_allowed_packet) {
+    char *c_query = StringValueCStr(query);
     VALUE max_allowed_packet = rb_ivar_get(self, id_max_allowed_packet);
 
-    if (max_allowed_packet != Qnil && strlen(query) >= NUM2LONG(max_allowed_packet)) {
-        rb_raise(Trilogy_QueryError, "Query is too big %d vs %d. Consider increasing max_allowed_packet.", strlen(query), NUM2LONG(max_allowed_packet));
+    if (max_allowed_packet != Qnil && strlen(c_query) >= NUM2ULONG(max_allowed_packet)) {
+        rb_raise(Trilogy_QueryError, "Query is too big %lu vs %lu. Consider increasing max_allowed_packet.", strlen(c_query), NUM2ULONG(max_allowed_packet));
     }
 }
 
@@ -837,7 +838,7 @@ static VALUE rb_trilogy_query(VALUE self, VALUE query)
     StringValue(query);
     query = rb_str_export_to_enc(query, rb_to_encoding(ctx->encoding));
 
-    validate_query_length(self, StringValueCStr(query), id_max_allowed_packet);
+    validate_query_length(self, query, id_max_allowed_packet);
 
     int rc = trilogy_query_send(&ctx->conn, RSTRING_PTR(query), RSTRING_LEN(query));
 
