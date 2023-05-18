@@ -22,6 +22,7 @@ services:
       context: .
       args:
         - DISTRIBUTION=${DISTRIBUTION}
+        - RUBY_VERSION=${RUBY_VERSION}
     environment:
       MYSQL_HOST: db.local
       TRILOGY_TEST_CERTS: "/db-data"
