@@ -20,7 +20,8 @@ services:
     privileged: true
     build:
       context: .
-      dockerfile: "${DOCKERFILE}"
+      args:
+        - DISTRIBUTION=${DISTRIBUTION}
     environment:
       MYSQL_HOST: db.local
       TRILOGY_TEST_CERTS: "/db-data"
