@@ -10,6 +10,7 @@ on:
 
 jobs:
   build:
+    name: ${{ format('Build ({0}, {1}, {2})', matrix.mysql, matrix.distribution, matrix.ruby) }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
