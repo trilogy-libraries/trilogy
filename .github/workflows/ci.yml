@@ -17,12 +17,9 @@ jobs:
         mysql: ["5.7", "8"]
         distribution: ["debian:buster", "ubuntu:focal", "ubuntu:bionic"]
         include:
-          - mysql: "8"
-            distribution: "ubuntu:bionic"
-            ruby: "2.8"
-          - mysql: "8"
-            distribution: "ubuntu:bionic"
-            ruby: "3.2"
+          - ruby: "2.8"
+          - ruby: "3.2"
+          - ruby: "1.9"
     steps:
     - uses: actions/checkout@v3
     - name: docker login
