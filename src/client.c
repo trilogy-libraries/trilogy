@@ -528,6 +528,10 @@ int trilogy_query_send(trilogy_conn_t *conn, const char *query, size_t query_len
 {
     int err = 0;
 
+    if (conn->socket->opts.max_allowed_packet && query_len > conn->socket->opts.max_allowed_packet) {
+        return TRILOGY_QUERY_TOO_LONG;
+    }
+
     trilogy_builder_t builder;
     err = begin_command_phase(&builder, conn, 0);
     if (err < 0) {

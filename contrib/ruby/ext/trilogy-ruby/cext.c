@@ -27,7 +27,7 @@ static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, 
     id_ivar_affected_rows, id_ivar_fields, id_ivar_last_insert_id, id_ivar_rows, id_ivar_query_time, id_password,
     id_database, id_ssl_ca, id_ssl_capath, id_ssl_cert, id_ssl_cipher, id_ssl_crl, id_ssl_crlpath, id_ssl_key,
     id_ssl_mode, id_tls_ciphersuites, id_tls_min_version, id_tls_max_version, id_multi_statement, id_multi_result,
-    id_from_code, id_from_errno, id_connection_options;
+    id_from_code, id_from_errno, id_connection_options, id_max_allowed_packet;
 
 struct trilogy_ctx {
     trilogy_conn_t conn;
@@ -137,6 +137,10 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
 
     case TRILOGY_DNS_ERR: {
         rb_raise(Trilogy_BaseConnectionError, "%" PRIsVALUE ": TRILOGY_DNS_ERROR", rbmsg);
+    }
+
+    case TRILOGY_QUERY_TOO_LONG: {
+        rb_raise(Trilogy_QueryError, "%" PRIsVALUE ": TRILOGY_QUERY_TOO_LONG", rbmsg);
     }
 
     default:
@@ -413,6 +417,11 @@ static VALUE rb_trilogy_initialize(VALUE self, VALUE encoding, VALUE charset, VA
     if ((val = rb_hash_lookup(opts, ID2SYM(id_keepalive_interval))) != Qnil) {
         Check_Type(val, T_FIXNUM);
         connopt.keepalive_interval = NUM2USHORT(val);
+    }
+
+    if ((val = rb_hash_lookup(opts, ID2SYM(id_max_allowed_packet))) != Qnil) {
+        Check_Type(val, T_FIXNUM);
+        connopt.max_allowed_packet = NUM2ULONG(val);
     }
 
     if ((val = rb_hash_lookup(opts, ID2SYM(id_host))) != Qnil) {
@@ -1114,6 +1123,7 @@ RUBY_FUNC_EXPORTED void Init_cext()
     id_connect_timeout = rb_intern("connect_timeout");
     id_read_timeout = rb_intern("read_timeout");
     id_write_timeout = rb_intern("write_timeout");
+    id_max_allowed_packet = rb_intern("max_allowed_packet");
     id_keepalive_enabled = rb_intern("keepalive_enabled");
     id_keepalive_idle = rb_intern("keepalive_idle");
     id_keepalive_count = rb_intern("keepalive_count");

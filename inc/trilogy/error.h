@@ -21,7 +21,8 @@
     XX(TRILOGY_OPENSSL_ERR, -16) /* check ERR_get_error() */                                                           \
     XX(TRILOGY_UNSUPPORTED, -17)                                                                                       \
     XX(TRILOGY_DNS_ERR, -18)                                                                                           \
-    XX(TRILOGY_AUTH_SWITCH, -19)
+    XX(TRILOGY_AUTH_SWITCH, -19)                                                                                       \
+    XX(TRILOGY_QUERY_TOO_LONG, -20)
 
 enum {
 #define XX(name, code) name = code,
