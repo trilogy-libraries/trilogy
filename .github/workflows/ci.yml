@@ -16,9 +16,19 @@ jobs:
       matrix:
         mysql: ["5.7", "8"]
         distribution: ["debian:buster", "ubuntu:focal", "ubuntu:bionic"]
-        ruby: ["2.8", "3.2"]
+        include:
+          - mysql: "8"
+            distribution: "ubuntu:bionic"
+            ruby: "2.8"
+          - mysql: "8"
+            distribution: "ubuntu:bionic"
+            ruby: "3.2"
     steps:
     - uses: actions/checkout@v3
+    - name: docker login
+      run: echo $GITHUB_TOKEN | docker login ghcr.io --username trilogy --password-stdin
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Run tests
       env:
         MYSQL_VERSION: ${{ matrix.mysql }}

@@ -1,4 +1,5 @@
 ARG DISTRIBUTION=ubuntu:jammy
+ARG RUBY_VERSION=3.2
 FROM ${DISTRIBUTION}
 LABEL maintainer="github@github.com"
 
