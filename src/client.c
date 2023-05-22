@@ -526,8 +526,11 @@ int trilogy_ping_recv(trilogy_conn_t *conn) { return read_generic_response(conn)
 
 int trilogy_query_send(trilogy_conn_t *conn, const char *query, size_t query_len)
 {
-    int err = 0;
+    if (conn->socket->opts.max_allowed_packet != 0 && query_len > conn->socket->opts.max_allowed_packet - 2) {
+        return TRILOGY_QUERY_TOO_LONG;
+    }
 
+    int err = 0;
     trilogy_builder_t builder;
     err = begin_command_phase(&builder, conn, 0);
     if (err < 0) {
