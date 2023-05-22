@@ -526,6 +526,7 @@ int trilogy_ping_recv(trilogy_conn_t *conn) { return read_generic_response(conn)
 
 int trilogy_query_send(trilogy_conn_t *conn, const char *query, size_t query_len)
 {
+    // we have allow for 2 extra bytes due to the mysql protocol overhead; null byte + command byte(?)
     if (conn->socket->opts.max_allowed_packet != 0 && query_len > conn->socket->opts.max_allowed_packet - 2) {
         return TRILOGY_QUERY_TOO_LONG;
     }
