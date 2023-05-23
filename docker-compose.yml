@@ -16,11 +16,15 @@ services:
       - "db-data:/var/lib/mysql"
       - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
   app:
-    image: app
+    image: ghcr.io/github/trilogy/ci-app:distro-${DISTRIBUTION_SLUG}-ruby-${RUBY_VERSION}-mysql-${MYSQL_VERSION}
     privileged: true
     build:
       context: .
-      dockerfile: "${DOCKERFILE}"
+      args:
+        - DISTRIBUTION=${DISTRIBUTION}
+        - RUBY_VERSION=${RUBY_VERSION}
+      cache_from: 
+        - ghcr.io/github/trilogy/ci-app:distro-${DISTRIBUTION_SLUG}-ruby-${RUBY_VERSION}-mysql-${MYSQL_VERSION}
     environment:
       MYSQL_HOST: db.local
       TRILOGY_TEST_CERTS: "/db-data"

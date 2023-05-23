@@ -43,6 +43,11 @@ trap cleanup EXIT
 
 export CI_MODE=true
 
+DISTRIBUTION_SLUG="$(echo "$DISTRIBUTION" | awk '{ gsub(":", "_") ; print $0 }')"
+export DISTRIBUTION_SLUG
+
 docker-compose rm -s -f -v
+output_fold "Pull cache image..." docker-compose pull app || true
 output_fold "Bootstrapping container..." docker-compose build
 output_fold "Running tests..." docker-compose run --rm app
+output_fold "Pushing cache image..." docker-compose push app

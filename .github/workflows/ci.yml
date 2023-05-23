@@ -1,19 +1,39 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+  pull_request:
 
 jobs:
   build:
+    name: ${{ format('Build ({0}, {1}, {2})', matrix.mysql, matrix.distribution, matrix.ruby) }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         mysql: ["5.7", "8"]
-        dockerfile: ["Dockerfile.test.buster", "Dockerfile.test.stretch", "Dockerfile.test.focal", "Dockerfile.test.bionic"]
+        distribution: ["debian:buster", "ubuntu:focal", "ubuntu:bionic"]
+        ruby: ["3.2"]
+        include:
+          - mysql: "5.7"
+            distribution: "debian:buster"
+            ruby: "1.9"
+          - mysql: "5.7"
+            distribution: "debian:buster"
+            ruby: "2.8"
     steps:
     - uses: actions/checkout@v3
+    - name: docker login
+      run: echo $GITHUB_TOKEN | docker login ghcr.io --username trilogy --password-stdin
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Run tests
       env:
         MYSQL_VERSION: ${{ matrix.mysql }}
-        DOCKERFILE: ${{ matrix.dockerfile }}
+        DISTRIBUTION: ${{ matrix.distribution }}
+        RUBY_VERSION: ${{ matrix.ruby }}
       run: script/cibuild
