@@ -8,6 +8,7 @@ int trilogy_buffer_init(trilogy_buffer_t *buffer, size_t initial_capacity)
 {
     buffer->len = 0;
     buffer->cap = initial_capacity;
+    buffer->max = SIZE_MAX;
     buffer->buff = malloc(initial_capacity);
 
     if (buffer->buff == NULL) {
@@ -25,12 +26,20 @@ int trilogy_buffer_expand(trilogy_buffer_t *buffer, size_t needed)
     if (buffer->len + needed > buffer->cap) {
         size_t new_cap = buffer->cap;
 
+        if (buffer->len + needed > buffer->max) {
+            return TRILOGY_MAX_PACKET_EXCEEDED;
+        }
+
         while (buffer->len + needed > new_cap) {
             // would this next step cause an overflow?
             if (new_cap > SIZE_MAX / EXPAND_MULTIPLIER)
                 return TRILOGY_TYPE_OVERFLOW;
 
             new_cap *= EXPAND_MULTIPLIER;
+        }
+
+        if (new_cap > buffer->max) {
+            new_cap = buffer->max;
         }
 
         uint8_t *new_buff = realloc(buffer->buff, new_cap);

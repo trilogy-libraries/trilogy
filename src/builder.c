@@ -33,10 +33,18 @@ static int write_continuation_header(trilogy_builder_t *builder)
     return write_header(builder);
 }
 
-int trilogy_builder_init(trilogy_builder_t *builder, trilogy_buffer_t *buff, uint8_t seq)
+int trilogy_builder_init(trilogy_builder_t *builder, trilogy_buffer_t *buff, uint8_t seq, size_t max_packet_size)
 {
     builder->buffer = buff;
     builder->buffer->len = 0;
+    if (max_packet_size > 0) {
+        builder->buffer->max = max_packet_size;
+        if (builder->buffer->cap > max_packet_size) {
+            builder->buffer->cap = max_packet_size;
+        }
+    } else {
+        builder->buffer->max = SIZE_MAX;
+    }
 
     builder->seq = seq;
 

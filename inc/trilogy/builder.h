@@ -29,12 +29,13 @@ typedef struct {
  *           split buffers that are larger than TRILOGY_MAX_PACKET_LEN into
  *           multiple packets and increment the sequence number in each packet
  *           following the initial.
+ * max_packet_size - A maximum packet size imposed by the server.
  *
  * Return values:
  *   TRILOGY_OK     - The builder was successfully initialized.
  *   TRILOGY_SYSERR - A system error occurred, check errno.
  */
-int trilogy_builder_init(trilogy_builder_t *builder, trilogy_buffer_t *buffer, uint8_t seq);
+int trilogy_builder_init(trilogy_builder_t *builder, trilogy_buffer_t *buffer, uint8_t seq, size_t max_packet_size);
 
 /* trilogy_builder_finalize - Finalize internal buffer state, ensuring all of the
  * packets inside are valid and ready for use over the wire.

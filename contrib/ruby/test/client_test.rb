@@ -752,10 +752,51 @@ class ClientTest < TrilogyTest
     ensure_closed client
   end
 
-  def test_packet_size
-    set_max_allowed_packet(32 * 1024 * 1024)
+  def test_packet_size_lower_than_trilogy_max_packet_len
+    set_max_allowed_packet(4 * 1024 * 1024) # TRILOGY_MAX_PACKET_LEN is 16MB
 
-    client = new_tcp_client
+    client = new_tcp_client(max_allowed_packet: 4 * 1024 * 1024)
+
+    create_test_table(client)
+    client.query "TRUNCATE trilogy_test"
+
+    result = client.query "INSERT INTO trilogy_test (blob_test) VALUES ('#{"x" * (1 * 1024 * 1024)}')"
+    assert result
+    assert_equal 1, client.last_insert_id
+
+    result = client.query "INSERT INTO trilogy_test (blob_test) VALUES ('#{"x" * (2 * 1024 * 1024)}')"
+    assert result
+    assert_equal 2, client.last_insert_id
+
+    exception = assert_raises Trilogy::QueryError do
+        client.query "INSERT INTO trilogy_test (blob_test) VALUES ('#{"x" * (4 * 1024 * 1024)}')"
+    end
+
+    assert_equal exception.message, "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED"
+  ensure
+    ensure_closed client
+  end
+
+  def test_packet_maximum_packet_size
+  return
+    set_max_allowed_packet(1024 * 1024 * 1024) # TRILOGY_MAX_PACKET_LEN is 16MB and max_allowed_packet is 1GB, which is the maximum allowed by MySQL
+
+    client = new_tcp_client(max_allowed_packet: 1024 * 1024 * 1024)
+
+    create_test_table(client)
+    client.query "TRUNCATE trilogy_test"
+
+    result = client.query "INSERT INTO trilogy_test (blob_test) VALUES ('#{"x" * ((1024 * 1024 * 1024)-55)}')"
+    assert result
+    assert_equal 1, client.last_insert_id
+  ensure
+    ensure_closed client
+  end
+
+  def test_packet_size_greater_than_trilogy_max_packet_len
+    set_max_allowed_packet(32 * 1024 * 1024) # TRILOGY_MAX_PACKET_LEN is 16MB
+
+    client = new_tcp_client(max_allowed_packet: 32 * 1024 * 1024)
 
     create_test_table(client)
     client.query "TRUNCATE trilogy_test"
@@ -767,6 +808,12 @@ class ClientTest < TrilogyTest
     result = client.query "INSERT INTO trilogy_test (blob_test) VALUES ('#{"x" * (31 * 1024 * 1024)}')"
     assert result
     assert_equal 2, client.last_insert_id
+
+    exception = assert_raises Trilogy::QueryError do
+        client.query "INSERT INTO trilogy_test (blob_test) VALUES ('#{"x" * (32 * 1024 * 1024)}')"
+    end
+
+    assert_equal exception.message, "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED"
   ensure
     ensure_closed client
   end

@@ -55,7 +55,7 @@ static trilogy_packet_parser_callbacks_t packet_parser_callbacks = {
 
 static int begin_command_phase(trilogy_builder_t *builder, trilogy_conn_t *conn, uint8_t seq)
 {
-    int rc = trilogy_builder_init(builder, &conn->packet_buffer, seq);
+    int rc = trilogy_builder_init(builder, &conn->packet_buffer, seq, conn->socket->opts.max_allowed_packet);
     if (rc < 0) {
         return rc;
     }
