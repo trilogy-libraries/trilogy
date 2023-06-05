@@ -62,7 +62,7 @@ void trilogy_builder_finalize(trilogy_builder_t *builder)
 
 int trilogy_builder_write_uint8(trilogy_builder_t *builder, uint8_t val)
 {
-    if (builder->packet_length >= builder->packet_max_length) {
+    if (builder->packet_length >= builder->packet_max_length - 1) {
         return TRILOGY_MAX_PACKET_EXCEEDED;
     }
 
@@ -144,7 +144,7 @@ int trilogy_builder_write_buffer(trilogy_builder_t *builder, const void *data, s
 
     size_t fragment_remaining = TRILOGY_MAX_PACKET_LEN - builder->fragment_length;
 
-    if (builder->packet_length > builder->packet_max_length - len) {
+    if (builder->packet_length >= builder->packet_max_length - len) {
         return TRILOGY_MAX_PACKET_EXCEEDED;
     }
 

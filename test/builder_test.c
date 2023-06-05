@@ -76,7 +76,9 @@ TEST test_builder_write_uint8_exceeds_small_max()
     err = trilogy_builder_init(&builder, &buff, 0);
     ASSERT_OK(err);
 
-    err = trilogy_builder_set_max_packet_length(&builder, 2);
+    // It's called "max", but it's really the length that will fail;
+    // this matches the server's behavior.
+    err = trilogy_builder_set_max_packet_length(&builder, 3);
     ASSERT_OK(err);
 
     err = trilogy_builder_write_uint8(&builder, 0x01);
@@ -106,7 +108,7 @@ TEST test_builder_write_uint8_exceeds_large_max()
     err = trilogy_builder_set_max_packet_length(&builder, max);
     ASSERT_OK(err);
 
-    size_t len = max - 2;
+    size_t len = max - 3;
     uint8_t *bytes = malloc(len);
 
     err = trilogy_builder_write_buffer(&builder, bytes, len);
