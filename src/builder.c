@@ -39,6 +39,8 @@ int trilogy_builder_init(trilogy_builder_t *builder, trilogy_buffer_t *buff, uin
     builder->buffer->len = 0;
 
     builder->seq = seq;
+    builder->packet_length = 0;
+    builder->packet_max_length = SIZE_MAX;
 
     return write_header(builder);
 }
@@ -60,10 +62,15 @@ void trilogy_builder_finalize(trilogy_builder_t *builder)
 
 int trilogy_builder_write_uint8(trilogy_builder_t *builder, uint8_t val)
 {
+    if (builder->packet_length >= builder->packet_max_length) {
+        return TRILOGY_MAX_PACKET_EXCEEDED;
+    }
+
     CHECKED(trilogy_buffer_expand(builder->buffer, 1));
 
     builder->buffer->buff[builder->buffer->len++] = val;
     builder->fragment_length++;
+    builder->packet_length++;
 
     if (builder->fragment_length == TRILOGY_MAX_PACKET_LEN) {
         CHECKED(write_continuation_header(builder));
@@ -137,6 +144,10 @@ int trilogy_builder_write_buffer(trilogy_builder_t *builder, const void *data, s
 
     size_t fragment_remaining = TRILOGY_MAX_PACKET_LEN - builder->fragment_length;
 
+    if (builder->packet_length > builder->packet_max_length - len) {
+        return TRILOGY_MAX_PACKET_EXCEEDED;
+    }
+
     // if this buffer write is not going to straddle a fragment boundary:
     if (len < fragment_remaining) {
         CHECKED(trilogy_buffer_expand(builder->buffer, len));
@@ -145,6 +156,7 @@ int trilogy_builder_write_buffer(trilogy_builder_t *builder, const void *data, s
 
         builder->buffer->len += len;
         builder->fragment_length += len;
+        builder->packet_length += len;
 
         return TRILOGY_OK;
     }
@@ -157,6 +169,7 @@ int trilogy_builder_write_buffer(trilogy_builder_t *builder, const void *data, s
 
         builder->buffer->len += fragment_remaining;
         builder->fragment_length += fragment_remaining;
+        builder->packet_length += fragment_remaining;
 
         ptr += fragment_remaining;
         len -= fragment_remaining;
@@ -172,6 +185,7 @@ int trilogy_builder_write_buffer(trilogy_builder_t *builder, const void *data, s
 
         builder->buffer->len += len;
         builder->fragment_length += len;
+        builder->packet_length += len;
     }
 
     return TRILOGY_OK;
@@ -191,6 +205,17 @@ int trilogy_builder_write_string(trilogy_builder_t *builder, const char *data)
     CHECKED(trilogy_builder_write_buffer(builder, (void *)data, strlen(data)));
 
     CHECKED(trilogy_builder_write_uint8(builder, 0));
+
+    return TRILOGY_OK;
+}
+
+int trilogy_builder_set_max_packet_length(trilogy_builder_t *builder, size_t max_length)
+{
+    if (builder->packet_length > max_length) {
+        return TRILOGY_MAX_PACKET_EXCEEDED;
+    }
+
+    builder->packet_max_length = max_length;
 
     return TRILOGY_OK;
 }
