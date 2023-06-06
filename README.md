@@ -11,6 +11,8 @@ It's currently in production use on github.com.
     * Password authentication
     * Query, ping, and quit commands
 
+* Support prepared statements (binary protocol)
+
 * Low-level protocol API completely decoupled from IO
 
 * Non-blocking client API wrapping the protocol API
