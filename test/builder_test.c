@@ -41,7 +41,7 @@ TEST test_builder_write_uint8_split_packet()
     ASSERT_OK(err);
 
     size_t len = TRILOGY_MAX_PACKET_LEN - 1;
-    uint8_t *bytes = malloc(len);
+    uint8_t *bytes = calloc(len, 1);
 
     err = trilogy_builder_write_buffer(&builder, bytes, len);
     ASSERT_OK(err);
@@ -109,7 +109,7 @@ TEST test_builder_write_uint8_exceeds_large_max()
     ASSERT_OK(err);
 
     size_t len = max - 3;
-    uint8_t *bytes = malloc(len);
+    uint8_t *bytes = calloc(len, 1);
 
     err = trilogy_builder_write_buffer(&builder, bytes, len);
     ASSERT_OK(err);
@@ -318,7 +318,7 @@ TEST test_builder_write_large_buffer()
     ASSERT_OK(err);
 
     size_t len = TRILOGY_MAX_PACKET_LEN + 10;
-    uint8_t *bytes = malloc(len);
+    uint8_t *bytes = calloc(len, 1);
 
     err = trilogy_builder_write_buffer(&builder, bytes, len);
     ASSERT_OK(err);
