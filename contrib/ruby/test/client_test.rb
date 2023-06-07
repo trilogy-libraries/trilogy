@@ -567,10 +567,9 @@ class ClientTest < TrilogyTest
     end
     assert_equal "Invalid date: 1234-00-00 00:00:00", err.message
 
-    err = assert_raises Trilogy::Error do
+    assert_raises_connection_error do
       client.ping
     end
-    assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
   end
 
   def test_client_side_timeout_checks_result_set
@@ -587,11 +586,9 @@ class ClientTest < TrilogyTest
       end
     end
 
-    err = assert_raises Trilogy::Error do
+    assert_raises_connection_error do
       client.query("SELECT varchar_test FROM trilogy_test WHERE int_test = 2").to_a
     end
-
-    assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
   end
 
   def assert_elapsed(expected, delta)
@@ -611,11 +608,9 @@ class ClientTest < TrilogyTest
         end
       end
 
-      err = assert_raises Trilogy::Error do
+      assert_raises_connection_error do
         client.query("SELECT 'hello'").to_a
       end
-
-      assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
     end
   end
 
@@ -684,11 +679,9 @@ class ClientTest < TrilogyTest
       end
     end
 
-    err = assert_raises Trilogy::Error do
+    assert_raises_connection_error do
       client.ping
     end
-
-    assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
   end
 
   USR1 = Class.new(StandardError)
@@ -832,7 +825,7 @@ class ClientTest < TrilogyTest
 
     assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
 
-    exception = assert_raises Trilogy::QueryError do
+    exception = assert_raises_connection_error do
       client.query query_for_target_packet_size(24 * 1024 * 1024 + 1)
     end
 
@@ -997,10 +990,9 @@ class ClientTest < TrilogyTest
     _, status = Process.wait2(pid)
     assert_predicate status, :success?
 
-    error = assert_raises Trilogy::QueryError do
+    assert_raises_connection_error do
       client.query("SELECT 1")
     end
-    assert_match "TRILOGY_CLOSED_CONNECTION", error.message
   end
 
   def test_discard_doesnt_terminate_parent_connection
