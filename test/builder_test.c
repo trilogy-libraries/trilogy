@@ -41,7 +41,7 @@ TEST test_builder_write_uint8_split_packet()
     ASSERT_OK(err);
 
     size_t len = TRILOGY_MAX_PACKET_LEN - 1;
-    uint8_t *bytes = malloc(len);
+    uint8_t *bytes = calloc(len, 1);
 
     err = trilogy_builder_write_buffer(&builder, bytes, len);
     ASSERT_OK(err);
@@ -59,6 +59,69 @@ TEST test_builder_write_uint8_split_packet()
 
     const uint8_t expected_header2[] = {0x01, 0x00, 0x00, 0x01};
     ASSERT_MEM_EQ(builder.buffer->buff + TRILOGY_MAX_PACKET_LEN + 4, expected_header2, sizeof(expected_header2));
+
+    free(bytes);
+
+    trilogy_buffer_free(&buff);
+    PASS();
+}
+
+TEST test_builder_write_uint8_exceeds_small_max()
+{
+    trilogy_buffer_t buff;
+    int err = trilogy_buffer_init(&buff, 1);
+    ASSERT_OK(err);
+
+    trilogy_builder_t builder;
+    err = trilogy_builder_init(&builder, &buff, 0);
+    ASSERT_OK(err);
+
+    // It's called "max", but it's really the length that will fail;
+    // this matches the server's behavior.
+    err = trilogy_builder_set_max_packet_length(&builder, 3);
+    ASSERT_OK(err);
+
+    err = trilogy_builder_write_uint8(&builder, 0x01);
+    ASSERT_OK(err);
+
+    err = trilogy_builder_write_uint8(&builder, 0x02);
+    ASSERT_OK(err);
+
+    err = trilogy_builder_write_uint8(&builder, 0x03);
+    ASSERT_EQ(TRILOGY_MAX_PACKET_EXCEEDED, err);
+
+    trilogy_buffer_free(&buff);
+    PASS();
+}
+
+TEST test_builder_write_uint8_exceeds_large_max()
+{
+    trilogy_buffer_t buff;
+    int err = trilogy_buffer_init(&buff, 1);
+    ASSERT_OK(err);
+
+    trilogy_builder_t builder;
+    err = trilogy_builder_init(&builder, &buff, 0);
+    ASSERT_OK(err);
+
+    size_t max = TRILOGY_MAX_PACKET_LEN * 2;
+    err = trilogy_builder_set_max_packet_length(&builder, max);
+    ASSERT_OK(err);
+
+    size_t len = max - 3;
+    uint8_t *bytes = calloc(len, 1);
+
+    err = trilogy_builder_write_buffer(&builder, bytes, len);
+    ASSERT_OK(err);
+
+    err = trilogy_builder_write_uint8(&builder, 0x01);
+    ASSERT_OK(err);
+
+    err = trilogy_builder_write_uint8(&builder, 0x02);
+    ASSERT_OK(err);
+
+    err = trilogy_builder_write_uint8(&builder, 0x03);
+    ASSERT_EQ(TRILOGY_MAX_PACKET_EXCEEDED, err);
 
     free(bytes);
 
@@ -255,7 +318,7 @@ TEST test_builder_write_large_buffer()
     ASSERT_OK(err);
 
     size_t len = TRILOGY_MAX_PACKET_LEN + 10;
-    uint8_t *bytes = malloc(len);
+    uint8_t *bytes = calloc(len, 1);
 
     err = trilogy_builder_write_buffer(&builder, bytes, len);
     ASSERT_OK(err);
@@ -322,10 +385,38 @@ TEST test_builder_write_string()
     PASS();
 }
 
+TEST test_builder_set_insufficient_max()
+{
+    trilogy_buffer_t buff;
+    int err = trilogy_buffer_init(&buff, 1);
+    ASSERT_OK(err);
+
+    trilogy_builder_t builder;
+    err = trilogy_builder_init(&builder, &buff, 0);
+    ASSERT_OK(err);
+
+    err = trilogy_builder_write_uint8(&builder, 0x01);
+    ASSERT_OK(err);
+
+    err = trilogy_builder_write_uint8(&builder, 0x02);
+    ASSERT_OK(err);
+
+    err = trilogy_builder_write_uint8(&builder, 0x03);
+    ASSERT_OK(err);
+
+    err = trilogy_builder_set_max_packet_length(&builder, 2);
+    ASSERT_EQ(TRILOGY_MAX_PACKET_EXCEEDED, err);
+
+    trilogy_buffer_free(&buff);
+    PASS();
+}
+
 int builder_test()
 {
     RUN_TEST(test_builder_write_uint8);
     RUN_TEST(test_builder_write_uint8_split_packet);
+    RUN_TEST(test_builder_write_uint8_exceeds_small_max);
+    RUN_TEST(test_builder_write_uint8_exceeds_large_max);
     RUN_TEST(test_builder_write_uint16);
     RUN_TEST(test_builder_write_uint32);
     RUN_TEST(test_builder_write_uint64);
@@ -337,6 +428,7 @@ int builder_test()
     RUN_TEST(test_builder_write_large_buffer);
     RUN_TEST(test_builder_write_lenenc_buffer);
     RUN_TEST(test_builder_write_string);
+    RUN_TEST(test_builder_set_insufficient_max);
 
     return 0;
 }

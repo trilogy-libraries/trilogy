@@ -60,6 +60,10 @@ static int begin_command_phase(trilogy_builder_t *builder, trilogy_conn_t *conn,
         return rc;
     }
 
+    if (conn->socket->opts.max_allowed_packet > 0) {
+        trilogy_builder_set_max_packet_length(builder, conn->socket->opts.max_allowed_packet);
+    }
+
     conn->packet_parser.sequence_number = seq + 1;
 
     return 0;

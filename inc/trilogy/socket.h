@@ -67,6 +67,8 @@ typedef struct {
     uint16_t keepalive_interval;
 
     TRILOGY_CAPABILITIES_t flags;
+
+    size_t max_allowed_packet;
 } trilogy_sockopt_t;
 
 typedef struct trilogy_sock_t {
