@@ -1147,7 +1147,6 @@ int trilogy_parse_stmt_row_packet(const uint8_t *buff, size_t len, trilogy_colum
                     CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.hour));
                     CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.minute));
                     CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.second));
-                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.time.micro_seconds));
 
                     break;
                 }
