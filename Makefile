@@ -12,7 +12,10 @@ EXAMPLES = example/trilogy_query
 
 UNAME_S := $(shell uname -s)
 
-ifneq ($(UNAME_S), Darwin)
+ifeq ($(UNAME_S), Darwin)
+	CFLAGS += "-I$(shell brew --prefix openssl@1.1)/include"
+	LDFLAGS += "-L$(shell brew --prefix openssl@1.1)/lib"
+else
   CFLAGS += -fPIC
   LDFLAGS += -pie -Wl,-z,relro,-z,now
 endif
@@ -48,7 +51,7 @@ clean:
 	rm -f test/test $(TEST_OBJS)
 
 test/test: $(TEST_SOURCES) libtrilogy.a
-	$(CC) $(CFLAGS) $(LDFLAGS) -o test/test $(TEST_SOURCES) -L. -ltrilogy $(OPENSSL)
+	$(CC) $(CFLAGS) $(LDFLAGS) -Wno-strict-prototypes -o test/test $(TEST_SOURCES) -L. -ltrilogy $(OPENSSL)
 
 update_greatest:
 	curl -o test/greatest.h https://raw.githubusercontent.com/silentbicycle/greatest/master/greatest.h

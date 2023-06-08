@@ -133,4 +133,16 @@ class TrilogyTest < Minitest::Test
 
     client.query sql
   end
+
+  def assert_raises_connection_error(&block)
+    err = assert_raises(Trilogy::Error, &block)
+
+    if err.is_a?(Trilogy::QueryError)
+      assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
+    else
+      assert_instance_of Trilogy::ConnectionResetError, err
+    end
+
+    err
+  end
 end
