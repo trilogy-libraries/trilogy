@@ -16,8 +16,8 @@ Please note that this project is released with a [Contributor Code of Conduct](C
  
     To shorten the development loop you can:
      
-     a) run trilogy tests locally with: `make clean all test`  
-     b) runruby binding tests with `make clean ; cd contrib/ruby ; bundle exec rake test ; cd -`. It's possible to run a test single example by passing a `TESTOPTS` environment variable like so: `TESTOPTS=-n/test_packet_size_greater_than_trilogy_max_packet_len/`.
+    a) run trilogy tests locally with: `make clean all test`  
+    b) runruby binding tests with `make clean ; cd contrib/ruby ; bundle exec rake test ; cd -`. It's possible to run a test single example by passing a `TESTOPTS` environment variable like so: `TESTOPTS=-n/test_packet_size_greater_than_trilogy_max_packet_len/`.
    
 0. Create a new branch: `git checkout -b my-branch-name`
 0. Make your change, add tests, and make sure the tests still pass
