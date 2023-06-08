@@ -751,7 +751,7 @@ TEST test_blocking_stmt_execute_year()
 
     connect_conn(&conn);
 
-    const char *query = "SELECT CAST('2023' AS YEAR)";
+    const char *query = "SELECT YEAR('2022-01-31')";
     trilogy_stmt_t stmt;
 
     int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
@@ -782,7 +782,7 @@ TEST test_blocking_stmt_execute_year()
     err = trilogy_stmt_read_full_row(&conn, &stmt, columns, values);
     ASSERT_OK(err);
 
-    ASSERT_EQ(values[0].as.year, 2023);
+    ASSERT_EQ(values[0].as.year, 2022);
 
     err = trilogy_stmt_read_full_row(&conn, &stmt, columns, values);
     ASSERT_EOF(err);
