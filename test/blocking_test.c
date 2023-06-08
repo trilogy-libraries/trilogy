@@ -417,7 +417,13 @@ TEST test_blocking_stmt_execute_float() {
     err = trilogy_stmt_read_full_row(&conn, &stmt, columns, values);
     ASSERT_OK(err);
 
-    ASSERT_EQ(values[0].as.flt, float_val);
+    // With MySQL 5.7, the value is returned from the server as a float.
+    // With MySQL 8, the value is returned from the server as a double.
+    if (columns[0].type == TRILOGY_TYPE_FLOAT) {
+        ASSERT_EQ(values[0].as.flt, float_val);
+    } else if (columns[0].type == TRILOGY_TYPE_DOUBLE) {
+        ASSERT_EQ(values[0].as.dbl, float_val);
+    }
 
     err = trilogy_stmt_read_full_row(&conn, &stmt, columns, values);
     ASSERT_EOF(err);
