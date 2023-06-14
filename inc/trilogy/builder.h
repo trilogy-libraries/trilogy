@@ -117,6 +117,32 @@ int trilogy_builder_write_uint32(trilogy_builder_t *builder, uint32_t val);
  */
 int trilogy_builder_write_uint64(trilogy_builder_t *builder, uint64_t val);
 
+/* trilogy_builder_write_float - Append a float to the packet buffer.
+ *
+ * builder - A pre-initialized trilogy_builder_t pointer
+ * val     - The value to append to the buffer
+ *
+ * Return values:
+ *   TRILOGY_OK     - The value was appended to the packet buffer.
+ *   TRILOGY_SYSERR - A system error occurred, check errno.
+ *   TRILOGY_MAX_PACKET_EXCEEDED - Appending this value would exceed the maximum
+ *                                 packet size.
+ */
+int trilogy_builder_write_float(trilogy_builder_t *builder, float val);
+
+/* trilogy_builder_write_double - Append a double to the packet buffer.
+ *
+ * builder - A pre-initialized trilogy_builder_t pointer
+ * val     - The value to append to the buffer
+ *
+ * Return values:
+ *   TRILOGY_OK     - The value was appended to the packet buffer.
+ *   TRILOGY_SYSERR - A system error occurred, check errno.
+ *   TRILOGY_MAX_PACKET_EXCEEDED - Appending this value would exceed the maximum
+ *                                 packet size.
+ */
+int trilogy_builder_write_double(trilogy_builder_t *builder, double val);
+
 /* trilogy_builder_write_lenenc - Append a length-encoded integer to the packet
  * buffer.
  *

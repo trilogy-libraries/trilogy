@@ -11,6 +11,8 @@ It's currently in production use on github.com.
     * Password authentication
     * Query, ping, and quit commands
 
+* Support prepared statements (binary protocol)
+
 * Low-level protocol API completely decoupled from IO
 
 * Non-blocking client API wrapping the protocol API
@@ -25,7 +27,7 @@ It's currently in production use on github.com.
 
 ## Limitations
 
-* Only supports the parts of the text protocol that are in common use. There's no support for the binary protocol or prepared statements
+* Only supports the parts of the text protocol that are in common use.
 
 * No support for `LOAD DATA INFILE` on local files
 

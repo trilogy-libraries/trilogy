@@ -12,6 +12,12 @@
 #define TRILOGY_CMD_PING 0x0e
 #define TRILOGY_CMD_SET_OPTION 0x1b
 
+#define TRILOGY_CMD_STMT_PREPARE 0x16
+#define TRILOGY_CMD_STMT_EXECUTE 0x17
+#define TRILOGY_CMD_STMT_SEND_LONG_DATA 0x18
+#define TRILOGY_CMD_STMT_CLOSE 0x19
+#define TRILOGY_CMD_STMT_RESET 0x1a
+
 #define SCRAMBLE_LEN 20
 
 static size_t min(size_t a, size_t b)
@@ -395,6 +401,37 @@ fail:
     return rc;
 }
 
+int trilogy_parse_stmt_ok_packet(const uint8_t *buff, size_t len, trilogy_stmt_ok_packet_t *out_packet)
+{
+    int rc;
+
+    trilogy_reader_t reader = TRILOGY_READER(buff, len);
+
+    // skip packet type
+    CHECKED(trilogy_reader_get_uint8(&reader, NULL));
+
+    CHECKED(trilogy_reader_get_uint32(&reader, &out_packet->id));
+
+    CHECKED(trilogy_reader_get_uint16(&reader, &out_packet->column_count));
+
+    CHECKED(trilogy_reader_get_uint16(&reader, &out_packet->parameter_count));
+
+    uint8_t filler;
+
+    CHECKED(trilogy_reader_get_uint8(&reader, &filler));
+
+    if (filler != 0) {
+        return TRILOGY_PROTOCOL_VIOLATION;
+    }
+
+    CHECKED(trilogy_reader_get_uint16(&reader, &out_packet->warning_count));
+
+    return trilogy_reader_finish(&reader);
+
+fail:
+    return rc;
+}
+
 static void trilogy_pack_scramble_native_hash(const char *scramble, const char *password, size_t password_len,
                                               uint8_t *buffer, unsigned int *buffer_len)
 {
@@ -678,6 +715,472 @@ int trilogy_build_ssl_request_packet(trilogy_builder_t *builder, TRILOGY_CAPABIL
     trilogy_builder_finalize(builder);
 
     return TRILOGY_OK;
+
+fail:
+    return rc;
+}
+
+int trilogy_build_stmt_prepare_packet(trilogy_builder_t *builder, const char *sql, size_t sql_len)
+{
+    int rc = TRILOGY_OK;
+
+    CHECKED(trilogy_builder_write_uint8(builder, TRILOGY_CMD_STMT_PREPARE));
+
+    CHECKED(trilogy_builder_write_buffer(builder, sql, sql_len));
+
+    trilogy_builder_finalize(builder);
+
+    return TRILOGY_OK;
+
+fail:
+    return rc;
+}
+
+int trilogy_build_stmt_execute_packet(trilogy_builder_t *builder, uint32_t stmt_id, uint8_t flags,
+                                      trilogy_binary_value_t *binds, uint16_t num_binds)
+{
+    int rc = TRILOGY_OK;
+
+    CHECKED(trilogy_builder_write_uint8(builder, TRILOGY_CMD_STMT_EXECUTE));
+
+    CHECKED(trilogy_builder_write_uint32(builder, stmt_id));
+
+    CHECKED(trilogy_builder_write_uint8(builder, flags));
+
+    // apparently, iteration-count is always 1
+    CHECKED(trilogy_builder_write_uint32(builder, 1));
+
+    int i;
+
+    if (num_binds > 0) {
+        if (binds == NULL) {
+            return TRILOGY_PROTOCOL_VIOLATION;
+        }
+
+        uint8_t current_bits = 0;
+
+        for (i = 0; i < num_binds; i++) {
+            if (binds[i].is_null) {
+                current_bits |= 1 << (i % 8);
+            }
+
+            // If we hit a byte boundary, write the bits we have so far and continue
+            if ((i % 8) == 7) {
+                CHECKED(trilogy_builder_write_uint8(builder, current_bits))
+
+                current_bits = 0;
+            }
+        }
+
+        // If there would have been any remainder bits, finally write those as well
+        if (num_binds % 8) {
+            CHECKED(trilogy_builder_write_uint8(builder, current_bits))
+        }
+
+        // new params bound flag
+        CHECKED(trilogy_builder_write_uint8(builder, 0x1));
+
+        for (i = 0; i < num_binds; i++) {
+            CHECKED(trilogy_builder_write_uint8(builder, binds[i].type));
+
+            if (binds[i].is_unsigned) {
+                CHECKED(trilogy_builder_write_uint8(builder, 0x80));
+            } else {
+                CHECKED(trilogy_builder_write_uint8(builder, 0x00));
+            }
+        }
+
+        for (i = 0; i < num_binds; i++) {
+            trilogy_binary_value_t val = binds[i];
+
+            switch (val.type) {
+            case TRILOGY_TYPE_TINY:
+                CHECKED(trilogy_builder_write_uint8(builder, val.as.uint8));
+
+                break;
+            case TRILOGY_TYPE_SHORT:
+                CHECKED(trilogy_builder_write_uint16(builder, val.as.uint16));
+
+                break;
+            case TRILOGY_TYPE_INT24:
+            case TRILOGY_TYPE_LONG:
+                CHECKED(trilogy_builder_write_uint32(builder, val.as.uint32));
+
+                break;
+            case TRILOGY_TYPE_LONGLONG:
+                CHECKED(trilogy_builder_write_uint64(builder, val.as.uint64));
+
+                break;
+            case TRILOGY_TYPE_FLOAT:
+                CHECKED(trilogy_builder_write_float(builder, val.as.flt));
+
+                break;
+            case TRILOGY_TYPE_DOUBLE:
+                CHECKED(trilogy_builder_write_double(builder, val.as.dbl));
+
+                break;
+            case TRILOGY_TYPE_YEAR:
+                CHECKED(trilogy_builder_write_uint16(builder, val.as.year));
+
+                break;
+            case TRILOGY_TYPE_TIME: {
+                uint8_t field_len = 0;
+
+                if (val.as.time.micro_seconds) {
+                    field_len = 12;
+                } else if (val.as.time.hour || val.as.time.minute || val.as.time.second) {
+                    field_len = 8;
+                } else {
+                    field_len = 0;
+                }
+
+                CHECKED(trilogy_builder_write_uint8(builder, field_len));
+
+                if (field_len > 0) {
+                    CHECKED(trilogy_builder_write_uint8(builder, val.as.time.is_negative));
+
+                    CHECKED(trilogy_builder_write_uint32(builder, val.as.time.days));
+
+                    CHECKED(trilogy_builder_write_uint8(builder, val.as.time.hour));
+
+                    CHECKED(trilogy_builder_write_uint8(builder, val.as.time.minute));
+
+                    CHECKED(trilogy_builder_write_uint8(builder, val.as.time.second));
+
+                    if (field_len > 8) {
+                        CHECKED(trilogy_builder_write_uint32(builder, val.as.time.micro_seconds));
+                    }
+                }
+
+                break;
+            }
+            case TRILOGY_TYPE_DATE:
+            case TRILOGY_TYPE_DATETIME:
+            case TRILOGY_TYPE_TIMESTAMP: {
+                uint8_t field_len = 0;
+
+                if (val.as.date.datetime.micro_seconds) {
+                    field_len = 11;
+                } else if (val.as.date.datetime.hour || val.as.date.datetime.minute || val.as.date.datetime.second) {
+                    field_len = 7;
+                } else if (val.as.date.year || val.as.date.month || val.as.date.day) {
+                    field_len = 4;
+                } else {
+                    field_len = 0;
+                }
+
+                CHECKED(trilogy_builder_write_uint8(builder, field_len));
+
+                if (field_len > 0) {
+                    CHECKED(trilogy_builder_write_uint16(builder, val.as.date.year));
+
+                    CHECKED(trilogy_builder_write_uint8(builder, val.as.date.month));
+
+                    CHECKED(trilogy_builder_write_uint8(builder, val.as.date.day));
+
+                    if (field_len > 4) {
+                        CHECKED(trilogy_builder_write_uint8(builder, val.as.date.datetime.hour));
+
+                        CHECKED(trilogy_builder_write_uint8(builder, val.as.date.datetime.minute));
+
+                        CHECKED(trilogy_builder_write_uint8(builder, val.as.date.datetime.second));
+
+                        if (field_len > 7) {
+                            CHECKED(trilogy_builder_write_uint32(builder, val.as.date.datetime.micro_seconds));
+                        }
+                    }
+                }
+
+                break;
+            }
+            case TRILOGY_TYPE_DECIMAL:
+            case TRILOGY_TYPE_VARCHAR:
+            case TRILOGY_TYPE_BIT:
+            case TRILOGY_TYPE_NEWDECIMAL:
+            case TRILOGY_TYPE_ENUM:
+            case TRILOGY_TYPE_SET:
+            case TRILOGY_TYPE_TINY_BLOB:
+            case TRILOGY_TYPE_BLOB:
+            case TRILOGY_TYPE_MEDIUM_BLOB:
+            case TRILOGY_TYPE_LONG_BLOB:
+            case TRILOGY_TYPE_VAR_STRING:
+            case TRILOGY_TYPE_STRING:
+            case TRILOGY_TYPE_GEOMETRY:
+                CHECKED(trilogy_builder_write_lenenc_buffer(builder, val.as.str.data, val.as.str.len));
+
+                break;
+            case TRILOGY_TYPE_NULL:
+                // already handled by the null bitmap
+                break;
+            default:
+                return TRILOGY_UNKNOWN_TYPE;
+            }
+        }
+    }
+
+    trilogy_builder_finalize(builder);
+
+    return TRILOGY_OK;
+
+fail:
+    return rc;
+}
+
+int trilogy_build_stmt_bind_data_packet(trilogy_builder_t *builder, uint32_t stmt_id, uint16_t param_id, uint8_t *data,
+                                        size_t data_len)
+{
+    int rc = TRILOGY_OK;
+
+    CHECKED(trilogy_builder_write_uint8(builder, TRILOGY_CMD_STMT_SEND_LONG_DATA));
+
+    CHECKED(trilogy_builder_write_uint32(builder, stmt_id));
+
+    CHECKED(trilogy_builder_write_uint16(builder, param_id));
+
+    CHECKED(trilogy_builder_write_buffer(builder, data, data_len));
+
+    trilogy_builder_finalize(builder);
+
+    return TRILOGY_OK;
+
+fail:
+    return rc;
+}
+
+int trilogy_build_stmt_reset_packet(trilogy_builder_t *builder, uint32_t stmt_id)
+{
+    int rc = TRILOGY_OK;
+
+    CHECKED(trilogy_builder_write_uint8(builder, TRILOGY_CMD_STMT_RESET));
+
+    CHECKED(trilogy_builder_write_uint32(builder, stmt_id));
+
+    trilogy_builder_finalize(builder);
+
+    return TRILOGY_OK;
+
+fail:
+    return rc;
+}
+
+int trilogy_build_stmt_close_packet(trilogy_builder_t *builder, uint32_t stmt_id)
+{
+    int rc = TRILOGY_OK;
+
+    CHECKED(trilogy_builder_write_uint8(builder, TRILOGY_CMD_STMT_CLOSE));
+
+    CHECKED(trilogy_builder_write_uint32(builder, stmt_id));
+
+    trilogy_builder_finalize(builder);
+
+    return TRILOGY_OK;
+
+fail:
+    return rc;
+}
+
+static inline int is_null(uint8_t *null_bitmap, uint64_t bitmap_len, uint64_t column_offset, bool *col_is_null)
+{
+    if (column_offset > (bitmap_len * 8) - 1) {
+        return TRILOGY_PROTOCOL_VIOLATION;
+    }
+
+    column_offset += 2;
+
+    uint64_t byte_offset = column_offset / 8;
+
+    // for the binary protocol result row packet, we need to offset the bit check
+    // by 2
+    *col_is_null = (null_bitmap[byte_offset] & (1 << (column_offset % 8))) != 0;
+
+    return TRILOGY_OK;
+}
+
+int trilogy_parse_stmt_row_packet(const uint8_t *buff, size_t len, trilogy_column_packet_t *columns,
+                                  uint64_t column_count, trilogy_binary_value_t *out_values)
+{
+    int rc;
+
+    trilogy_reader_t reader = TRILOGY_READER(buff, len);
+
+    // skip packet header
+    CHECKED(trilogy_reader_get_uint8(&reader, NULL));
+
+    uint8_t *null_bitmap = NULL;
+    uint64_t bitmap_len = (column_count + 7 + 2) / 8;
+
+    CHECKED(trilogy_reader_get_buffer(&reader, bitmap_len, (const void **)&null_bitmap));
+
+    for (uint64_t i = 0; i < column_count; i++) {
+        CHECKED(is_null(null_bitmap, bitmap_len, i, &out_values[i].is_null));
+        if (out_values[i].is_null) {
+            out_values[i].type = TRILOGY_TYPE_NULL;
+        } else {
+            out_values[i].is_null = false;
+
+            out_values[i].type = columns[i].type;
+
+            if (columns[i].flags & TRILOGY_COLUMN_FLAG_UNSIGNED) {
+                out_values[i].is_unsigned = true;
+            }
+
+            switch (columns[i].type) {
+            case TRILOGY_TYPE_STRING:
+            case TRILOGY_TYPE_VARCHAR:
+            case TRILOGY_TYPE_VAR_STRING:
+            case TRILOGY_TYPE_ENUM:
+            case TRILOGY_TYPE_SET:
+            case TRILOGY_TYPE_LONG_BLOB:
+            case TRILOGY_TYPE_MEDIUM_BLOB:
+            case TRILOGY_TYPE_BLOB:
+            case TRILOGY_TYPE_TINY_BLOB:
+            case TRILOGY_TYPE_GEOMETRY:
+            case TRILOGY_TYPE_BIT:
+            case TRILOGY_TYPE_DECIMAL:
+            case TRILOGY_TYPE_NEWDECIMAL:
+            case TRILOGY_TYPE_JSON:
+                CHECKED(trilogy_reader_get_lenenc_buffer(&reader, &out_values[i].as.str.len,
+                                                      (const void **)&out_values[i].as.str.data));
+
+                break;
+            case TRILOGY_TYPE_LONGLONG:
+                CHECKED(trilogy_reader_get_uint64(&reader, &out_values[i].as.uint64));
+
+                break;
+            case TRILOGY_TYPE_DOUBLE:
+                CHECKED(trilogy_reader_get_double(&reader, &out_values[i].as.dbl));
+
+                break;
+            case TRILOGY_TYPE_LONG:
+            case TRILOGY_TYPE_INT24:
+                CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.uint32));
+
+                break;
+            case TRILOGY_TYPE_FLOAT:
+                CHECKED(trilogy_reader_get_float(&reader, &out_values[i].as.flt));
+
+                break;
+            case TRILOGY_TYPE_SHORT:
+                CHECKED(trilogy_reader_get_uint16(&reader, &out_values[i].as.uint16));
+
+                break;
+            case TRILOGY_TYPE_YEAR:
+                CHECKED(trilogy_reader_get_uint16(&reader, &out_values[i].as.year));
+
+                break;
+            case TRILOGY_TYPE_TINY:
+                CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.uint8));
+
+                break;
+            case TRILOGY_TYPE_DATE:
+            case TRILOGY_TYPE_DATETIME:
+            case TRILOGY_TYPE_TIMESTAMP: {
+                uint8_t time_len;
+
+                CHECKED(trilogy_reader_get_uint8(&reader, &time_len));
+
+                out_values[i].as.date.year = 0;
+                out_values[i].as.date.month = 0;
+                out_values[i].as.date.day = 0;
+                out_values[i].as.date.datetime.hour = 0;
+                out_values[i].as.date.datetime.minute = 0;
+                out_values[i].as.date.datetime.second = 0;
+                out_values[i].as.date.datetime.micro_seconds = 0;
+
+                switch (time_len) {
+                case 0:
+                    break;
+                case 4:
+                    CHECKED(trilogy_reader_get_uint16(&reader, &out_values[i].as.date.year));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.month));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.day));
+
+                    break;
+                case 7:
+                    CHECKED(trilogy_reader_get_uint16(&reader, &out_values[i].as.date.year));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.month));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.day));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.datetime.hour));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.datetime.minute));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.datetime.second));
+
+                    break;
+                case 11:
+                    CHECKED(trilogy_reader_get_uint16(&reader, &out_values[i].as.date.year));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.month));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.day));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.datetime.hour));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.datetime.minute));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.date.datetime.second));
+                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.date.datetime.micro_seconds));
+
+                    break;
+                default:
+                    return TRILOGY_PROTOCOL_VIOLATION;
+                }
+
+                break;
+            }
+            case TRILOGY_TYPE_TIME: {
+                uint8_t time_len;
+
+                CHECKED(trilogy_reader_get_uint8(&reader, &time_len));
+
+                out_values[i].as.time.is_negative = false;
+                out_values[i].as.time.days = 0;
+                out_values[i].as.time.hour = 0;
+                out_values[i].as.time.minute = 0;
+                out_values[i].as.time.second = 0;
+                out_values[i].as.time.micro_seconds = 0;
+
+                switch (time_len) {
+                case 0:
+                    break;
+                case 8: {
+                    uint8_t is_negative;
+
+                    CHECKED(trilogy_reader_get_uint8(&reader, &is_negative));
+
+                    out_values[i].as.time.is_negative = is_negative == 1;
+
+                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.time.days));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.hour));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.minute));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.second));
+
+                    break;
+                }
+                case 12: {
+                    uint8_t is_negative;
+
+                    CHECKED(trilogy_reader_get_uint8(&reader, &is_negative));
+
+                    out_values[i].as.time.is_negative = is_negative == 1;
+
+                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.time.days));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.hour));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.minute));
+                    CHECKED(trilogy_reader_get_uint8(&reader, &out_values[i].as.time.second));
+                    CHECKED(trilogy_reader_get_uint32(&reader, &out_values[i].as.time.micro_seconds));
+
+                    break;
+                }
+                default:
+                    return TRILOGY_PROTOCOL_VIOLATION;
+                }
+
+                break;
+            }
+            case TRILOGY_TYPE_NULL:
+            default:
+                // we cover TRILOGY_TYPE_NULL here because we should never hit this case
+                // explicitly as it should be covered in the null bitmap
+                return TRILOGY_UNKNOWN_TYPE;
+            }
+        }
+    }
+
+    return trilogy_reader_finish(&reader);
 
 fail:
     return rc;

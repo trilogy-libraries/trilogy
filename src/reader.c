@@ -95,6 +95,44 @@ int trilogy_reader_get_uint64(trilogy_reader_t *reader, uint64_t *out)
     return TRILOGY_OK;
 }
 
+int trilogy_reader_get_float(trilogy_reader_t *reader, float *out)
+{
+    CHECK(4);
+
+    union {
+        float f;
+        uint32_t u;
+    } float_val;
+
+    int rc = trilogy_reader_get_uint32(reader, &float_val.u);
+    if (rc != TRILOGY_OK) {
+        return rc;
+    }
+
+    *out = float_val.f;
+
+    return TRILOGY_OK;
+}
+
+int trilogy_reader_get_double(trilogy_reader_t *reader, double *out)
+{
+    CHECK(8);
+
+    union {
+        double d;
+        uint64_t u;
+    } double_val;
+
+    int rc = trilogy_reader_get_uint64(reader, &double_val.u);
+    if (rc != TRILOGY_OK) {
+        return rc;
+    }
+
+    *out = double_val.d;
+
+    return TRILOGY_OK;
+}
+
 int trilogy_reader_get_lenenc(trilogy_reader_t *reader, uint64_t *out)
 {
     CHECK(1);
