@@ -12,7 +12,7 @@ class Trilogy
     encoding = Trilogy::Encoding.find(mysql_encoding)
     charset = Trilogy::Encoding.charset(mysql_encoding)
 
-    _initialize(encoding, charset, **options)
+    _initialize(encoding, charset, options)
   end
 
   def connection_options
