@@ -233,10 +233,6 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
                 return Qnil;
             }
 
-            if (hour == 0 && min == 0 && sec == 0) {
-                return Qnil;
-            }
-
             // pad out msec_char with zeroes at the end as it could be at any
             // level of precision
             for (size_t i = strlen(msec_char); i < sizeof(msec_char) - 1; i++) {
