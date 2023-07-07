@@ -254,6 +254,23 @@ class CastTest < TrilogyTest
     assert_kind_of Time, results[0][0]
   end
 
+  def test_time_zero
+    time = Time.utc(2000, 1, 1, 0, 0, 0)
+
+    @client.query(<<-SQL)
+      INSERT INTO trilogy_test (time_test)
+      VALUES ("#{time.strftime("%H:%M:%S")}")
+    SQL
+
+    results = @client.query(<<-SQL).to_a
+      SELECT time_test FROM trilogy_test
+    SQL
+
+    assert_equal [[time]], results
+
+    assert_kind_of Time, results[0][0]
+  end
+
   def test_timestamp_cast_defaults_to_utc
     @client.query(<<-SQL)
       INSERT INTO trilogy_test (null_test)
