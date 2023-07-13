@@ -65,7 +65,11 @@ static ssize_t _cb_raw_read(trilogy_sock_t *_sock, void *buf, size_t nread)
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
     ssize_t data_read = read(sock->fd, buf, nread);
     if (data_read < 0) {
-        return (ssize_t)TRILOGY_SYSERR;
+        if (errno == EINTR || errno == EAGAIN) {
+            return (ssize_t)TRILOGY_AGAIN;
+        } else {
+            return (ssize_t)TRILOGY_SYSERR;
+        }
     }
     return data_read;
 }
@@ -75,6 +79,14 @@ static ssize_t _cb_raw_write(trilogy_sock_t *_sock, const void *buf, size_t nwri
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
     ssize_t data_written = write(sock->fd, buf, nwrite);
     if (data_written < 0) {
+        if (errno == EINTR || errno == EAGAIN) {
+            return (ssize_t)TRILOGY_AGAIN;
+        }
+
+        if (errno == EPIPE) {
+            return (ssize_t)TRILOGY_CLOSED_CONNECTION;
+        }
+
         return (ssize_t)TRILOGY_SYSERR;
     }
     return data_written;
