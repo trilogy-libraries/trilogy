@@ -94,6 +94,9 @@ static void trilogy_syserr_fail_str(int e, VALUE msg)
         rb_raise(Trilogy_ConnectionRefusedError, "%" PRIsVALUE, msg);
     } else if (e == ECONNRESET) {
         rb_raise(Trilogy_ConnectionResetError, "%" PRIsVALUE, msg);
+    } else if (e == EPIPE) {
+        // Backwards compatibility: This error class makes no sense, but matches legacy behavior
+        rb_raise(Trilogy_QueryError, "%" PRIsVALUE ": TRILOGY_CLOSED_CONNECTION", msg);
     } else {
         VALUE exc = rb_funcall(Trilogy_SyscallError, id_from_errno, 2, INT2NUM(e), msg);
         rb_exc_raise(exc);
