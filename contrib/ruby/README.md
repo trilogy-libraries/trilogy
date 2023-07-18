@@ -34,13 +34,21 @@ if client.ping
   result.each_hash do |user|
     p user
   end
+```
 
-  # Multi-statement
+### Processing multiple result sets
 
-  results = []
-  results << client.query("SELECT name FROM users WHERE id = 1; SELECT name FROM users WHERE id = 2")
-  results << client.next_result while client.more_results_exist?
-end
+In order to send and receive multiple result sets, pass the `multi_statement` option when connecting.
+`Trilogy#more_results_exist?` will return true if more results exist, false if no more results exist, or raise
+an error if the respective query errored. `Trilogy#next_result` will retrieve the next result set, or return nil
+if no more results exist.
+
+``` ruby
+client = Trilogy.new(host: "127.0.0.1", port: 3306, username: "root", read_timeout: 2, multi_statement: true)
+
+results = []
+results << client.query("SELECT name FROM users WHERE id = 1; SELECT name FROM users WHERE id = 2")
+results << client.next_result while client.more_results_exist?
 ```
 
 ## Building
