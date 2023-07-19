@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <string.h>
 
 #include "trilogy/client.h"
 #include "trilogy/error.h"
@@ -401,7 +402,7 @@ int trilogy_auth_switch_send(trilogy_conn_t *conn, const trilogy_handshake_t *ha
 void trilogy_auth_clear_password(trilogy_conn_t *conn)
 {
     if (conn->socket->opts.password) {
-        memset(conn->socket->opts.password, 0, conn->socket->opts.password_len);
+        memset_s(conn->socket->opts.password, conn->socket->opts.password_len, 0, conn->socket->opts.password_len);
     }
 }
 
