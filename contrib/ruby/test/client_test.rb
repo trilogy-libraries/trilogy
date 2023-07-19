@@ -30,12 +30,6 @@ class ClientTest < TrilogyTest
     ensure_closed client
   end
 
-  def test_trilogy_connect_tcp_fixnum_port
-    assert_raises TypeError do
-      new_tcp_client port: "13306"
-    end
-  end
-
   def test_trilogy_connect_tcp_to_wrong_port
     e = assert_raises Trilogy::ConnectionError do
       new_tcp_client port: 13307
@@ -1056,5 +1050,18 @@ class ClientTest < TrilogyTest
     result = client.query("SELECT '#{expected}'").to_a.first.first
     assert_equal expected.dup.force_encoding(Encoding::Windows_31J), result
     assert_equal Encoding::Windows_31J, result.encoding
+  end
+
+  def test_connection_options_casting
+    options = {
+      host: DEFAULT_HOST,
+      port: DEFAULT_PORT.to_s,
+      username: DEFAULT_USER,
+      password: DEFAULT_PASS,
+      ssl: "1",
+    }
+    client = new_tcp_client(**options)
+
+    assert client.query("SELECT 1")
   end
 end
