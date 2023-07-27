@@ -195,6 +195,21 @@ static double timeval_to_double(struct timeval tv)
     return (double)tv.tv_sec + ((double)tv.tv_usec) / 1000000.0;
 }
 
+struct rb_trilogy_wait_args {
+    struct timeval *timeout;
+    int wait_flag;
+    int fd;
+    int rc;
+};
+
+static VALUE rb_trilogy_wait_protected(VALUE vargs) {
+    struct rb_trilogy_wait_args *args = (void *)vargs;
+
+    args->rc = rb_wait_for_single_fd(args->fd, args->wait_flag, args->timeout);
+
+    return Qnil;
+}
+
 static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
 {
     struct timeval *timeout = NULL;
@@ -224,11 +239,22 @@ static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
         timeout = NULL;
     }
 
-    int fd = trilogy_sock_fd(sock);
-    int rc = rb_wait_for_single_fd(fd, wait_flag, timeout);
-    if (rc < 0)
+    struct rb_trilogy_wait_args args;
+    args.fd = trilogy_sock_fd(sock);
+    args.wait_flag = wait_flag;
+    args.timeout = timeout;
+    args.rc = 0;
+
+    int state = 0;
+    rb_protect(rb_trilogy_wait_protected, (VALUE)&args, &state);
+    if (state) {
+        trilogy_sock_shutdown(sock);
+        rb_jump_tag(state);
+    }
+
+    if (args.rc < 0)
         return TRILOGY_SYSERR;
-    if (rc == 0)
+    if (args.rc == 0)
         return TRILOGY_TIMEOUT;
 
     return TRILOGY_OK;
