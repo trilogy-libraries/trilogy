@@ -15,8 +15,6 @@
 
 #include "trilogy-ruby.h"
 
-#define TRILOGY_RB_TIMEOUT 1
-
 VALUE Trilogy_CastError;
 static VALUE Trilogy_BaseConnectionError, Trilogy_ProtocolError, Trilogy_SSLError, Trilogy_QueryError,
     Trilogy_ConnectionClosedError, Trilogy_ConnectionRefusedError, Trilogy_ConnectionResetError,
@@ -276,7 +274,7 @@ escape the GVL on each wait operation without going through call_without_gvl */
         }
 
         if (trilogy_sock_wait(ctx->conn.socket, TRILOGY_WAIT_HANDSHAKE) < 0)
-            return TRILOGY_RB_TIMEOUT;
+            return TRILOGY_TIMEOUT;
     }
 }
 
@@ -519,7 +517,7 @@ static VALUE rb_trilogy_initialize(VALUE self, VALUE encoding, VALUE charset, VA
     }
 
     int rc = try_connect(ctx, &handshake, &connopt);
-    if (rc == TRILOGY_RB_TIMEOUT) {
+    if (rc == TRILOGY_TIMEOUT) {
         rb_raise(Trilogy_TimeoutError, "trilogy_connect_recv");
     }
     if (rc != TRILOGY_OK) {
