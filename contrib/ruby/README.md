@@ -34,6 +34,7 @@ if client.ping
   result.each_hash do |user|
     p user
   end
+end
 ```
 
 ### Processing multiple result sets
