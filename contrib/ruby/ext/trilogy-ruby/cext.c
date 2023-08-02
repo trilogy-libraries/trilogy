@@ -252,6 +252,8 @@ static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
         rb_jump_tag(state);
     }
 
+    // rc here comes from rb_wait_for_single_fd which (similar to poll(3)) returns 0 to indicate that the call timed out
+    // or -1 to indicate a system error with errno set.
     if (args.rc < 0)
         return TRILOGY_SYSERR;
     if (args.rc == 0)
