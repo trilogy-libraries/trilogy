@@ -96,6 +96,15 @@ class ClientTest < TrilogyTest
     ensure_closed client
   end
 
+  # select_db is just an alias for change_db
+  # and is tested here to ensure it works.
+  def test_trilogy_select_db
+    client = new_tcp_client
+    assert client.select_db "test"
+  ensure
+    ensure_closed client
+  end
+
   def test_trilogy_change_db_after_close_raises
     client = new_tcp_client
     assert client.change_db "test"

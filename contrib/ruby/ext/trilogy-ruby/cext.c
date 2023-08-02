@@ -1037,6 +1037,7 @@ RUBY_FUNC_EXPORTED void Init_cext()
 
     rb_define_private_method(Trilogy, "_initialize", rb_trilogy_initialize, 3);
     rb_define_method(Trilogy, "change_db", rb_trilogy_change_db, 1);
+    rb_define_alias(Trilogy, "select_db", "change_db");
     rb_define_method(Trilogy, "query", rb_trilogy_query, 1);
     rb_define_method(Trilogy, "ping", rb_trilogy_ping, 0);
     rb_define_method(Trilogy, "escape", rb_trilogy_escape, 1);
