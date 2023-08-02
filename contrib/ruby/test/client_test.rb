@@ -30,12 +30,6 @@ class ClientTest < TrilogyTest
     ensure_closed client
   end
 
-  def test_trilogy_connect_tcp_fixnum_port
-    assert_raises TypeError do
-      new_tcp_client port: "13306"
-    end
-  end
-
   def test_trilogy_connect_tcp_to_wrong_port
     e = assert_raises Trilogy::ConnectionError do
       new_tcp_client port: 13307
@@ -98,6 +92,15 @@ class ClientTest < TrilogyTest
   def test_trilogy_change_db
     client = new_tcp_client
     assert client.change_db "test"
+  ensure
+    ensure_closed client
+  end
+
+  # select_db is just an alias for change_db
+  # and is tested here to ensure it works.
+  def test_trilogy_select_db
+    client = new_tcp_client
+    assert client.select_db "test"
   ensure
     ensure_closed client
   end
@@ -567,10 +570,9 @@ class ClientTest < TrilogyTest
     end
     assert_equal "Invalid date: 1234-00-00 00:00:00", err.message
 
-    err = assert_raises Trilogy::Error do
+    assert_raises_connection_error do
       client.ping
     end
-    assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
   end
 
   def test_client_side_timeout_checks_result_set
@@ -587,11 +589,9 @@ class ClientTest < TrilogyTest
       end
     end
 
-    err = assert_raises Trilogy::Error do
+    assert_raises_connection_error do
       client.query("SELECT varchar_test FROM trilogy_test WHERE int_test = 2").to_a
     end
-
-    assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
   end
 
   def assert_elapsed(expected, delta)
@@ -611,11 +611,9 @@ class ClientTest < TrilogyTest
         end
       end
 
-      err = assert_raises Trilogy::Error do
+      assert_raises_connection_error do
         client.query("SELECT 'hello'").to_a
       end
-
-      assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
     end
   end
 
@@ -684,11 +682,9 @@ class ClientTest < TrilogyTest
       end
     end
 
-    err = assert_raises Trilogy::Error do
+    assert_raises_connection_error do
       client.ping
     end
-
-    assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
   end
 
   USR1 = Class.new(StandardError)
@@ -745,6 +741,15 @@ class ClientTest < TrilogyTest
     Trilogy.new(host: "localhost")
   end
 
+  PADDED_QUERY_TEMPLATE = "SELECT LENGTH('%s')"
+  PROTOCOL_OVERHEAD = 2 # One byte for the 0x03 (COM_QUERY); one because the packet is actually required to be shorter than the "max"
+  PADDED_QUERY_OVERHEAD =
+    PADDED_QUERY_TEMPLATE.size - "%s".size + PROTOCOL_OVERHEAD
+
+  def query_for_target_packet_size(size)
+    PADDED_QUERY_TEMPLATE % ("x" * (size - PADDED_QUERY_OVERHEAD))
+  end
+
   def set_max_allowed_packet(size)
     client = new_tcp_client
     client.query "SET GLOBAL max_allowed_packet = #{size}"
@@ -752,21 +757,100 @@ class ClientTest < TrilogyTest
     ensure_closed client
   end
 
-  def test_packet_size
+  def test_packet_size_lower_than_trilogy_max_packet_len
+    set_max_allowed_packet(4 * 1024 * 1024) # TRILOGY_MAX_PACKET_LEN is 16MB
+
+    client = new_tcp_client(max_allowed_packet: 4 * 1024 * 1024)
+
+    assert client.query query_for_target_packet_size(1 * 1024 * 1024)
+
+    assert client.query query_for_target_packet_size(2 * 1024 * 1024)
+
+    assert client.query query_for_target_packet_size(4 * 1024 * 1024)
+
+    exception = assert_raises Trilogy::QueryError do
+      client.query query_for_target_packet_size(4 * 1024 * 1024 + 1)
+    end
+
+    assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
+  ensure
+    ensure_closed client
+  end
+
+  def test_packet_size_greater_than_trilogy_max_packet_len
+    set_max_allowed_packet(32 * 1024 * 1024) # TRILOGY_MAX_PACKET_LEN is 16MB
+
+    client = new_tcp_client(max_allowed_packet: 32 * 1024 * 1024)
+
+    assert client.query query_for_target_packet_size(16 * 1024 * 1024)
+
+    assert client.query query_for_target_packet_size(32 * 1024 * 1024)
+
+    exception = assert_raises Trilogy::QueryError do
+      client.query query_for_target_packet_size(32 * 1024 * 1024 + 1)
+    end
+
+    assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
+  ensure
+    ensure_closed client
+  end
+
+  def test_configured_max_packet_below_server
     set_max_allowed_packet(32 * 1024 * 1024)
 
-    client = new_tcp_client
+    client = new_tcp_client(max_allowed_packet: 24 * 1024 * 1024)
 
-    create_test_table(client)
-    client.query "TRUNCATE trilogy_test"
+    assert client.query query_for_target_packet_size(16 * 1024 * 1024)
 
-    result = client.query "INSERT INTO trilogy_test (blob_test) VALUES ('#{"x" * (15 * 1024 * 1024)}')"
-    assert result
-    assert_equal 1, client.last_insert_id
+    assert client.query query_for_target_packet_size(24 * 1024 * 1024)
 
-    result = client.query "INSERT INTO trilogy_test (blob_test) VALUES ('#{"x" * (31 * 1024 * 1024)}')"
-    assert result
-    assert_equal 2, client.last_insert_id
+    exception = assert_raises Trilogy::QueryError do
+      client.query query_for_target_packet_size(24 * 1024 * 1024 + 1)
+    end
+
+    assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
+  ensure
+    ensure_closed client
+  end
+
+  def test_configured_max_packet_above_server
+    set_max_allowed_packet(24 * 1024 * 1024)
+
+    client = new_tcp_client(max_allowed_packet: 32 * 1024 * 1024)
+
+    assert client.query query_for_target_packet_size(16 * 1024 * 1024)
+
+    assert client.query query_for_target_packet_size(24 * 1024 * 1024)
+
+    exception = assert_raises Trilogy::QueryError do
+      client.query query_for_target_packet_size(32 * 1024 * 1024 + 1)
+    end
+
+    assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
+
+    exception = assert_raises_connection_error do
+      client.query query_for_target_packet_size(24 * 1024 * 1024 + 1)
+    end
+
+    refute_match(/TRILOGY_MAX_PACKET_EXCEEDED/, exception.message)
+  ensure
+    ensure_closed client
+  end
+
+  def test_absolute_maximum_packet_size
+    skip unless ENV["CI"]
+
+    set_max_allowed_packet(1024 * 1024 * 1024) # 1GB is the highest maximum allowed
+
+    client = new_tcp_client(max_allowed_packet: 1024 * 1024 * 1024)
+
+    assert client.query query_for_target_packet_size(1024 * 1024 * 1024)
+
+    exception = assert_raises Trilogy::QueryError do
+      client.query query_for_target_packet_size(1024 * 1024 * 1024 + 1)
+    end
+
+    assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
   ensure
     ensure_closed client
   end
@@ -909,10 +993,9 @@ class ClientTest < TrilogyTest
     _, status = Process.wait2(pid)
     assert_predicate status, :success?
 
-    error = assert_raises Trilogy::QueryError do
+    assert_raises_connection_error do
       client.query("SELECT 1")
     end
-    assert_match "TRILOGY_CLOSED_CONNECTION", error.message
   end
 
   def test_discard_doesnt_terminate_parent_connection
@@ -976,5 +1059,18 @@ class ClientTest < TrilogyTest
     result = client.query("SELECT '#{expected}'").to_a.first.first
     assert_equal expected.dup.force_encoding(Encoding::Windows_31J), result
     assert_equal Encoding::Windows_31J, result.encoding
+  end
+
+  def test_connection_options_casting
+    options = {
+      host: DEFAULT_HOST,
+      port: DEFAULT_PORT.to_s,
+      username: DEFAULT_USER,
+      password: DEFAULT_PASS,
+      ssl: "1",
+    }
+    client = new_tcp_client(**options)
+
+    assert client.query("SELECT 1")
   end
 end

@@ -33,12 +33,21 @@ const trilogy_sockopt_t *get_connopt(void) { return &connopt; }
     SUITE(build_quit_packet_test)                                                                                      \
     SUITE(build_set_option_packet_test)                                                                                \
     SUITE(build_query_packet_test)                                                                                     \
+    SUITE(stmt_prepare_packet_test)                                                                                    \
+    SUITE(stmt_bind_data_packet_test)                                                                                  \
+    SUITE(stmt_execute_packet_test)                                                                                    \
+    SUITE(stmt_reset_packet_test)                                                                                      \
+    SUITE(stmt_close_packet_test)                                                                                      \
     SUITE(client_connect_test)                                                                                         \
     SUITE(client_escape_test)                                                                                          \
     SUITE(client_auth_test)                                                                                            \
     SUITE(client_change_db_test)                                                                                       \
     SUITE(client_set_option_test)                                                                                      \
-    SUITE(client_ping_test)
+    SUITE(client_ping_test)                                                                                            \
+    SUITE(client_stmt_prepare_test)                                                                                    \
+    SUITE(client_stmt_execute_test)                                                                                    \
+    SUITE(client_stmt_reset_test)                                                                                      \
+    SUITE(client_stmt_close_test)                                                                                      \
 
 #define XX(name) extern int name();
 ALL_SUITES(XX)

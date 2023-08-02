@@ -131,10 +131,9 @@ class SslTest < TrilogyTest
     assert_includes err.message, "SSL Error"
 
     # Socket is closed on this attempt due to previous failures.
-    err = assert_raises Trilogy::Error do
+    assert_raises_connection_error do
       client.query "SELECT 1"
     end
-    assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
 
   ensure
     Process.kill("QUIT", pid)
@@ -237,5 +236,4 @@ class SslTest < TrilogyTest
   ensure
     ensure_closed client
   end
-
 end

@@ -357,7 +357,9 @@ static int _cb_ssl_close(trilogy_sock_t *_sock)
 {
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
     if (sock->ssl != NULL) {
-        SSL_shutdown(sock->ssl);
+        if (SSL_in_init(sock->ssl) == 0) {
+            SSL_shutdown(sock->ssl);
+        }
         SSL_free(sock->ssl);
         sock->ssl = NULL;
     }

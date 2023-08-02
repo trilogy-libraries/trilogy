@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
   s.authors = ["GitHub Engineering"]
   s.email = "opensource+trilogy@github.com"
   s.license = "MIT"
-  s.homepage = "https://github.com/github/trilogy"
+  s.homepage = "https://github.com/trilogy-libraries/trilogy"
   s.summary = "A friendly MySQL-compatible library for Ruby, binding to libtrilogy"
 
   s.extensions = "ext/trilogy-ruby/extconf.rb"

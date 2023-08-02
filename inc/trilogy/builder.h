@@ -16,6 +16,8 @@
 typedef struct {
     trilogy_buffer_t *buffer;
     size_t header_offset;
+    size_t packet_length;
+    size_t packet_max_length;
     uint32_t fragment_length;
     uint8_t seq;
 } trilogy_builder_t;
@@ -54,6 +56,8 @@ void trilogy_builder_finalize(trilogy_builder_t *builder);
  * Return values:
  *   TRILOGY_OK     - The value was appended to the packet buffer.
  *   TRILOGY_SYSERR - A system error occurred, check errno.
+ *   TRILOGY_MAX_PACKET_EXCEEDED - Appending this value would exceed the maximum
+ *                                 packet size.
  */
 int trilogy_builder_write_uint8(trilogy_builder_t *builder, uint8_t val);
 
@@ -66,6 +70,8 @@ int trilogy_builder_write_uint8(trilogy_builder_t *builder, uint8_t val);
  * Return values:
  *   TRILOGY_OK     - The value was appended to the packet buffer.
  *   TRILOGY_SYSERR - A system error occurred, check errno.
+ *   TRILOGY_MAX_PACKET_EXCEEDED - Appending this value would exceed the maximum
+ *                                 packet size.
  */
 int trilogy_builder_write_uint16(trilogy_builder_t *builder, uint16_t val);
 
@@ -78,6 +84,8 @@ int trilogy_builder_write_uint16(trilogy_builder_t *builder, uint16_t val);
  * Return values:
  *   TRILOGY_OK     - The value was appended to the packet buffer.
  *   TRILOGY_SYSERR - A system error occurred, check errno.
+ *   TRILOGY_MAX_PACKET_EXCEEDED - Appending this value would exceed the maximum
+ *                                 packet size.
  */
 int trilogy_builder_write_uint24(trilogy_builder_t *builder, uint32_t val);
 
@@ -90,6 +98,8 @@ int trilogy_builder_write_uint24(trilogy_builder_t *builder, uint32_t val);
  * Return values:
  *   TRILOGY_OK     - The value was appended to the packet buffer.
  *   TRILOGY_SYSERR - A system error occurred, check errno.
+ *   TRILOGY_MAX_PACKET_EXCEEDED - Appending this value would exceed the maximum
+ *                                 packet size.
  */
 int trilogy_builder_write_uint32(trilogy_builder_t *builder, uint32_t val);
 
@@ -102,8 +112,36 @@ int trilogy_builder_write_uint32(trilogy_builder_t *builder, uint32_t val);
  * Return values:
  *   TRILOGY_OK     - The value was appended to the packet buffer.
  *   TRILOGY_SYSERR - A system error occurred, check errno.
+ *   TRILOGY_MAX_PACKET_EXCEEDED - Appending this value would exceed the maximum
+ *                                 packet size.
  */
 int trilogy_builder_write_uint64(trilogy_builder_t *builder, uint64_t val);
+
+/* trilogy_builder_write_float - Append a float to the packet buffer.
+ *
+ * builder - A pre-initialized trilogy_builder_t pointer
+ * val     - The value to append to the buffer
+ *
+ * Return values:
+ *   TRILOGY_OK     - The value was appended to the packet buffer.
+ *   TRILOGY_SYSERR - A system error occurred, check errno.
+ *   TRILOGY_MAX_PACKET_EXCEEDED - Appending this value would exceed the maximum
+ *                                 packet size.
+ */
+int trilogy_builder_write_float(trilogy_builder_t *builder, float val);
+
+/* trilogy_builder_write_double - Append a double to the packet buffer.
+ *
+ * builder - A pre-initialized trilogy_builder_t pointer
+ * val     - The value to append to the buffer
+ *
+ * Return values:
+ *   TRILOGY_OK     - The value was appended to the packet buffer.
+ *   TRILOGY_SYSERR - A system error occurred, check errno.
+ *   TRILOGY_MAX_PACKET_EXCEEDED - Appending this value would exceed the maximum
+ *                                 packet size.
+ */
+int trilogy_builder_write_double(trilogy_builder_t *builder, double val);
 
 /* trilogy_builder_write_lenenc - Append a length-encoded integer to the packet
  * buffer.
@@ -117,6 +155,8 @@ int trilogy_builder_write_uint64(trilogy_builder_t *builder, uint64_t val);
  * Return values:
  *   TRILOGY_OK     - The value was appended to the packet buffer.
  *   TRILOGY_SYSERR - A system error occurred, check errno.
+ *   TRILOGY_MAX_PACKET_EXCEEDED - Appending this value would exceed the maximum
+ *                                 packet size.
  */
 int trilogy_builder_write_lenenc(trilogy_builder_t *builder, uint64_t val);
 
@@ -130,6 +170,8 @@ int trilogy_builder_write_lenenc(trilogy_builder_t *builder, uint64_t val);
  * Return values:
  *   TRILOGY_OK     - The value was appended to the packet buffer.
  *   TRILOGY_SYSERR - A system error occurred, check errno.
+ *   TRILOGY_MAX_PACKET_EXCEEDED - Appending this value would exceed the maximum
+ *                                 packet size.
  */
 int trilogy_builder_write_buffer(trilogy_builder_t *builder, const void *data, size_t len);
 
@@ -144,6 +186,8 @@ int trilogy_builder_write_buffer(trilogy_builder_t *builder, const void *data, s
  * Return values:
  *   TRILOGY_OK     - The value was appended to the packet buffer.
  *   TRILOGY_SYSERR - A system error occurred, check errno.
+ *   TRILOGY_MAX_PACKET_EXCEEDED - Appending this value would exceed the maximum
+ *                                 packet size.
  */
 int trilogy_builder_write_lenenc_buffer(trilogy_builder_t *builder, const void *data, size_t len);
 
@@ -155,7 +199,23 @@ int trilogy_builder_write_lenenc_buffer(trilogy_builder_t *builder, const void *
  * Return values:
  *   TRILOGY_OK     - The value was appended to the packet buffer.
  *   TRILOGY_SYSERR - A system error occurred, check errno.
+ *   TRILOGY_MAX_PACKET_EXCEEDED - Appending this value would exceed the maximum
+ *                                 packet size.
  */
 int trilogy_builder_write_string(trilogy_builder_t *builder, const char *data);
+
+/* trilogy_builder_set_max_packet_length - Set the maximum packet length for
+ * the builder. Writing data to the builder that would cause the packet length
+ * to exceed this value will cause the builder to error.
+ *
+ * builder    - A pre-initialized trilogy_builder_t pointer
+ * max_length - The new maximum packet length to set
+ *
+ * Return values:
+ *   TRILOGY_OK                  - The maximum packet length was set.
+ *   TRILOGY_MAX_PACKET_EXCEEDED - The current packet length is already
+ *                                 larger than the requested maximum.
+ */
+int trilogy_builder_set_max_packet_length(trilogy_builder_t *builder, size_t max_length);
 
 #endif

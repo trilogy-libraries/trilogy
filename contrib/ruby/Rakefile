@@ -8,6 +8,12 @@ Rake::ExtensionTask.new do |ext|
   ext.lib_dir = "lib/trilogy"
 end
 
+# When any of the parent library's files change, we need to re-run extconf
+vendored_c_lib = FileList["ext/trilogy-ruby/src/**/*.c", "ext/trilogy-ruby/inc/**/*.h"]
+if extconf_task = Rake.application.tasks.find { |t| t.name =~ /Makefile/ }
+  task extconf_task => vendored_c_lib
+end
+
 Rake::TestTask.new do |t|
   t.libs << "test"
   t.test_files = FileList['test/*_test.rb']
