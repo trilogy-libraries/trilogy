@@ -339,6 +339,11 @@ static ssize_t ssl_io_return(struct trilogy_sock *sock, ssize_t ret)
 static ssize_t _cb_ssl_read(trilogy_sock_t *_sock, void *buf, size_t nread)
 {
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
+
+    // This shouldn't be necessary, but protects against other libraries in the same process incorrectly leaving errors
+    // in the queue.
+    ERR_clear_error();
+
     ssize_t data_read = (ssize_t)SSL_read(sock->ssl, buf, (int)nread);
     return ssl_io_return(sock, data_read);
 }
@@ -346,6 +351,11 @@ static ssize_t _cb_ssl_read(trilogy_sock_t *_sock, void *buf, size_t nread)
 static ssize_t _cb_ssl_write(trilogy_sock_t *_sock, const void *buf, size_t nwrite)
 {
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
+
+    // This shouldn't be necessary, but protects against other libraries in the same process incorrectly leaving errors
+    // in the queue.
+    ERR_clear_error();
+
     ssize_t data_written = (ssize_t)SSL_write(sock->ssl, buf, (int)nwrite);
     return ssl_io_return(sock, data_written);
 }
@@ -560,6 +570,10 @@ int trilogy_sock_upgrade_ssl(trilogy_sock_t *_sock)
 {
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
 
+    // This shouldn't be necessary, but protects against other libraries in the same process incorrectly leaving errors
+    // in the queue.
+    ERR_clear_error();
+
     SSL_CTX *ctx = trilogy_ssl_ctx(&sock->base.opts);
 
     if (!ctx) {
@@ -602,6 +616,10 @@ int trilogy_sock_upgrade_ssl(trilogy_sock_t *_sock)
         goto fail;
 
     for (;;) {
+        // This shouldn't be necessary, but protects against other libraries in the same process incorrectly leaving errors
+        // in the queue.
+        ERR_clear_error();
+
         int ret = SSL_connect(sock->ssl);
         if (ret == 1) {
 #if OPENSSL_VERSION_NUMBER < 0x1000200fL
