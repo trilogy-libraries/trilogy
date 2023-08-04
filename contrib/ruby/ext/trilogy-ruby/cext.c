@@ -994,6 +994,10 @@ static VALUE rb_trilogy_close(VALUE self)
         }
     }
 
+    // We aren't checking or raising errors here (we need close to always close the socket and free the connection), so
+    // we must clear any SSL errors left in the queue from a read/write.
+    ERR_clear_error();
+
     trilogy_free(&ctx->conn);
 
     return Qnil;
