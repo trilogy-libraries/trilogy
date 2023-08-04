@@ -109,11 +109,31 @@ static int _cb_raw_close(trilogy_sock_t *_sock)
     return rc;
 }
 
-static int _cb_shutdown_connect(trilogy_sock_t *_sock) { return TRILOGY_CLOSED_CONNECTION; }
-static ssize_t _cb_shutdown_write(trilogy_sock_t *_sock, const void *buf, size_t nwrite) { return TRILOGY_CLOSED_CONNECTION; }
-static ssize_t _cb_shutdown_read(trilogy_sock_t *_sock, void *_buf, size_t _nread) { return TRILOGY_CLOSED_CONNECTION; }
-static int _cb_shutdown_wait(trilogy_sock_t *_sock, trilogy_wait_t _wait) { return TRILOGY_OK; }
-static int _cb_shutdown_shutdown(trilogy_sock_t *_sock) { return TRILOGY_OK; }
+static int _cb_shutdown_connect(trilogy_sock_t *_sock) {
+    (void)_sock;
+    return TRILOGY_CLOSED_CONNECTION;
+}
+static ssize_t _cb_shutdown_write(trilogy_sock_t *_sock, const void *buf, size_t nwrite) {
+    (void)_sock;
+    (void)buf;
+    (void)nwrite;
+    return TRILOGY_CLOSED_CONNECTION;
+}
+static ssize_t _cb_shutdown_read(trilogy_sock_t *_sock, void *buf, size_t nread) {
+    (void)_sock;
+    (void)buf;
+    (void)nread;
+    return TRILOGY_CLOSED_CONNECTION;
+}
+static int _cb_shutdown_wait(trilogy_sock_t *_sock, trilogy_wait_t wait) {
+    (void)_sock;
+    (void)wait;
+    return TRILOGY_OK;
+}
+static int _cb_shutdown_shutdown(trilogy_sock_t *_sock) {
+    (void)_sock;
+    return TRILOGY_OK;
+}
 
 // Shutdown will close the underlying socket fd and replace all I/O operations with stubs which perform no action.
 static int _cb_raw_shutdown(trilogy_sock_t *_sock) {
