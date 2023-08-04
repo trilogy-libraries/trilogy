@@ -357,7 +357,10 @@ static int _cb_ssl_close(trilogy_sock_t *_sock)
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
     if (sock->ssl != NULL) {
         if (SSL_in_init(sock->ssl) == 0) {
-            SSL_shutdown(sock->ssl);
+            (void)SSL_shutdown(sock->ssl);
+            // SSL_shutdown might return WANT_WRITE or WANT_READ. Ideally we would retry but we don't want to block.
+            // It may also push an error onto the OpenSSL error queue, so clear that.
+            ERR_clear_error();
         }
         SSL_free(sock->ssl);
         sock->ssl = NULL;
