@@ -1,5 +1,6 @@
 #include <netdb.h>
 #include <netinet/tcp.h>
+#include <netinet/in.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
