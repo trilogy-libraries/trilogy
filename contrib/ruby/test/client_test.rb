@@ -840,7 +840,7 @@ class ClientTest < TrilogyTest
 
     refute_match(/TRILOGY_MAX_PACKET_EXCEEDED/, exception.message)
 
-    exception = assert_raises_connection_error do
+    assert_raises_connection_error do
       client.ping
     end
   ensure
