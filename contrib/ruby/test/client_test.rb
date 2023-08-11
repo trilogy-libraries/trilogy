@@ -1073,4 +1073,32 @@ class ClientTest < TrilogyTest
 
     assert client.query("SELECT 1")
   end
+
+  def test_connection_close_across_threads_doesnt_crash
+    client = new_tcp_client
+    timeout = 10
+    start_time = Time.now
+    terminated = false
+
+    4.times.map do
+      Thread.new do
+        until terminated do
+          begin
+            jitter = rand(1) / 100.0
+            client.query("SELECT SLEEP(#{jitter}), '#{SecureRandom.hex(1024)}'")
+            client.close
+            client = new_tcp_client
+            if Time.now - start_time > timeout
+              raise Timeout::Error, "timed out waiting for failure condition"
+            end
+          rescue Trilogy::QueryError => e
+            raise unless e.message.include?("socket unexpectedly went null")
+            terminated = true
+          rescue Trilogy::ConnectionClosed
+            terminated = true
+          end
+        end
+      end
+    end.each(&:join)
+  end
 end

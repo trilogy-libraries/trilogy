@@ -704,6 +704,10 @@ static VALUE read_query_response(VALUE vargs)
     int rc;
 
     while (1) {
+        if (ctx->conn.socket == NULL) {
+            return read_query_error(args, TRILOGY_CLOSED_CONNECTION, "socket unexpectedly went null before reading query response");
+        }
+
         rc = trilogy_query_recv(&ctx->conn, &column_count);
 
         if (rc == TRILOGY_OK || rc == TRILOGY_HAVE_RESULTS) {
@@ -841,7 +845,10 @@ static VALUE execute_read_query_response(struct trilogy_ctx *ctx)
 
     // If we have seen an unexpected exception, jump to it so it gets raised.
     if (state) {
-        trilogy_sock_shutdown(ctx->conn.socket);
+        // Connection closed by another thread
+        if (ctx->conn.socket != NULL) {
+            trilogy_sock_shutdown(ctx->conn.socket);
+        }
         rb_jump_tag(state);
     }
 
