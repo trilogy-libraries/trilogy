@@ -402,7 +402,11 @@ int trilogy_auth_switch_send(trilogy_conn_t *conn, const trilogy_handshake_t *ha
 void trilogy_auth_clear_password(trilogy_conn_t *conn)
 {
     if (conn->socket->opts.password) {
+        # ifdef __STDC_WANT_LIB_EXT1__
         memset_s(conn->socket->opts.password, conn->socket->opts.password_len, 0, conn->socket->opts.password_len);
+        #else
+        explicit_bzero(conn->socket->opts.password, conn->socket->opts.password_len);
+        #endif
     }
 }
 
