@@ -139,6 +139,8 @@ class TrilogyTest < Minitest::Test
 
     if err.is_a?(Trilogy::QueryError)
       assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
+    elsif err.is_a?(Trilogy::SSLError)
+      assert_includes err.message, "unexpected eof while reading"
     else
       assert_instance_of Trilogy::ConnectionResetError, err
     end

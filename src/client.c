@@ -1,4 +1,3 @@
-#include <errno.h>
 #include <fcntl.h>
 
 #include "trilogy/client.h"
@@ -76,11 +75,6 @@ static int read_packet(trilogy_conn_t *conn)
 
         if (nread < 0) {
             int rc = (int)nread;
-            if (rc == TRILOGY_SYSERR) {
-                if (errno == EINTR || errno == EAGAIN) {
-                    return TRILOGY_AGAIN;
-                }
-            }
             return rc;
         }
 
@@ -162,16 +156,6 @@ int trilogy_flush_writes(trilogy_conn_t *conn)
 
     if (bytes < 0) {
         int rc = (int)bytes;
-        if (rc == TRILOGY_SYSERR) {
-            if (errno == EINTR || errno == EAGAIN) {
-                return TRILOGY_AGAIN;
-            }
-
-            if (errno == EPIPE) {
-                return TRILOGY_CLOSED_CONNECTION;
-            }
-        }
-
         return rc;
     }
 

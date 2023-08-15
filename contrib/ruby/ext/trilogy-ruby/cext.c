@@ -94,10 +94,24 @@ static void trilogy_syserr_fail_str(int e, VALUE msg)
         rb_raise(Trilogy_ConnectionRefusedError, "%" PRIsVALUE, msg);
     } else if (e == ECONNRESET) {
         rb_raise(Trilogy_ConnectionResetError, "%" PRIsVALUE, msg);
+    } else if (e == EPIPE) {
+        // Backwards compatibility: This error class makes no sense, but matches legacy behavior
+        rb_raise(Trilogy_QueryError, "%" PRIsVALUE ": TRILOGY_CLOSED_CONNECTION", msg);
     } else {
         VALUE exc = rb_funcall(Trilogy_SyscallError, id_from_errno, 2, INT2NUM(e), msg);
         rb_exc_raise(exc);
     }
+}
+
+static int trilogy_error_recoverable_p(int rc)
+{
+    // TRILOGY_OPENSSL_ERR and TRILOGY_SYSERR (which can result from an SSL error) must shut down the socket, as further
+    // SSL calls would be invalid.
+    // TRILOGY_ERR, which represents an error message sent to us from the server, is recoverable.
+    // TRILOGY_MAX_PACKET_EXCEEDED is also recoverable as we do not send data when it occurs.
+    // For other exceptions we will also close the socket to prevent further use, as the connection is probably in an
+    // invalid state.
+    return rc == TRILOGY_ERR || rc == TRILOGY_MAX_PACKET_EXCEEDED;
 }
 
 NORETURN(static void handle_trilogy_error(struct trilogy_ctx *, int, const char *, ...));
@@ -108,14 +122,20 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
     VALUE rbmsg = rb_vsprintf(msg, args);
     va_end(args);
 
+    if (!trilogy_error_recoverable_p(rc)) {
+        if (ctx->conn.socket != NULL) {
+            // trilogy_sock_shutdown may affect errno
+            int errno_was = errno;
+            trilogy_sock_shutdown(ctx->conn.socket);
+            errno = errno_was;
+        }
+    }
+
     switch (rc) {
     case TRILOGY_SYSERR:
         trilogy_syserr_fail_str(errno, rbmsg);
 
     case TRILOGY_TIMEOUT:
-        if (ctx->conn.socket != NULL) {
-            trilogy_sock_shutdown(ctx->conn.socket);
-        }
         rb_raise(Trilogy_TimeoutError, "%" PRIsVALUE, rbmsg);
 
     case TRILOGY_ERR: {
@@ -130,11 +150,6 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
         if (ERR_GET_LIB(ossl_error) == ERR_LIB_SYS) {
             int err_reason = ERR_GET_REASON(ossl_error);
             trilogy_syserr_fail_str(err_reason, rbmsg);
-        }
-        // We can't recover from OpenSSL level errors if there's
-        // an active connection.
-        if (ctx->conn.socket != NULL) {
-            trilogy_sock_shutdown(ctx->conn.socket);
         }
         rb_raise(Trilogy_SSLError, "%" PRIsVALUE ": SSL Error: %s", rbmsg, ERR_reason_error_string(ossl_error));
     }
@@ -981,6 +996,10 @@ static VALUE rb_trilogy_close(VALUE self)
             }
         }
     }
+
+    // We aren't checking or raising errors here (we need close to always close the socket and free the connection), so
+    // we must clear any SSL errors left in the queue from a read/write.
+    ERR_clear_error();
 
     trilogy_free(&ctx->conn);
 

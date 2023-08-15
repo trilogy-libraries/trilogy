@@ -66,7 +66,11 @@ static ssize_t _cb_raw_read(trilogy_sock_t *_sock, void *buf, size_t nread)
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
     ssize_t data_read = read(sock->fd, buf, nread);
     if (data_read < 0) {
-        return (ssize_t)TRILOGY_SYSERR;
+        if (errno == EINTR || errno == EAGAIN) {
+            return (ssize_t)TRILOGY_AGAIN;
+        } else {
+            return (ssize_t)TRILOGY_SYSERR;
+        }
     }
     return data_read;
 }
@@ -76,6 +80,14 @@ static ssize_t _cb_raw_write(trilogy_sock_t *_sock, const void *buf, size_t nwri
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
     ssize_t data_written = write(sock->fd, buf, nwrite);
     if (data_written < 0) {
+        if (errno == EINTR || errno == EAGAIN) {
+            return (ssize_t)TRILOGY_AGAIN;
+        }
+
+        if (errno == EPIPE) {
+            return (ssize_t)TRILOGY_CLOSED_CONNECTION;
+        }
+
         return (ssize_t)TRILOGY_SYSERR;
     }
     return data_written;
@@ -353,12 +365,18 @@ fail:
 
 static ssize_t ssl_io_return(struct trilogy_sock *sock, ssize_t ret)
 {
-    if (ret < 0) {
+    if (ret <= 0) {
         int rc = SSL_get_error(sock->ssl, (int)ret);
         if (rc == SSL_ERROR_WANT_WRITE || rc == SSL_ERROR_WANT_READ) {
             return (ssize_t)TRILOGY_AGAIN;
-        } else if (rc == SSL_ERROR_SYSCALL && errno != 0) {
-            return (ssize_t)TRILOGY_SYSERR;
+        } else if (rc == SSL_ERROR_SYSCALL && !ERR_peek_error()) {
+            if (errno == 0) {
+                // On OpenSSL <= 1.1.1, SSL_ERROR_SYSCALL with an errno value
+                // of 0 indicates unexpected EOF from the peer.
+                return (ssize_t)TRILOGY_CLOSED_CONNECTION;
+            } else {
+                return (ssize_t)TRILOGY_SYSERR;
+            }
         }
         return (ssize_t)TRILOGY_OPENSSL_ERR;
     }
@@ -368,6 +386,11 @@ static ssize_t ssl_io_return(struct trilogy_sock *sock, ssize_t ret)
 static ssize_t _cb_ssl_read(trilogy_sock_t *_sock, void *buf, size_t nread)
 {
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
+
+    // This shouldn't be necessary, but protects against other libraries in the same process incorrectly leaving errors
+    // in the queue.
+    ERR_clear_error();
+
     ssize_t data_read = (ssize_t)SSL_read(sock->ssl, buf, (int)nread);
     return ssl_io_return(sock, data_read);
 }
@@ -375,6 +398,11 @@ static ssize_t _cb_ssl_read(trilogy_sock_t *_sock, void *buf, size_t nread)
 static ssize_t _cb_ssl_write(trilogy_sock_t *_sock, const void *buf, size_t nwrite)
 {
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
+
+    // This shouldn't be necessary, but protects against other libraries in the same process incorrectly leaving errors
+    // in the queue.
+    ERR_clear_error();
+
     ssize_t data_written = (ssize_t)SSL_write(sock->ssl, buf, (int)nwrite);
     return ssl_io_return(sock, data_written);
 }
@@ -398,7 +426,10 @@ static int _cb_ssl_close(trilogy_sock_t *_sock)
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
     if (sock->ssl != NULL) {
         if (SSL_in_init(sock->ssl) == 0) {
-            SSL_shutdown(sock->ssl);
+            (void)SSL_shutdown(sock->ssl);
+            // SSL_shutdown might return WANT_WRITE or WANT_READ. Ideally we would retry but we don't want to block.
+            // It may also push an error onto the OpenSSL error queue, so clear that.
+            ERR_clear_error();
         }
         SSL_free(sock->ssl);
         sock->ssl = NULL;
@@ -580,6 +611,10 @@ int trilogy_sock_upgrade_ssl(trilogy_sock_t *_sock)
 {
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
 
+    // This shouldn't be necessary, but protects against other libraries in the same process incorrectly leaving errors
+    // in the queue.
+    ERR_clear_error();
+
     SSL_CTX *ctx = trilogy_ssl_ctx(&sock->base.opts);
 
     if (!ctx) {
@@ -622,6 +657,10 @@ int trilogy_sock_upgrade_ssl(trilogy_sock_t *_sock)
         goto fail;
 
     for (;;) {
+        // This shouldn't be necessary, but protects against other libraries in the same process incorrectly leaving errors
+        // in the queue.
+        ERR_clear_error();
+
         int ret = SSL_connect(sock->ssl);
         if (ret == 1) {
 #if OPENSSL_VERSION_NUMBER < 0x1000200fL

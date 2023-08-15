@@ -773,6 +773,8 @@ class ClientTest < TrilogyTest
     end
 
     assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
+
+    assert client.ping
   ensure
     ensure_closed client
   end
@@ -791,6 +793,8 @@ class ClientTest < TrilogyTest
     end
 
     assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
+
+    assert client.ping
   ensure
     ensure_closed client
   end
@@ -809,6 +813,8 @@ class ClientTest < TrilogyTest
     end
 
     assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
+
+    assert client.ping
   ensure
     ensure_closed client
   end
@@ -833,6 +839,10 @@ class ClientTest < TrilogyTest
     end
 
     refute_match(/TRILOGY_MAX_PACKET_EXCEEDED/, exception.message)
+
+    assert_raises_connection_error do
+      client.ping
+    end
   ensure
     ensure_closed client
   end
@@ -851,6 +861,8 @@ class ClientTest < TrilogyTest
     end
 
     assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
+
+    assert client.ping
   ensure
     ensure_closed client
   end
