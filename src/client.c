@@ -770,7 +770,7 @@ void trilogy_free(trilogy_conn_t *conn)
 
 int trilogy_discard(trilogy_conn_t *conn)
 {
-    int rc = trilogy_sock_discard(conn->socket);
+    int rc = trilogy_sock_shutdown(conn->socket);
     if (rc == TRILOGY_OK) {
         trilogy_free(conn);
     }
