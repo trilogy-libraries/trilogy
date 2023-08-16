@@ -5,6 +5,27 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.5.0
+
+### Fixed
+  - Fix build with LibreSSL #73
+  - Fix build error on FreeBSD #82
+  - Fix Trilogy.new with no arguments #94
+  - Fix issues with OpenSSL #95 #112
+    - Avoid closing connections that are not connected
+    - Always close socket on error
+    - Clear error queue after close
+    - Clear error queue before each operation to defend against other misbehaving libraries
+  - Close connection if interrupted by a Ruby timeout #110
+  - Correctly cast time of 00:00:00 #97
+
+### Added
+  - Add option to disable multi_result capability #77
+  - Add option to validate max_allowed_packet #84
+  - Add binary protocol/prepared statement support to the C library #3
+  - Cast port option to integer #100
+  - Add select_db as an alias for change_db #101
+
 ## 2.4.1
 
 ### Fixed
