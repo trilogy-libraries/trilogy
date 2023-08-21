@@ -20,7 +20,7 @@ class Trilogy
       .select { |c| c.is_a?(Class) && c < SystemCallError }
       .each do |c|
         errno_name = c.to_s.split('::').last
-        ERRORS[c::Errno] = const_set(errno_name, Class.new(c) { include Trilogy::Error })
+        ERRORS[c::Errno] = const_set(errno_name, Class.new(c) { include Trilogy::ConnectionError })
       end
 
     ERRORS.freeze
