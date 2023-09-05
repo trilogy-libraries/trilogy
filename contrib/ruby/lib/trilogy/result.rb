@@ -6,6 +6,10 @@ class Trilogy
       rows.count
     end
 
+    def empty?
+      rows.empty?
+    end
+
     def each_hash
       return enum_for(:each_hash) unless block_given?
 
