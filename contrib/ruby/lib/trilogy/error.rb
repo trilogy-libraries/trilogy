@@ -20,7 +20,7 @@ class Trilogy
       .select { |c| c.is_a?(Class) && c < SystemCallError }
       .each do |c|
         errno_name = c.to_s.split('::').last
-        ERRORS[c::Errno] = const_set(errno_name, Class.new(c) { include Trilogy::Error })
+        ERRORS[c::Errno] = const_set(errno_name, Class.new(c) { include Trilogy::ConnectionError })
       end
 
     ERRORS.freeze
@@ -112,7 +112,13 @@ class Trilogy
     include ConnectionError
   end
 
+  # Raised on attempt to use connection which was explicitly closed by the user
   class ConnectionClosed < IOError
     include ConnectionError
+  end
+
+  # Occurrs when a socket read or write returns EOF or when an operation is
+  # attempted on a socket which previously encountered an error.
+  class EOFError < BaseConnectionError
   end
 end

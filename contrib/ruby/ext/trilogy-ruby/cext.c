@@ -18,7 +18,7 @@
 VALUE Trilogy_CastError;
 static VALUE Trilogy_BaseConnectionError, Trilogy_ProtocolError, Trilogy_SSLError, Trilogy_QueryError,
     Trilogy_ConnectionClosedError, Trilogy_ConnectionRefusedError, Trilogy_ConnectionResetError,
-    Trilogy_TimeoutError, Trilogy_SyscallError, Trilogy_Result;
+    Trilogy_TimeoutError, Trilogy_SyscallError, Trilogy_Result, Trilogy_EOFError;
 
 static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, id_connect_timeout, id_read_timeout,
     id_write_timeout, id_keepalive_enabled, id_keepalive_idle, id_keepalive_interval, id_keepalive_count,
@@ -96,7 +96,7 @@ static void trilogy_syserr_fail_str(int e, VALUE msg)
         rb_raise(Trilogy_ConnectionResetError, "%" PRIsVALUE, msg);
     } else if (e == EPIPE) {
         // Backwards compatibility: This error class makes no sense, but matches legacy behavior
-        rb_raise(Trilogy_QueryError, "%" PRIsVALUE ": TRILOGY_CLOSED_CONNECTION", msg);
+        rb_raise(Trilogy_EOFError, "%" PRIsVALUE ": TRILOGY_CLOSED_CONNECTION: EPIPE", msg);
     } else {
         VALUE exc = rb_funcall(Trilogy_SyscallError, id_from_errno, 2, INT2NUM(e), msg);
         rb_exc_raise(exc);
@@ -156,6 +156,10 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
 
     case TRILOGY_DNS_ERR: {
         rb_raise(Trilogy_BaseConnectionError, "%" PRIsVALUE ": TRILOGY_DNS_ERROR", rbmsg);
+    }
+
+    case TRILOGY_CLOSED_CONNECTION: {
+        rb_raise(Trilogy_EOFError, "%" PRIsVALUE ": TRILOGY_CLOSED_CONNECTION", rbmsg);
     }
 
     default:
@@ -1175,6 +1179,9 @@ RUBY_FUNC_EXPORTED void Init_cext()
 
     Trilogy_CastError = rb_const_get(Trilogy, rb_intern("CastError"));
     rb_global_variable(&Trilogy_CastError);
+
+    Trilogy_EOFError = rb_const_get(Trilogy, rb_intern("EOFError"));
+    rb_global_variable(&Trilogy_EOFError);
 
     id_socket = rb_intern("socket");
     id_host = rb_intern("host");
