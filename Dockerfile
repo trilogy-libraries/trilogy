@@ -3,7 +3,7 @@ ARG RUBY_VERSION=3.2
 FROM ${DISTRIBUTION}
 LABEL maintainer="github@github.com"
 
-RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y build-essential ca-certificates wget libssl-dev default-libmysqlclient-dev clang clang-tools valgrind netcat
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y build-essential ca-certificates wget libssl-dev default-libmysqlclient-dev clang clang-tools llvm valgrind netcat
 
 RUN update-ca-certificates
 

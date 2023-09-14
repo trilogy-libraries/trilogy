@@ -195,6 +195,14 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
         return TRILOGY_SYSERR;
     }
 
+#ifdef TCP_NODELAY
+    if (sock->addr->ai_family != PF_UNIX) {
+        int flags = 1;
+        if (setsockopt(sock->fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags)) < 0) {
+            goto fail;
+        }
+    }
+#endif
     if (sock->base.opts.keepalive_enabled) {
         int flags = 1;
         if (setsockopt(sock->fd, SOL_SOCKET, SO_KEEPALIVE, (void *)&flags, sizeof(flags)) < 0) {
