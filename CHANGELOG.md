@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.6.0
+
+### Changed
+
+  - `TCP_NODELAY` is enabled on all TCP connections #122
+  - `Trilogy::EOFError` is now raised for `TRILOGY_CLOSED_CONNECTION` instead
+    of the generic `Trilogy::QueryError` #118
+  - `Trilogy::SyscallError` now inherits `Trilogy::ConnectionError` #118
+
 ## 2.5.0
 
 ### Fixed
