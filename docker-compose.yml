@@ -1,6 +1,7 @@
 version: "3.5"
 services:
   db:
+    platform: linux/x86_64
     image: "mysql:${MYSQL_VERSION}-debian"
     command:
     - --sql_mode=NO_ENGINE_SUBSTITUTION
