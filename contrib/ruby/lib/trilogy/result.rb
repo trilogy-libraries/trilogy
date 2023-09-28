@@ -28,6 +28,18 @@ class Trilogy
       rows.each(&bk)
     end
 
+    def columns
+      @columns ||= _columns
+    end
+
     include Enumerable
+
+    class Column
+      attr_reader :name, :type, :length, :flags, :charset, :decimals
+
+      def initialize(name, type, length, flags, charset, decimals)
+        @name, @type, @length, @flags, @charset, @decimals = name, type, length, flags, charset, decimals
+      end
+    end
   end
 end
