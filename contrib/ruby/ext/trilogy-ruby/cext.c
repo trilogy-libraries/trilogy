@@ -1143,6 +1143,29 @@ static VALUE rb_trilogy_write_timeout_set(VALUE self, VALUE write_timeout)
     return write_timeout;
 }
 
+const char *const trilogy_type_names[] = {
+#define XX(name, code) [name] = (char *)#name + strlen("TRILOGY_TYPE_"),
+    TRILOGY_TYPES(XX)
+#undef XX
+};
+
+const char *const trilogy_charset_names[] = {
+#define XX(name, code) [name] = (char *)#name + strlen("TRILOGY_CHARSET_"),
+    TRILOGY_CHARSETS(XX)
+#undef XX
+};
+
+static char *downcase(const char *str)
+{
+    char *new_str = ALLOC_N(char, strlen(str) + 1);
+    char *p = new_str;
+    while (*str) {
+        *p++ = tolower(*str++);
+    }
+    *p = '\0';
+    return new_str;
+}
+
 static VALUE rb_trilogy_result_columns(VALUE self)
 {
     struct trilogy_result_ctx *trilogy_result_ctx = get_trilogy_result_ctx(self);
@@ -1150,9 +1173,10 @@ static VALUE rb_trilogy_result_columns(VALUE self)
     for (uint64_t i = 0; i < trilogy_result_ctx->column_count; i++) {
         VALUE obj = rb_funcall(
             Trilogy_Result_Column, rb_intern("new"), 6, trilogy_result_ctx->column_info[i].name,
-            rb_int_new(trilogy_result_ctx->column_info[i].type), rb_int_new(trilogy_result_ctx->column_info[i].len),
-            rb_int_new(trilogy_result_ctx->column_info[i].flags),
-            rb_int_new(trilogy_result_ctx->column_info[i].charset), rb_int_new(trilogy_result_ctx->column_info[i].decimals));
+            rb_id2sym(rb_intern(downcase(trilogy_type_names[trilogy_result_ctx->column_info[i].type]))),
+            rb_int_new(trilogy_result_ctx->column_info[i].len), rb_int_new(trilogy_result_ctx->column_info[i].flags),
+            rb_id2sym(rb_intern(downcase(trilogy_charset_names[trilogy_result_ctx->column_info[i].charset]))),
+            rb_int_new(trilogy_result_ctx->column_info[i].decimals));
         rb_ary_push(cols, obj);
     }
     return cols;    
