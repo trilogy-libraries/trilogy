@@ -17,12 +17,12 @@
 
 VALUE Trilogy_CastError;
 static VALUE Trilogy_BaseConnectionError, Trilogy_ProtocolError, Trilogy_SSLError, Trilogy_QueryError,
-    Trilogy_ConnectionClosedError, Trilogy_ConnectionRefusedError, Trilogy_ConnectionResetError,
-    Trilogy_TimeoutError, Trilogy_SyscallError, Trilogy_Result, Trilogy_Result_Column, Trilogy_EOFError;
+    Trilogy_ConnectionClosedError, Trilogy_ConnectionRefusedError, Trilogy_ConnectionResetError, Trilogy_TimeoutError,
+    Trilogy_SyscallError, Trilogy_Result, Trilogy_Result_Columns, Trilogy_Result_Column, Trilogy_EOFError;
 
 static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, id_connect_timeout, id_read_timeout,
     id_write_timeout, id_keepalive_enabled, id_keepalive_idle, id_keepalive_interval, id_keepalive_count,
-    id_ivar_affected_rows, id_ivar_fields, id_ivar_last_insert_id, id_ivar_rows, id_ivar_query_time, id_password,
+    id_ivar_affected_rows, id_ivar_fields, id_ivar_columns, id_ivar_last_insert_id, id_ivar_rows, id_ivar_query_time, id_password,
     id_database, id_ssl_ca, id_ssl_capath, id_ssl_cert, id_ssl_cipher, id_ssl_crl, id_ssl_crlpath, id_ssl_key,
     id_ssl_mode, id_tls_ciphersuites, id_tls_min_version, id_tls_max_version, id_multi_statement, id_multi_result,
     id_from_code, id_from_errno, id_connection_options, id_max_allowed_packet;
@@ -34,7 +34,7 @@ struct trilogy_ctx {
     VALUE encoding;
 };
 
-struct trilogy_result_ctx {
+struct trilogy_result_columns_ctx {
     struct column_info *column_info;
     uint64_t column_count;
 };
@@ -54,19 +54,19 @@ static void free_trilogy(void *ptr)
     xfree(ptr);
 }
 
-static void free_trilogy_result(void *ptr)
+static void free_trilogy_result_columns(void *ptr)
 {
-    struct trilogy_result_ctx *ctx = ptr;
+    struct trilogy_result_columns_ctx *ctx = ptr;
     if (ctx->column_info != NULL) {
         xfree(ctx->column_info);
     }
     xfree(ptr);
 }
 
-static size_t trilogy_result_memsize(const void *ptr)
+static size_t trilogy_result_columns_memsize(const void *ptr)
 {
-    const struct trilogy_result_ctx *ctx = ptr;
-    size_t memsize = sizeof(struct trilogy_result_ctx);
+    const struct trilogy_result_columns_ctx *ctx = ptr;
+    size_t memsize = sizeof(struct trilogy_result_columns_ctx);
     if (ctx->column_info != NULL) {
         memsize += sizeof(struct column_info) * ctx->column_count;
     }
@@ -93,11 +93,11 @@ static const rb_data_type_t trilogy_data_type = {
     .flags = RUBY_TYPED_FREE_IMMEDIATELY | RUBY_TYPED_WB_PROTECTED
 };
 
-static const rb_data_type_t trilogy_result_data_type = {
-    .wrap_struct_name = "trilogy_result",
+static const rb_data_type_t trilogy_result_columns_data_type = {
+    .wrap_struct_name = "trilogy_result_columns",
     .function = {
-        .dfree = free_trilogy_result,
-        .dsize = trilogy_result_memsize,
+        .dfree = free_trilogy_result_columns,
+        .dsize = trilogy_result_columns_memsize,
     },
     .flags = RUBY_TYPED_FREE_IMMEDIATELY | RUBY_TYPED_WB_PROTECTED
 };
@@ -216,19 +216,19 @@ static VALUE allocate_trilogy(VALUE klass)
     return obj;
 }
 
-static VALUE allocate_trilogy_result(VALUE klass)
+static VALUE allocate_trilogy_result_columns(VALUE klass)
 {
-    struct trilogy_result_ctx *ctx;
+    struct trilogy_result_columns_ctx *ctx;
 
-    VALUE obj = TypedData_Make_Struct(klass, struct trilogy_result_ctx, &trilogy_result_data_type, ctx);
+    VALUE obj = TypedData_Make_Struct(klass, struct trilogy_result_columns_ctx, &trilogy_result_columns_data_type, ctx);
 
     return obj;
 }
 
-static struct trilogy_result_ctx *get_trilogy_result_ctx(VALUE obj)
+static struct trilogy_result_columns_ctx *get_trilogy_result_columns_ctx(VALUE obj)
 {
-    struct trilogy_result_ctx *ctx;
-    TypedData_Get_Struct(obj, struct trilogy_result_ctx, &trilogy_result_data_type, ctx);
+    struct trilogy_result_columns_ctx *ctx;
+    TypedData_Get_Struct(obj, struct trilogy_result_columns_ctx, &trilogy_result_columns_data_type, ctx);
     return ctx;
 }
 
@@ -798,6 +798,9 @@ static VALUE read_query_response(VALUE vargs)
     VALUE column_names = rb_ary_new2(column_count);
     rb_ivar_set(result, id_ivar_fields, column_names);
 
+    VALUE columns = rb_obj_alloc(Trilogy_Result_Columns);
+    rb_ivar_set(result, id_ivar_columns, columns);
+
     VALUE rows = rb_ary_new();
     rb_ivar_set(result, id_ivar_rows, rows);
 
@@ -813,7 +816,7 @@ static VALUE read_query_response(VALUE vargs)
         rb_ivar_set(result, id_ivar_last_insert_id, Qnil);
         rb_ivar_set(result, id_ivar_affected_rows, Qnil);
     }
-    struct trilogy_result_ctx *trilogy_result_ctx = get_trilogy_result_ctx(result);
+    struct trilogy_result_columns_ctx *trilogy_result_ctx = get_trilogy_result_columns_ctx(columns);
     trilogy_result_ctx->column_info = ALLOC_N(struct column_info, column_count);
     trilogy_result_ctx->column_count = column_count;
     for (uint64_t i = 0; i < column_count; i++) {
@@ -1168,15 +1171,15 @@ static char *downcase(const char *str)
 
 static VALUE rb_trilogy_result_columns(VALUE self)
 {
-    struct trilogy_result_ctx *trilogy_result_ctx = get_trilogy_result_ctx(self);
+    struct trilogy_result_columns_ctx *trilogy_result_columns_ctx = get_trilogy_result_columns_ctx(self);
     VALUE cols = rb_ary_new();
-    for (uint64_t i = 0; i < trilogy_result_ctx->column_count; i++) {
+    for (uint64_t i = 0; i < trilogy_result_columns_ctx->column_count; i++) {
         VALUE obj = rb_funcall(
-            Trilogy_Result_Column, rb_intern("new"), 6, trilogy_result_ctx->column_info[i].name,
-            rb_id2sym(rb_intern(downcase(trilogy_type_names[trilogy_result_ctx->column_info[i].type]))),
-            rb_int_new(trilogy_result_ctx->column_info[i].len), rb_int_new(trilogy_result_ctx->column_info[i].flags),
-            rb_id2sym(rb_intern(downcase(trilogy_charset_names[trilogy_result_ctx->column_info[i].charset]))),
-            rb_int_new(trilogy_result_ctx->column_info[i].decimals));
+            Trilogy_Result_Column, rb_intern("new"), 6, trilogy_result_columns_ctx->column_info[i].name,
+            rb_id2sym(rb_intern(downcase(trilogy_type_names[trilogy_result_columns_ctx->column_info[i].type]))),
+            rb_int_new(trilogy_result_columns_ctx->column_info[i].len), rb_int_new(trilogy_result_columns_ctx->column_info[i].flags),
+            rb_id2sym(rb_intern(downcase(trilogy_charset_names[trilogy_result_columns_ctx->column_info[i].charset]))),
+            rb_int_new(trilogy_result_columns_ctx->column_info[i].decimals));
         rb_ary_push(cols, obj);
     }
     return cols;    
@@ -1259,9 +1262,14 @@ RUBY_FUNC_EXPORTED void Init_cext()
     rb_global_variable(&Trilogy_ConnectionClosedError);
 
     Trilogy_Result = rb_const_get(Trilogy, rb_intern("Result"));
-    rb_define_alloc_func(Trilogy_Result, allocate_trilogy_result);
     rb_global_variable(&Trilogy_Result);
-    rb_define_private_method(Trilogy_Result, "_columns", rb_trilogy_result_columns, 0);
+
+    Trilogy_Result_Columns = rb_const_get(Trilogy_Result, rb_intern("Columns"));
+    rb_define_alloc_func(Trilogy_Result_Columns, allocate_trilogy_result_columns);
+
+    rb_define_private_method(Trilogy_Result_Columns, "_all", rb_trilogy_result_columns, 0);
+
+    rb_global_variable(&Trilogy_Result_Columns);
 
     Trilogy_Result_Column = rb_const_get(Trilogy_Result, rb_intern("Column"));
     rb_global_variable(&Trilogy_Result_Column);
@@ -1307,6 +1315,7 @@ RUBY_FUNC_EXPORTED void Init_cext()
     id_from_errno = rb_intern("from_errno");
     id_ivar_affected_rows = rb_intern("@affected_rows");
     id_ivar_fields = rb_intern("@fields");
+    id_ivar_columns = rb_intern("@columns");
     id_ivar_last_insert_id = rb_intern("@last_insert_id");
     id_ivar_rows = rb_intern("@rows");
     id_ivar_query_time = rb_intern("@query_time");

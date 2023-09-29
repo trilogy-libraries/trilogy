@@ -29,10 +29,25 @@ class Trilogy
     end
 
     def columns
-      @columns ||= _columns
+      @columns.all
     end
 
     include Enumerable
+
+
+    class Columns
+      def all
+        @all ||= _all
+      end
+
+      def count
+        all.count
+      end
+
+      def each(&bk)
+        all.each(&bk)
+      end
+    end
 
     class Column
       attr_reader :name, :type, :length, :flags, :charset, :decimals
