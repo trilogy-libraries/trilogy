@@ -27,7 +27,6 @@ $ gem install trilogy
 ``` ruby
 client = Trilogy.new(host: "127.0.0.1", port: 3306, username: "root", read_timeout: 2)
 if client.ping
-  client.query_options[:database_timezone] = :utc
   client.change_db "mydb"
 
   result = client.query("SELECT id, created_at FROM users LIMIT 10")
