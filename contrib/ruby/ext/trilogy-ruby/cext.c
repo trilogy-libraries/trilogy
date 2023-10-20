@@ -425,7 +425,7 @@ static void authenticate(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake
     }
 }
 
-static VALUE rb_trilogy_initialize(VALUE self, VALUE encoding, VALUE charset, VALUE opts)
+static VALUE rb_trilogy_connect(VALUE self, VALUE encoding, VALUE charset, VALUE opts)
 {
     struct trilogy_ctx *ctx = get_ctx(self);
     trilogy_sockopt_t connopt = {0};
@@ -436,7 +436,6 @@ static VALUE rb_trilogy_initialize(VALUE self, VALUE encoding, VALUE charset, VA
     connopt.encoding = NUM2INT(charset);
 
     Check_Type(opts, T_HASH);
-    rb_ivar_set(self, id_connection_options, opts);
 
     if ((val = rb_hash_lookup(opts, ID2SYM(id_ssl_mode))) != Qnil) {
         Check_Type(val, T_FIXNUM);
@@ -1104,7 +1103,7 @@ RUBY_FUNC_EXPORTED void Init_cext()
     VALUE Trilogy = rb_const_get(rb_cObject, rb_intern("Trilogy"));
     rb_define_alloc_func(Trilogy, allocate_trilogy);
 
-    rb_define_private_method(Trilogy, "_initialize", rb_trilogy_initialize, 3);
+    rb_define_private_method(Trilogy, "_connect", rb_trilogy_connect, 3);
     rb_define_method(Trilogy, "change_db", rb_trilogy_change_db, 1);
     rb_define_alias(Trilogy, "select_db", "change_db");
     rb_define_method(Trilogy, "query", rb_trilogy_query, 1);
