@@ -9,24 +9,29 @@ require "mysql2"
 
 DEFAULT_USER = ENV["MYSQL_USER"] || "root"
 DEFAULT_PASS = ENV["MYSQL_PASS"]
-DEFAULT_SOCK = ENV["MYSQL_SOCK"] || "/tmp/mysql.sock"
 
 connect_options = {
-  path:     DEFAULT_SOCK, # for trilogy
-  socket:   DEFAULT_SOCK, # for mysql2
   username: DEFAULT_USER,
   password: DEFAULT_PASS,
-  host: "localhost",
+  host: "127.0.0.1",
 }
 
+client = Trilogy.new(connect_options)
+p client.query("SELECT 1")
+client = Mysql2::Client.new(connect_options)
+p client.query("SELECT 1")
+
+puts "===  Connecting to 'localhost'. "
 Benchmark.ips do |x|
   x.report "trilogy connect/close" do
     client = Trilogy.new(connect_options)
+    client.query("SELECT 1")
     client.close
   end
 
   x.report "mysql2 connect/close" do
     client = Mysql2::Client.new(connect_options)
+    client.query("SELECT 1")
     client.close
   end
 
