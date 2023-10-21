@@ -377,6 +377,9 @@ static ssize_t ssl_io_return(struct trilogy_sock *sock, ssize_t ret)
         int rc = SSL_get_error(sock->ssl, (int)ret);
         if (rc == SSL_ERROR_WANT_WRITE || rc == SSL_ERROR_WANT_READ) {
             return (ssize_t)TRILOGY_AGAIN;
+        } else if (rc == SSL_ERROR_ZERO_RETURN) {
+            // Server has closed the connection for writing by sending the close_notify alert
+            return (ssize_t)TRILOGY_CLOSED_CONNECTION;
         } else if (rc == SSL_ERROR_SYSCALL && !ERR_peek_error()) {
             if (errno == 0) {
                 // On OpenSSL <= 1.1.1, SSL_ERROR_SYSCALL with an errno value
