@@ -117,7 +117,7 @@ class Trilogy
     include ConnectionError
   end
 
-  # Occurrs when a socket read or write returns EOF or when an operation is
+  # Occurs when a socket read or write returns EOF or when an operation is
   # attempted on a socket which previously encountered an error.
   class EOFError < BaseConnectionError
   end
