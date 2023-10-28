@@ -20,6 +20,7 @@ const trilogy_sockopt_t *get_connopt(void) { return &connopt; }
     SUITE(packet_parser_test)                                                                                          \
     SUITE(charset_test)                                                                                                \
     SUITE(blocking_test)                                                                                               \
+    SUITE(socket_test)                                                                                                 \
     SUITE(parse_handshake_test)                                                                                        \
     SUITE(parse_ok_packet_test)                                                                                        \
     SUITE(parse_eof_packet_test)                                                                                       \
