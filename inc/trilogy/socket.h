@@ -111,4 +111,20 @@ trilogy_sock_t *trilogy_sock_new(const trilogy_sockopt_t *opts);
 int trilogy_sock_resolve(trilogy_sock_t *raw);
 int trilogy_sock_upgrade_ssl(trilogy_sock_t *raw);
 
+/* trilogy_sock_check - Verify if the socket is still alive and not disconnected.
+ *
+ * This check is very cheap to do and reduces the number of errors when for
+ * example the server has restarted since the connection was opened. In connection
+ * pooling implementations, this check can be done before the connection is
+ * returned.
+ *
+ * raw - A connected trilogy_sock_t pointer. Using a disconnected trilogy_sock_t is undefined.
+ *
+ * Return values:
+ *   TRILOGY_OK                - The connection is alive on the client side and can be.
+ *   TRILOGY_CLOSED_CONNECTION - The connection is closed.
+ *   TRILOGY_SYSERR            - A system error occurred, check errno.
+ */
+int trilogy_sock_check(trilogy_sock_t *raw);
+
 #endif

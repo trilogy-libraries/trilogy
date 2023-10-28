@@ -1020,6 +1020,17 @@ static VALUE rb_trilogy_closed(VALUE self)
     }
 }
 
+static VALUE rb_trilogy_check(VALUE self)
+{
+    struct trilogy_ctx *ctx = get_open_ctx(self);
+
+    int rc = trilogy_sock_check(ctx->conn.socket);
+    if (rc != TRILOGY_OK && rc != TRILOGY_AGAIN) {
+        handle_trilogy_error(ctx, rc, "trilogy_sock_check");
+    }
+    return Qtrue;
+}
+
 static VALUE rb_trilogy_discard(VALUE self)
 {
     struct trilogy_ctx *ctx = get_ctx(self);
@@ -1111,6 +1122,7 @@ RUBY_FUNC_EXPORTED void Init_cext()
     rb_define_method(Trilogy, "escape", rb_trilogy_escape, 1);
     rb_define_method(Trilogy, "close", rb_trilogy_close, 0);
     rb_define_method(Trilogy, "closed?", rb_trilogy_closed, 0);
+    rb_define_method(Trilogy, "check", rb_trilogy_check, 0);
     rb_define_method(Trilogy, "discard!", rb_trilogy_discard, 0);
     rb_define_method(Trilogy, "last_insert_id", rb_trilogy_last_insert_id, 0);
     rb_define_method(Trilogy, "affected_rows", rb_trilogy_affected_rows, 0);
