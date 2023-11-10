@@ -24,7 +24,7 @@ jobs:
             ruby: "1.9"
           - mysql: "5.7"
             distribution: "debian:buster"
-            ruby: "2.8"
+            ruby: "2.7"
     steps:
     - uses: actions/checkout@v4
     - name: docker login
