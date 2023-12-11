@@ -105,6 +105,7 @@ static int _cb_raw_close(trilogy_sock_t *_sock)
     }
 
     free(sock->base.opts.hostname);
+    free(sock->base.opts.ip_address);
     free(sock->base.opts.path);
     free(sock->base.opts.database);
     free(sock->base.opts.username);
@@ -341,7 +342,8 @@ int trilogy_sock_resolve(trilogy_sock_t *_sock)
         char port[6];
         snprintf(port, sizeof(port), "%hu", sock->base.opts.port);
 
-        if (getaddrinfo(sock->base.opts.hostname, port, &hint, &sock->addr) != 0) {
+        char *address = sock->base.opts.ip_address ? sock->base.opts.ip_address : sock->base.opts.hostname;
+        if (getaddrinfo(address, port, &hint, &sock->addr) != 0) {
             return TRILOGY_DNS_ERR;
         }
     } else if (sock->base.opts.path != NULL) {
