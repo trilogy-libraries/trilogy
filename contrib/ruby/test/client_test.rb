@@ -63,7 +63,9 @@ class ClientTest < TrilogyTest
       ssl_mode: 4,
       tls_min_version: 3,
     }
-    assert_equal expected_connection_options, client.connection_options
+    actual_options = client.connection_options.dup
+    actual_options.delete(:ip_address)
+    assert_equal expected_connection_options, actual_options
   end
 
   def test_trilogy_ping
@@ -968,7 +970,7 @@ class ClientTest < TrilogyTest
     ex = assert_raises Trilogy::ConnectionError do
       new_tcp_client(host: "mysql.invalid", port: 3306)
     end
-    assert_equal "trilogy_connect - unable to connect to mysql.invalid:3306: TRILOGY_DNS_ERROR", ex.message
+    assert_includes ex.message, %{Couldn't resolve host: "mysql.invalid"}
   end
 
   def test_memsize

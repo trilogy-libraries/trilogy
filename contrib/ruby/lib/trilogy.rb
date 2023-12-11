@@ -8,10 +8,23 @@ require "trilogy/encoding"
 
 class Trilogy
   def initialize(options = {})
+    options = options.dup
     options[:port] = options[:port].to_i if options[:port]
     mysql_encoding = options[:encoding] || "utf8mb4"
     encoding = Trilogy::Encoding.find(mysql_encoding)
     charset = Trilogy::Encoding.charset(mysql_encoding)
+
+    if options[:host]
+      addrs = begin
+        Socket.getaddrinfo(options[:host], options[:port], :PF_UNSPEC, :SOCK_STREAM)
+      rescue SocketError
+        raise Trilogy::BaseConnectionError, "Couldn't resolve host: #{options[:host].inspect}"
+      end
+
+      addrs.sort_by!(&:first) # Priority to IPv4
+      options[:ip_address] = addrs.first[3]
+    end
+
     @connection_options = options
     @connected_host = nil
 

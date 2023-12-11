@@ -25,7 +25,7 @@ static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, 
     id_ivar_affected_rows, id_ivar_fields, id_ivar_last_insert_id, id_ivar_rows, id_ivar_query_time, id_password,
     id_database, id_enable_cleartext_plugin, id_ssl_ca, id_ssl_capath, id_ssl_cert, id_ssl_cipher, id_ssl_crl, id_ssl_crlpath, id_ssl_key,
     id_ssl_mode, id_tls_ciphersuites, id_tls_min_version, id_tls_max_version, id_multi_statement, id_multi_result,
-    id_from_code, id_from_errno, id_connection_options, id_max_allowed_packet;
+    id_from_code, id_from_errno, id_connection_options, id_max_allowed_packet, id_ip_address;
 
 struct trilogy_ctx {
     trilogy_conn_t conn;
@@ -508,6 +508,11 @@ static VALUE rb_trilogy_connect(VALUE self, VALUE encoding, VALUE charset, VALUE
         if ((val = rb_hash_lookup(opts, ID2SYM(id_port))) != Qnil) {
             Check_Type(val, T_FIXNUM);
             connopt.port = NUM2USHORT(val);
+        }
+
+        if ((val = rb_hash_lookup(opts, ID2SYM(id_ip_address))) != Qnil) {
+            Check_Type(val, T_STRING);
+            connopt.ip_address = StringValueCStr(val);
         }
     } else {
         connopt.path = (char *)"/tmp/mysql.sock";
@@ -1215,6 +1220,7 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
 
     id_socket = rb_intern("socket");
     id_host = rb_intern("host");
+    id_ip_address = rb_intern("ip_address");
     id_port = rb_intern("port");
     id_username = rb_intern("username");
     id_password = rb_intern("password");

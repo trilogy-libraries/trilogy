@@ -37,6 +37,7 @@ typedef enum {
 
 typedef struct {
     char *hostname;
+    char *ip_address;
     char *path;
     char *database;
     char *username;
