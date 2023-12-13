@@ -29,9 +29,11 @@ It's currently in production use on github.com.
 
 * Only supports the parts of the text protocol that are in common use.
 
-* No support for `LOAD DATA INFILE` on local files
+* No support for `LOAD DATA INFILE` on local files.
 
-* `trilogy_escape` assumes an ASCII-compatible connection encoding
+* `trilogy_escape` assumes an ASCII-compatible connection encoding.
+
+* No support for the `caching_sha2_password` authentication plugin. If your server uses it, you will receive a `trilogy_auth_recv: TRILOGY_UNEXPECTED_PACKET` error when authenticating with a password.
 
 ## Building
 
