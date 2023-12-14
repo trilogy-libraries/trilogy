@@ -33,7 +33,7 @@ It's currently in production use on github.com.
 
 * `trilogy_escape` assumes an ASCII-compatible connection encoding.
 
-* No support for the `caching_sha2_password` authentication plugin. If your server uses it, you will receive a `trilogy_auth_recv: TRILOGY_UNEXPECTED_PACKET` error when authenticating with a password.
+* No support for the `caching_sha2_password` authentication plugin which is [the default for MySQL 8](https://dev.mysql.com/doc/refman/8.0/en/caching-sha2-pluggable-authentication.html). If your server uses it, you will receive a `trilogy_auth_recv: TRILOGY_UNEXPECTED_PACKET` error when authenticating with a password.
 
 ## Building
 
