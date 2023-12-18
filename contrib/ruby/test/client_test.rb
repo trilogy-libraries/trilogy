@@ -42,7 +42,9 @@ class ClientTest < TrilogyTest
 
     socket = new_tcp_client.query("SHOW VARIABLES LIKE 'socket'").to_a[0][1]
 
-    assert File.exist?(socket), "cound not find socket at #{socket}"
+    if !File.exist?(socket)
+      skip "cound not find socket at #{socket}"
+    end
 
     client = new_unix_client(socket)
     refute_nil client
