@@ -66,13 +66,7 @@ class Trilogy
   class CastError < ClientError
   end
 
-  class TimeoutError < Errno::ETIMEDOUT
-    include ConnectionError
-
-    def initialize(error_message = nil, error_code = nil)
-      super
-      @error_code = error_code
-    end
+  class TimeoutError < BaseConnectionError
   end
 
   # DatabaseError was replaced by ProtocolError, but we'll keep it around as an
