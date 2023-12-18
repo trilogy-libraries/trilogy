@@ -91,7 +91,7 @@ NORETURN(static void trilogy_syserr_fail_str(int, VALUE));
 static void trilogy_syserr_fail_str(int e, VALUE msg)
 {
     if (e == EPIPE) {
-        // Backwards compatibility: This error class makes no sense, but matches legacy behavior
+        // Backwards compatibility: This error message is a bit odd, but includes "TRILOGY_CLOSED_CONNECTION" to match legacy string matching
         rb_raise(Trilogy_EOFError, "%" PRIsVALUE ": TRILOGY_CLOSED_CONNECTION: EPIPE", msg);
     } else {
         VALUE exc = rb_funcall(Trilogy_SyscallError, id_from_errno, 2, INT2NUM(e), msg);
