@@ -1099,4 +1099,14 @@ class ClientTest < TrilogyTest
 
     assert client.query("SELECT 1")
   end
+
+  def test_error_classes_exclusively_match_subclasses
+    klass = Trilogy::SyscallError::ECONNRESET
+    assert_operator klass, :===, klass.new
+    refute_operator klass, :===, Errno::ECONNRESET.new
+
+    assert_operator Errno::ECONNRESET, :===, klass.new
+    assert_operator SystemCallError, :===, klass.new
+    assert_operator Trilogy::ConnectionError, :===, klass.new
+  end
 end

@@ -12,7 +12,7 @@ class Trilogy
   end
 
   # Trilogy may raise various syscall errors, which we treat as Trilogy::Errors.
-  class SyscallError
+  module SyscallError
     ERRORS = {}
 
     Errno.constants
@@ -20,7 +20,10 @@ class Trilogy
       .select { |c| c.is_a?(Class) && c < SystemCallError }
       .each do |c|
         errno_name = c.to_s.split('::').last
-        ERRORS[c::Errno] = const_set(errno_name, Class.new(c) { include Trilogy::ConnectionError })
+        ERRORS[c::Errno] = const_set(errno_name, Class.new(c) {
+          include Trilogy::ConnectionError
+          singleton_class.define_method(:===, Module.instance_method(:===))
+        })
       end
 
     ERRORS.freeze
