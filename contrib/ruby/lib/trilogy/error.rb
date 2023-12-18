@@ -32,6 +32,11 @@ class Trilogy
     end
   end
 
+  ConnectionRefusedError = SyscallError::ECONNREFUSED
+  deprecate_constant :ConnectionRefusedError
+  ConnectionResetError = SyscallError::ECONNRESET
+  deprecate_constant :ConnectionResetError
+
   class BaseError < StandardError
     include Error
 
@@ -65,14 +70,6 @@ class Trilogy
       super
       @error_code = error_code
     end
-  end
-
-  class ConnectionRefusedError < Errno::ECONNREFUSED
-    include ConnectionError
-  end
-
-  class ConnectionResetError < Errno::ECONNRESET
-    include ConnectionError
   end
 
   # DatabaseError was replaced by ProtocolError, but we'll keep it around as an
