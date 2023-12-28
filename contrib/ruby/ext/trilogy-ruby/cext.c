@@ -577,9 +577,6 @@ static VALUE rb_trilogy_connect(VALUE self, VALUE encoding, VALUE charset, VALUE
     }
 
     int rc = try_connect(ctx, &handshake, &connopt);
-    if (rc == TRILOGY_TIMEOUT) {
-        rb_raise(Trilogy_TimeoutError, "trilogy_connect_recv");
-    }
     if (rc != TRILOGY_OK) {
         if (connopt.path) {
             handle_trilogy_error(ctx, rc, "trilogy_connect - unable to connect to %s", connopt.path);

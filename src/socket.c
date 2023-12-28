@@ -189,6 +189,7 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
 {
     int sockerr;
     socklen_t sockerr_len = sizeof(sockerr);
+    int rc = TRILOGY_SYSERR;
 
     sock->fd = socket(ai->ai_family, SOCK_STREAM, ai->ai_protocol);
     if (sock->fd < 0) {
@@ -244,8 +245,8 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
         }
     }
 
-    if (trilogy_sock_wait_write((trilogy_sock_t *)sock) < 0) {
-        goto fail;
+    if ((rc = trilogy_sock_wait_write((trilogy_sock_t *)sock)) < 0) {
+        goto failrc;
     }
 
     if (getsockopt(sock->fd, SOL_SOCKET, SO_ERROR, &sockerr, &sockerr_len) < 0) {
@@ -263,9 +264,11 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
     return TRILOGY_OK;
 
 fail:
+    rc = TRILOGY_SYSERR;
+failrc:
     close(sock->fd);
     sock->fd = -1;
-    return TRILOGY_SYSERR;
+    return rc;
 }
 
 static int _cb_raw_connect(trilogy_sock_t *_sock)
