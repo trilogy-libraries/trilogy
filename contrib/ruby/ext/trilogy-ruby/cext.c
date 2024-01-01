@@ -913,7 +913,11 @@ static VALUE rb_trilogy_query(VALUE self, VALUE query)
 
 static VALUE rb_trilogy_ping(VALUE self)
 {
-    struct trilogy_ctx *ctx = get_open_ctx(self);
+    struct trilogy_ctx *ctx = get_ctx(self);
+
+    if (ctx->conn.socket == NULL) {
+        return Qfalse;
+    }
 
     int rc = trilogy_ping_send(&ctx->conn);
 
@@ -922,7 +926,7 @@ static VALUE rb_trilogy_ping(VALUE self)
     }
 
     if (rc < 0) {
-        handle_trilogy_error(ctx, rc, "trilogy_ping_send");
+        return Qfalse;
     }
 
     while (1) {
@@ -933,12 +937,12 @@ static VALUE rb_trilogy_ping(VALUE self)
         }
 
         if (rc != TRILOGY_AGAIN) {
-            handle_trilogy_error(ctx, rc, "trilogy_ping_recv");
+            return Qfalse;
         }
 
         rc = trilogy_sock_wait_read(ctx->conn.socket);
         if (rc != TRILOGY_OK) {
-            handle_trilogy_error(ctx, rc, "trilogy_ping_recv");
+            return Qfalse;
         }
     }
 

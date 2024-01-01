@@ -80,11 +80,20 @@ class ClientTest < TrilogyTest
 
   def test_trilogy_ping_after_close_returns_false
     client = new_tcp_client
-    assert client.ping
+    assert_equal client.ping, true
     client.close
-    assert_raises Trilogy::ConnectionClosed do
-      client.ping
+    assert_equal client.ping, false
+  ensure
+    ensure_closed client
+  end
+
+  def test_trilogy_ping_after_connection_closed_returns_false
+    client = new_tcp_client(read_timeout: 1)
+    assert_equal client.ping, true
+    assert_raises Trilogy::TimeoutError do
+      client.query("SELECT SLEEP (2)")
     end
+    assert_equal client.ping, false
   ensure
     ensure_closed client
   end
