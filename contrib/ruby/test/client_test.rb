@@ -580,7 +580,7 @@ class ClientTest < TrilogyTest
     assert_equal "Invalid date: 1234-00-00 00:00:00", err.message
 
     assert_raises_connection_error do
-      client.ping
+      client.query("SELECT 1")
     end
   end
 
@@ -692,7 +692,7 @@ class ClientTest < TrilogyTest
     end
 
     assert_raises_connection_error do
-      client.ping
+      client.query("SELECT 1")
     end
   end
 
@@ -850,7 +850,7 @@ class ClientTest < TrilogyTest
     refute_match(/TRILOGY_MAX_PACKET_EXCEEDED/, exception.message)
 
     assert_raises_connection_error do
-      client.ping
+      client.query("SELECT 1")
     end
   ensure
     ensure_closed client
