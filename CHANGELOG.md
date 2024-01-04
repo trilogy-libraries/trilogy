@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+  - Report `EOFError: TRILOGY_CLOSED_CONNECTION` for `SSL_ERROR_ZERO_RETURN`
   - `write_timeout` on connection now raises `Trilogy::TimeoutError` (previously it raised `EINPROGRESS`)
   - Fix memory leak on failed connections
   - Fix memory leak when connecting to unix socket
