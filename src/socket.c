@@ -100,7 +100,11 @@ static int _cb_raw_close(trilogy_sock_t *_sock)
     if (sock->fd != -1) {
         rc = close(sock->fd);
     }
+
     if (sock->addr) {
+        if (sock->base.opts.path != NULL) {
+          free(sock->addr->ai_addr);
+        }
         freeaddrinfo(sock->addr);
     }
 
