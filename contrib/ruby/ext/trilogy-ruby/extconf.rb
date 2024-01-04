@@ -2,8 +2,12 @@ require "mkmf"
 
 # concatenate trilogy library sources to allow the compiler to optimise across
 # source files
+
+trilogy_src_dir = File.realpath("src", __dir__)
 File.binwrite("trilogy.c",
-  Dir["#{__dir__}/src/**/*.c"].map { |src| File.binread(src) }.join)
+  Dir["#{trilogy_src_dir}/**/*.c"].map { |src|
+    %{#line 1 "#{src}"\n} + File.binread(src)
+  }.join)
 
 $objs = %w[trilogy.o cast.o cext.o]
 $CFLAGS << " -I #{__dir__}/inc -std=gnu99 -fvisibility=hidden"

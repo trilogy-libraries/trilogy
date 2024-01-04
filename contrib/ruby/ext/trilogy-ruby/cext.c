@@ -43,9 +43,7 @@ static void mark_trilogy(void *ptr)
 static void free_trilogy(void *ptr)
 {
     struct trilogy_ctx *ctx = ptr;
-    if (ctx->conn.socket != NULL) {
-        trilogy_free(&ctx->conn);
-    }
+    trilogy_free(&ctx->conn);
     xfree(ptr);
 }
 
@@ -309,6 +307,7 @@ static int try_connect(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, 
     int rc = args.rc;
 
     if (rc != TRILOGY_OK) {
+        trilogy_sock_close(sock);
         return rc;
     }
 
@@ -316,8 +315,10 @@ static int try_connect(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, 
 escape the GVL on each wait operation without going through call_without_gvl */
     sock->wait_cb = _cb_ruby_wait;
     rc = trilogy_connect_send_socket(&ctx->conn, sock);
-    if (rc < 0)
+    if (rc < 0) {
+        trilogy_sock_close(sock);
         return rc;
+    }
 
     while (1) {
         rc = trilogy_connect_recv(&ctx->conn, handshake);
