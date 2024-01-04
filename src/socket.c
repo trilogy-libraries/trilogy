@@ -100,8 +100,15 @@ static int _cb_raw_close(trilogy_sock_t *_sock)
     if (sock->fd != -1) {
         rc = close(sock->fd);
     }
+
     if (sock->addr) {
-        freeaddrinfo(sock->addr);
+        if (sock->base.opts.hostname == NULL && sock->base.opts.path != NULL) {
+            /* We created these with calloc so must free them instead of calling freeaddrinfo */
+            free(sock->addr->ai_addr);
+            free(sock->addr);
+        } else {
+            freeaddrinfo(sock->addr);
+        }
     }
 
     free(sock->base.opts.hostname);
