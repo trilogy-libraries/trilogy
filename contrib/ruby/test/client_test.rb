@@ -254,6 +254,10 @@ class ClientTest < TrilogyTest
     result = client.query_with_flags("SELECT id, int_test FROM trilogy_test", client.query_flags | Trilogy::QUERY_FLAGS_FLATTEN_ROWS)
 
     assert_equal ["id", "int_test"], result.fields
+    assert_equal 2, result.columns.count
+    assert_equal ["id", "int_test"], result.columns.map(&:name)
+    assert_equal :long, result.columns.first.type
+    assert_equal :binary, result.columns.first.charset
     assert_equal [1, 4, 2, 3, 3, 1], result.rows
   end
 
@@ -314,6 +318,7 @@ class ClientTest < TrilogyTest
     result = client.query "SELECT 1 AS a, 2 AS b"
 
     assert_equal ["a", "b"], result.fields
+    assert_equal ["a", "b"], result.columns.map(&:name)
     assert_equal [[1, 2]], result.rows
     assert_equal [{ "a" => 1, "b" => 2 }], result.each_hash.to_a
     assert_equal [[1, 2]], result.to_a

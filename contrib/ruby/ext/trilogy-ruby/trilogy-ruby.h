@@ -21,6 +21,7 @@ struct rb_trilogy_cast_options {
 };
 
 struct column_info {
+    VALUE name;
     TRILOGY_TYPE_t type;
     TRILOGY_CHARSET_t charset;
     uint32_t len;
