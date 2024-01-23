@@ -17,7 +17,7 @@
 
 VALUE Trilogy_CastError;
 static VALUE Trilogy_BaseConnectionError, Trilogy_ProtocolError, Trilogy_SSLError, Trilogy_QueryError,
-    Trilogy_ConnectionClosedError, Trilogy_ConnectionRefusedError, Trilogy_ConnectionResetError,
+    Trilogy_ConnectionClosedError,
     Trilogy_TimeoutError, Trilogy_SyscallError, Trilogy_Result, Trilogy_EOFError;
 
 static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, id_connect_timeout, id_read_timeout,
@@ -88,12 +88,8 @@ static struct trilogy_ctx *get_open_ctx(VALUE obj)
 NORETURN(static void trilogy_syserr_fail_str(int, VALUE));
 static void trilogy_syserr_fail_str(int e, VALUE msg)
 {
-    if (e == ECONNREFUSED) {
-        rb_raise(Trilogy_ConnectionRefusedError, "%" PRIsVALUE, msg);
-    } else if (e == ECONNRESET) {
-        rb_raise(Trilogy_ConnectionResetError, "%" PRIsVALUE, msg);
-    } else if (e == EPIPE) {
-        // Backwards compatibility: This error class makes no sense, but matches legacy behavior
+    if (e == EPIPE) {
+        // Backwards compatibility: This error message is a bit odd, but includes "TRILOGY_CLOSED_CONNECTION" to match legacy string matching
         rb_raise(Trilogy_EOFError, "%" PRIsVALUE ": TRILOGY_CLOSED_CONNECTION: EPIPE", msg);
     } else {
         VALUE exc = rb_funcall(Trilogy_SyscallError, id_from_errno, 2, INT2NUM(e), msg);
@@ -1155,12 +1151,6 @@ RUBY_FUNC_EXPORTED void Init_cext()
 
     Trilogy_TimeoutError = rb_const_get(Trilogy, rb_intern("TimeoutError"));
     rb_global_variable(&Trilogy_TimeoutError);
-
-    Trilogy_ConnectionRefusedError = rb_const_get(Trilogy, rb_intern("ConnectionRefusedError"));
-    rb_global_variable(&Trilogy_ConnectionRefusedError);
-
-    Trilogy_ConnectionResetError = rb_const_get(Trilogy, rb_intern("ConnectionResetError"));
-    rb_global_variable(&Trilogy_ConnectionResetError);
 
     Trilogy_BaseConnectionError = rb_const_get(Trilogy, rb_intern("BaseConnectionError"));
     rb_global_variable(&Trilogy_BaseConnectionError);

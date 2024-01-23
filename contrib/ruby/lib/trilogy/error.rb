@@ -12,7 +12,7 @@ class Trilogy
   end
 
   # Trilogy may raise various syscall errors, which we treat as Trilogy::Errors.
-  class SyscallError
+  module SyscallError
     ERRORS = {}
 
     Errno.constants
@@ -20,7 +20,10 @@ class Trilogy
       .select { |c| c.is_a?(Class) && c < SystemCallError }
       .each do |c|
         errno_name = c.to_s.split('::').last
-        ERRORS[c::Errno] = const_set(errno_name, Class.new(c) { include Trilogy::ConnectionError })
+        ERRORS[c::Errno] = const_set(errno_name, Class.new(c) {
+          include Trilogy::ConnectionError
+          singleton_class.define_method(:===, Module.instance_method(:===))
+        })
       end
 
     ERRORS.freeze
@@ -31,6 +34,11 @@ class Trilogy
       end
     end
   end
+
+  ConnectionRefusedError = SyscallError::ECONNREFUSED
+  deprecate_constant :ConnectionRefusedError
+  ConnectionResetError = SyscallError::ECONNRESET
+  deprecate_constant :ConnectionResetError
 
   class BaseError < StandardError
     include Error
@@ -58,21 +66,7 @@ class Trilogy
   class CastError < ClientError
   end
 
-  class TimeoutError < Errno::ETIMEDOUT
-    include ConnectionError
-
-    def initialize(error_message = nil, error_code = nil)
-      super
-      @error_code = error_code
-    end
-  end
-
-  class ConnectionRefusedError < Errno::ECONNREFUSED
-    include ConnectionError
-  end
-
-  class ConnectionResetError < Errno::ECONNRESET
-    include ConnectionError
+  class TimeoutError < BaseConnectionError
   end
 
   # DatabaseError was replaced by ProtocolError, but we'll keep it around as an

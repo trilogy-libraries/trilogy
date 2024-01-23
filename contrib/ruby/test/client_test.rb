@@ -42,7 +42,9 @@ class ClientTest < TrilogyTest
 
     socket = new_tcp_client.query("SHOW VARIABLES LIKE 'socket'").to_a[0][1]
 
-    assert File.exist?(socket), "cound not find socket at #{socket}"
+    if !File.exist?(socket)
+      skip "cound not find socket at #{socket}"
+    end
 
     client = new_unix_client(socket)
     refute_nil client
@@ -1096,5 +1098,15 @@ class ClientTest < TrilogyTest
     client = new_tcp_client(**options)
 
     assert client.query("SELECT 1")
+  end
+
+  def test_error_classes_exclusively_match_subclasses
+    klass = Trilogy::SyscallError::ECONNRESET
+    assert_operator klass, :===, klass.new
+    refute_operator klass, :===, Errno::ECONNRESET.new
+
+    assert_operator Errno::ECONNRESET, :===, klass.new
+    assert_operator SystemCallError, :===, klass.new
+    assert_operator Trilogy::ConnectionError, :===, klass.new
   end
 end
