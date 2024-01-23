@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.7.0
+
+### Changed
+
+  - `Trilogy::SyscallError::*` errors now use the standard `Module#===` implementation #143
+  - `Trilogy::TimeoutError` no longer inherits from `Errno::ETIMEDOUT` #143
+  - Deprecated `Trilogy::ConnectionRefusedError` and `Trilogy::ConnectionResetError`,
+    replaced by `Trilogy::SyscallError::ECONNREFUSED` and `Trilogy::SyscallError::ECONNRESET` #143
+
 ## 2.6.1
 
 ### Fixed
