@@ -1,5 +1,4 @@
 ARG DISTRIBUTION=ubuntu:jammy
-ARG RUBY_VERSION=3.2
 FROM ${DISTRIBUTION}
 LABEL maintainer="github@github.com"
 
@@ -10,9 +9,10 @@ RUN update-ca-certificates
 RUN wget https://github.com/postmodern/ruby-install/releases/download/v0.9.0/ruby-install-0.9.0.tar.gz && \
     tar -xzvf ruby-install-0.9.0.tar.gz && \
     cd ruby-install-0.9.0/ && \
-    make install && \
-    ruby-install --system ruby ${RUBY_VERSION}
+    make install
 
+ARG RUBY_VERSION=3.2
+RUN ruby-install --system ruby ${RUBY_VERSION}
 RUN ruby --version
 
 WORKDIR /app

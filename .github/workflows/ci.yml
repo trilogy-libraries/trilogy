@@ -17,14 +17,11 @@ jobs:
       matrix:
         mysql: ["5.7", "8"]
         distribution: ["debian:buster", "ubuntu:focal", "ubuntu:bionic"]
-        ruby: ["3.2"]
+        ruby: ["3.3"]
         include:
           - mysql: "5.7"
             distribution: "debian:buster"
-            ruby: "1.9"
-          - mysql: "5.7"
-            distribution: "debian:buster"
-            ruby: "2.8"
+            ruby: "2.7.8"
     steps:
     - uses: actions/checkout@v4
     - name: docker login
