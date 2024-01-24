@@ -17,8 +17,8 @@
 
 VALUE Trilogy_CastError;
 static VALUE Trilogy_BaseConnectionError, Trilogy_ProtocolError, Trilogy_SSLError, Trilogy_QueryError,
-    Trilogy_ConnectionClosedError, Trilogy_ConnectionRefusedError, Trilogy_ConnectionResetError,
-    Trilogy_TimeoutError, Trilogy_SyscallError, Trilogy_Result;
+    Trilogy_ConnectionClosedError,
+    Trilogy_TimeoutError, Trilogy_SyscallError, Trilogy_Result, Trilogy_EOFError;
 
 static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, id_connect_timeout, id_read_timeout,
     id_write_timeout, id_keepalive_enabled, id_keepalive_idle, id_keepalive_interval, id_keepalive_count,
@@ -43,9 +43,7 @@ static void mark_trilogy(void *ptr)
 static void free_trilogy(void *ptr)
 {
     struct trilogy_ctx *ctx = ptr;
-    if (ctx->conn.socket != NULL) {
-        trilogy_free(&ctx->conn);
-    }
+    trilogy_free(&ctx->conn);
     xfree(ptr);
 }
 
@@ -90,14 +88,24 @@ static struct trilogy_ctx *get_open_ctx(VALUE obj)
 NORETURN(static void trilogy_syserr_fail_str(int, VALUE));
 static void trilogy_syserr_fail_str(int e, VALUE msg)
 {
-    if (e == ECONNREFUSED) {
-        rb_raise(Trilogy_ConnectionRefusedError, "%" PRIsVALUE, msg);
-    } else if (e == ECONNRESET) {
-        rb_raise(Trilogy_ConnectionResetError, "%" PRIsVALUE, msg);
+    if (e == EPIPE) {
+        // Backwards compatibility: This error message is a bit odd, but includes "TRILOGY_CLOSED_CONNECTION" to match legacy string matching
+        rb_raise(Trilogy_EOFError, "%" PRIsVALUE ": TRILOGY_CLOSED_CONNECTION: EPIPE", msg);
     } else {
         VALUE exc = rb_funcall(Trilogy_SyscallError, id_from_errno, 2, INT2NUM(e), msg);
         rb_exc_raise(exc);
     }
+}
+
+static int trilogy_error_recoverable_p(int rc)
+{
+    // TRILOGY_OPENSSL_ERR and TRILOGY_SYSERR (which can result from an SSL error) must shut down the socket, as further
+    // SSL calls would be invalid.
+    // TRILOGY_ERR, which represents an error message sent to us from the server, is recoverable.
+    // TRILOGY_MAX_PACKET_EXCEEDED is also recoverable as we do not send data when it occurs.
+    // For other exceptions we will also close the socket to prevent further use, as the connection is probably in an
+    // invalid state.
+    return rc == TRILOGY_ERR || rc == TRILOGY_MAX_PACKET_EXCEEDED;
 }
 
 NORETURN(static void handle_trilogy_error(struct trilogy_ctx *, int, const char *, ...));
@@ -108,14 +116,20 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
     VALUE rbmsg = rb_vsprintf(msg, args);
     va_end(args);
 
+    if (!trilogy_error_recoverable_p(rc)) {
+        if (ctx->conn.socket != NULL) {
+            // trilogy_sock_shutdown may affect errno
+            int errno_was = errno;
+            trilogy_sock_shutdown(ctx->conn.socket);
+            errno = errno_was;
+        }
+    }
+
     switch (rc) {
     case TRILOGY_SYSERR:
         trilogy_syserr_fail_str(errno, rbmsg);
 
     case TRILOGY_TIMEOUT:
-        if (ctx->conn.socket != NULL) {
-            trilogy_sock_shutdown(ctx->conn.socket);
-        }
         rb_raise(Trilogy_TimeoutError, "%" PRIsVALUE, rbmsg);
 
     case TRILOGY_ERR: {
@@ -131,16 +145,15 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
             int err_reason = ERR_GET_REASON(ossl_error);
             trilogy_syserr_fail_str(err_reason, rbmsg);
         }
-        // We can't recover from OpenSSL level errors if there's
-        // an active connection.
-        if (ctx->conn.socket != NULL) {
-            trilogy_sock_shutdown(ctx->conn.socket);
-        }
         rb_raise(Trilogy_SSLError, "%" PRIsVALUE ": SSL Error: %s", rbmsg, ERR_reason_error_string(ossl_error));
     }
 
     case TRILOGY_DNS_ERR: {
         rb_raise(Trilogy_BaseConnectionError, "%" PRIsVALUE ": TRILOGY_DNS_ERROR", rbmsg);
+    }
+
+    case TRILOGY_CLOSED_CONNECTION: {
+        rb_raise(Trilogy_EOFError, "%" PRIsVALUE ": TRILOGY_CLOSED_CONNECTION", rbmsg);
     }
 
     default:
@@ -290,6 +303,7 @@ static int try_connect(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, 
     int rc = args.rc;
 
     if (rc != TRILOGY_OK) {
+        trilogy_sock_close(sock);
         return rc;
     }
 
@@ -297,8 +311,10 @@ static int try_connect(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, 
 escape the GVL on each wait operation without going through call_without_gvl */
     sock->wait_cb = _cb_ruby_wait;
     rc = trilogy_connect_send_socket(&ctx->conn, sock);
-    if (rc < 0)
+    if (rc < 0) {
+        trilogy_sock_close(sock);
         return rc;
+    }
 
     while (1) {
         rc = trilogy_connect_recv(&ctx->conn, handshake);
@@ -406,7 +422,7 @@ static void authenticate(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake
     }
 }
 
-static VALUE rb_trilogy_initialize(VALUE self, VALUE encoding, VALUE charset, VALUE opts)
+static VALUE rb_trilogy_connect(VALUE self, VALUE encoding, VALUE charset, VALUE opts)
 {
     struct trilogy_ctx *ctx = get_ctx(self);
     trilogy_sockopt_t connopt = {0};
@@ -417,7 +433,6 @@ static VALUE rb_trilogy_initialize(VALUE self, VALUE encoding, VALUE charset, VA
     connopt.encoding = NUM2INT(charset);
 
     Check_Type(opts, T_HASH);
-    rb_ivar_set(self, id_connection_options, opts);
 
     if ((val = rb_hash_lookup(opts, ID2SYM(id_ssl_mode))) != Qnil) {
         Check_Type(val, T_FIXNUM);
@@ -559,9 +574,6 @@ static VALUE rb_trilogy_initialize(VALUE self, VALUE encoding, VALUE charset, VA
     }
 
     int rc = try_connect(ctx, &handshake, &connopt);
-    if (rc == TRILOGY_TIMEOUT) {
-        rb_raise(Trilogy_TimeoutError, "trilogy_connect_recv");
-    }
     if (rc != TRILOGY_OK) {
         if (connopt.path) {
             handle_trilogy_error(ctx, rc, "trilogy_connect - unable to connect to %s", connopt.path);
@@ -982,6 +994,10 @@ static VALUE rb_trilogy_close(VALUE self)
         }
     }
 
+    // We aren't checking or raising errors here (we need close to always close the socket and free the connection), so
+    // we must clear any SSL errors left in the queue from a read/write.
+    ERR_clear_error();
+
     trilogy_free(&ctx->conn);
 
     return Qnil;
@@ -1081,7 +1097,7 @@ RUBY_FUNC_EXPORTED void Init_cext()
     VALUE Trilogy = rb_const_get(rb_cObject, rb_intern("Trilogy"));
     rb_define_alloc_func(Trilogy, allocate_trilogy);
 
-    rb_define_private_method(Trilogy, "_initialize", rb_trilogy_initialize, 3);
+    rb_define_private_method(Trilogy, "_connect", rb_trilogy_connect, 3);
     rb_define_method(Trilogy, "change_db", rb_trilogy_change_db, 1);
     rb_define_alias(Trilogy, "select_db", "change_db");
     rb_define_method(Trilogy, "query", rb_trilogy_query, 1);
@@ -1136,12 +1152,6 @@ RUBY_FUNC_EXPORTED void Init_cext()
     Trilogy_TimeoutError = rb_const_get(Trilogy, rb_intern("TimeoutError"));
     rb_global_variable(&Trilogy_TimeoutError);
 
-    Trilogy_ConnectionRefusedError = rb_const_get(Trilogy, rb_intern("ConnectionRefusedError"));
-    rb_global_variable(&Trilogy_ConnectionRefusedError);
-
-    Trilogy_ConnectionResetError = rb_const_get(Trilogy, rb_intern("ConnectionResetError"));
-    rb_global_variable(&Trilogy_ConnectionResetError);
-
     Trilogy_BaseConnectionError = rb_const_get(Trilogy, rb_intern("BaseConnectionError"));
     rb_global_variable(&Trilogy_BaseConnectionError);
 
@@ -1156,6 +1166,9 @@ RUBY_FUNC_EXPORTED void Init_cext()
 
     Trilogy_CastError = rb_const_get(Trilogy, rb_intern("CastError"));
     rb_global_variable(&Trilogy_CastError);
+
+    Trilogy_EOFError = rb_const_get(Trilogy, rb_intern("EOFError"));
+    rb_global_variable(&Trilogy_EOFError);
 
     id_socket = rb_intern("socket");
     id_host = rb_intern("host");

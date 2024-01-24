@@ -10,7 +10,14 @@ $LOAD_PATH.unshift File.expand_path("../", __FILE__)
 if GC.respond_to?(:verify_compaction_references)
   # This method was added in Ruby 3.0.0. Calling it this way asks the GC to
   # move objects around, helping to find object movement bugs.
-  GC.verify_compaction_references(double_heap: true, toward: :empty)
+  if Gem::Version::new(RUBY_VERSION) >= Gem::Version::new("3.2.0")
+    # double_heap is deprecated and expand_heap is the updated argument. This change
+    # was introduced in:
+    # https://github.com/ruby/ruby/commit/a6dd859affc42b667279e513bb94fb75cfb133c1
+    GC.verify_compaction_references(expand_heap: true, toward: :empty)
+  else
+    GC.verify_compaction_references(double_heap: true, toward: :empty)
+  end
 end
 
 class TrilogyTest < Minitest::Test
@@ -137,8 +144,10 @@ class TrilogyTest < Minitest::Test
   def assert_raises_connection_error(&block)
     err = assert_raises(Trilogy::Error, &block)
 
-    if err.is_a?(Trilogy::QueryError)
+    if err.is_a?(Trilogy::EOFError)
       assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
+    elsif err.is_a?(Trilogy::SSLError)
+      assert_includes err.message, "unexpected eof while reading"
     else
       assert_instance_of Trilogy::ConnectionResetError, err
     end

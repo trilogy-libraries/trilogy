@@ -1,5 +1,6 @@
 #include <netdb.h>
 #include <netinet/tcp.h>
+#include <netinet/in.h>
 #include <poll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -65,7 +66,11 @@ static ssize_t _cb_raw_read(trilogy_sock_t *_sock, void *buf, size_t nread)
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
     ssize_t data_read = read(sock->fd, buf, nread);
     if (data_read < 0) {
-        return (ssize_t)TRILOGY_SYSERR;
+        if (errno == EINTR || errno == EAGAIN) {
+            return (ssize_t)TRILOGY_AGAIN;
+        } else {
+            return (ssize_t)TRILOGY_SYSERR;
+        }
     }
     return data_read;
 }
@@ -75,6 +80,14 @@ static ssize_t _cb_raw_write(trilogy_sock_t *_sock, const void *buf, size_t nwri
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
     ssize_t data_written = write(sock->fd, buf, nwrite);
     if (data_written < 0) {
+        if (errno == EINTR || errno == EAGAIN) {
+            return (ssize_t)TRILOGY_AGAIN;
+        }
+
+        if (errno == EPIPE) {
+            return (ssize_t)TRILOGY_CLOSED_CONNECTION;
+        }
+
         return (ssize_t)TRILOGY_SYSERR;
     }
     return data_written;
@@ -87,8 +100,15 @@ static int _cb_raw_close(trilogy_sock_t *_sock)
     if (sock->fd != -1) {
         rc = close(sock->fd);
     }
+
     if (sock->addr) {
-        freeaddrinfo(sock->addr);
+        if (sock->base.opts.hostname == NULL && sock->base.opts.path != NULL) {
+            /* We created these with calloc so must free them instead of calling freeaddrinfo */
+            free(sock->addr->ai_addr);
+            free(sock->addr);
+        } else {
+            freeaddrinfo(sock->addr);
+        }
     }
 
     free(sock->base.opts.hostname);
@@ -109,7 +129,53 @@ static int _cb_raw_close(trilogy_sock_t *_sock)
     return rc;
 }
 
-static int _cb_raw_shutdown(trilogy_sock_t *_sock) { return shutdown(trilogy_sock_fd(_sock), SHUT_RDWR); }
+static int _cb_shutdown_connect(trilogy_sock_t *_sock) {
+    (void)_sock;
+    return TRILOGY_CLOSED_CONNECTION;
+}
+static ssize_t _cb_shutdown_write(trilogy_sock_t *_sock, const void *buf, size_t nwrite) {
+    (void)_sock;
+    (void)buf;
+    (void)nwrite;
+    return TRILOGY_CLOSED_CONNECTION;
+}
+static ssize_t _cb_shutdown_read(trilogy_sock_t *_sock, void *buf, size_t nread) {
+    (void)_sock;
+    (void)buf;
+    (void)nread;
+    return TRILOGY_CLOSED_CONNECTION;
+}
+static int _cb_shutdown_wait(trilogy_sock_t *_sock, trilogy_wait_t wait) {
+    (void)_sock;
+    (void)wait;
+    return TRILOGY_OK;
+}
+static int _cb_shutdown_shutdown(trilogy_sock_t *_sock) {
+    (void)_sock;
+    return TRILOGY_OK;
+}
+
+// Shutdown will close the underlying socket fd and replace all I/O operations with stubs which perform no action.
+static int _cb_raw_shutdown(trilogy_sock_t *_sock) {
+    struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
+
+    // Replace all operations with stubs which return immediately
+    sock->base.connect_cb = _cb_shutdown_connect;
+    sock->base.read_cb = _cb_shutdown_read;
+    sock->base.write_cb = _cb_shutdown_write;
+    sock->base.wait_cb = _cb_shutdown_wait;
+    sock->base.shutdown_cb = _cb_shutdown_shutdown;
+
+    // These "raw" callbacks won't attempt further operations on the socket and work correctly with fd set to -1
+    sock->base.close_cb = _cb_raw_close;
+    sock->base.fd_cb = _cb_raw_fd;
+
+    if (sock->fd != -1)
+        close(sock->fd);
+    sock->fd = -1;
+
+    return TRILOGY_OK;
+}
 
 static int set_nonblocking_fd(int sock)
 {
@@ -130,12 +196,21 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
 {
     int sockerr;
     socklen_t sockerr_len = sizeof(sockerr);
+    int rc = TRILOGY_SYSERR;
 
     sock->fd = socket(ai->ai_family, SOCK_STREAM, ai->ai_protocol);
     if (sock->fd < 0) {
         return TRILOGY_SYSERR;
     }
 
+#ifdef TCP_NODELAY
+    if (sock->addr->ai_family != PF_UNIX) {
+        int flags = 1;
+        if (setsockopt(sock->fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags)) < 0) {
+            goto fail;
+        }
+    }
+#endif
     if (sock->base.opts.keepalive_enabled) {
         int flags = 1;
         if (setsockopt(sock->fd, SOL_SOCKET, SO_KEEPALIVE, (void *)&flags, sizeof(flags)) < 0) {
@@ -177,8 +252,8 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
         }
     }
 
-    if (trilogy_sock_wait_write((trilogy_sock_t *)sock) < 0) {
-        goto fail;
+    if ((rc = trilogy_sock_wait_write((trilogy_sock_t *)sock)) < 0) {
+        goto failrc;
     }
 
     if (getsockopt(sock->fd, SOL_SOCKET, SO_ERROR, &sockerr, &sockerr_len) < 0) {
@@ -196,9 +271,11 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
     return TRILOGY_OK;
 
 fail:
+    rc = TRILOGY_SYSERR;
+failrc:
     close(sock->fd);
     sock->fd = -1;
-    return TRILOGY_SYSERR;
+    return rc;
 }
 
 static int _cb_raw_connect(trilogy_sock_t *_sock)
@@ -306,12 +383,21 @@ fail:
 
 static ssize_t ssl_io_return(struct trilogy_sock *sock, ssize_t ret)
 {
-    if (ret < 0) {
+    if (ret <= 0) {
         int rc = SSL_get_error(sock->ssl, (int)ret);
         if (rc == SSL_ERROR_WANT_WRITE || rc == SSL_ERROR_WANT_READ) {
             return (ssize_t)TRILOGY_AGAIN;
-        } else if (rc == SSL_ERROR_SYSCALL && errno != 0) {
-            return (ssize_t)TRILOGY_SYSERR;
+        } else if (rc == SSL_ERROR_ZERO_RETURN) {
+            // Server has closed the connection for writing by sending the close_notify alert
+            return (ssize_t)TRILOGY_CLOSED_CONNECTION;
+        } else if (rc == SSL_ERROR_SYSCALL && !ERR_peek_error()) {
+            if (errno == 0) {
+                // On OpenSSL <= 1.1.1, SSL_ERROR_SYSCALL with an errno value
+                // of 0 indicates unexpected EOF from the peer.
+                return (ssize_t)TRILOGY_CLOSED_CONNECTION;
+            } else {
+                return (ssize_t)TRILOGY_SYSERR;
+            }
         }
         return (ssize_t)TRILOGY_OPENSSL_ERR;
     }
@@ -321,6 +407,11 @@ static ssize_t ssl_io_return(struct trilogy_sock *sock, ssize_t ret)
 static ssize_t _cb_ssl_read(trilogy_sock_t *_sock, void *buf, size_t nread)
 {
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
+
+    // This shouldn't be necessary, but protects against other libraries in the same process incorrectly leaving errors
+    // in the queue.
+    ERR_clear_error();
+
     ssize_t data_read = (ssize_t)SSL_read(sock->ssl, buf, (int)nread);
     return ssl_io_return(sock, data_read);
 }
@@ -328,6 +419,11 @@ static ssize_t _cb_ssl_read(trilogy_sock_t *_sock, void *buf, size_t nread)
 static ssize_t _cb_ssl_write(trilogy_sock_t *_sock, const void *buf, size_t nwrite)
 {
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
+
+    // This shouldn't be necessary, but protects against other libraries in the same process incorrectly leaving errors
+    // in the queue.
+    ERR_clear_error();
+
     ssize_t data_written = (ssize_t)SSL_write(sock->ssl, buf, (int)nwrite);
     return ssl_io_return(sock, data_written);
 }
@@ -340,15 +436,9 @@ static int _cb_ssl_shutdown(trilogy_sock_t *_sock)
     // we need to close it. The OpenSSL explicitly states
     // not to call SSL_shutdown on a broken SSL socket.
     SSL_free(sock->ssl);
-    // Reset the handlers since we tore down SSL, so we
-    // fall back to the regular methods for detecting
-    // we have a closed connection and for the cleanup.
-    sock->base.read_cb = _cb_raw_read;
-    sock->base.write_cb = _cb_raw_write;
-    sock->base.shutdown_cb = _cb_raw_shutdown;
-    sock->base.close_cb = _cb_raw_close;
     sock->ssl = NULL;
 
+    // This will rewrite the handlers
     return _cb_raw_shutdown(_sock);
 }
 
@@ -357,7 +447,10 @@ static int _cb_ssl_close(trilogy_sock_t *_sock)
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
     if (sock->ssl != NULL) {
         if (SSL_in_init(sock->ssl) == 0) {
-            SSL_shutdown(sock->ssl);
+            (void)SSL_shutdown(sock->ssl);
+            // SSL_shutdown might return WANT_WRITE or WANT_READ. Ideally we would retry but we don't want to block.
+            // It may also push an error onto the OpenSSL error queue, so clear that.
+            ERR_clear_error();
         }
         SSL_free(sock->ssl);
         sock->ssl = NULL;
@@ -539,6 +632,10 @@ int trilogy_sock_upgrade_ssl(trilogy_sock_t *_sock)
 {
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
 
+    // This shouldn't be necessary, but protects against other libraries in the same process incorrectly leaving errors
+    // in the queue.
+    ERR_clear_error();
+
     SSL_CTX *ctx = trilogy_ssl_ctx(&sock->base.opts);
 
     if (!ctx) {
@@ -581,6 +678,10 @@ int trilogy_sock_upgrade_ssl(trilogy_sock_t *_sock)
         goto fail;
 
     for (;;) {
+        // This shouldn't be necessary, but protects against other libraries in the same process incorrectly leaving errors
+        // in the queue.
+        ERR_clear_error();
+
         int ret = SSL_connect(sock->ssl);
         if (ret == 1) {
 #if OPENSSL_VERSION_NUMBER < 0x1000200fL
@@ -622,29 +723,4 @@ fail:
     SSL_free(sock->ssl);
     sock->ssl = NULL;
     return TRILOGY_OPENSSL_ERR;
-}
-
-int trilogy_sock_discard(trilogy_sock_t *_sock)
-{
-    struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
-
-    if (sock->fd < 0) {
-        return TRILOGY_OK;
-    }
-
-    int null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);
-    if (null_fd < 0) {
-        return TRILOGY_SYSERR;
-    }
-
-    if (dup2(null_fd, sock->fd) < 0) {
-        close(null_fd);
-        return TRILOGY_SYSERR;
-    }
-
-    if (close(null_fd) < 0) {
-        return TRILOGY_SYSERR;
-    }
-
-    return TRILOGY_OK;
 }

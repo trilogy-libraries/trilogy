@@ -57,4 +57,9 @@ int trilogy_buffer_putc(trilogy_buffer_t *buffer, uint8_t c)
     return TRILOGY_OK;
 }
 
-void trilogy_buffer_free(trilogy_buffer_t *buffer) { free(buffer->buff); }
+void trilogy_buffer_free(trilogy_buffer_t *buffer)
+{
+    free(buffer->buff);
+    buffer->buff = NULL;
+    buffer->len = buffer->cap = 0;
+}

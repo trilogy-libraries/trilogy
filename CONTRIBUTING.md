@@ -1,7 +1,7 @@
 ## Contributing
 
-[fork]: https://github.com/github/trilogy/fork
-[pr]: https://github.com/github/trilogy/compare
+[fork]: https://github.com/trilogy-libraries/trilogy/fork
+[pr]: https://github.com/trilogy-libraries/trilogy/compare
 
 Hi there! We're thrilled that you'd like to contribute to this project. Your help is essential for keeping it great.
 

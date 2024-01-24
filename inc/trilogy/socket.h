@@ -110,6 +110,5 @@ static inline int trilogy_sock_fd(trilogy_sock_t *sock) { return sock->fd_cb(soc
 trilogy_sock_t *trilogy_sock_new(const trilogy_sockopt_t *opts);
 int trilogy_sock_resolve(trilogy_sock_t *raw);
 int trilogy_sock_upgrade_ssl(trilogy_sock_t *raw);
-int trilogy_sock_discard(trilogy_sock_t *sock);
 
 #endif

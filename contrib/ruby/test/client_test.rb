@@ -42,7 +42,9 @@ class ClientTest < TrilogyTest
 
     socket = new_tcp_client.query("SHOW VARIABLES LIKE 'socket'").to_a[0][1]
 
-    assert File.exist?(socket), "cound not find socket at #{socket}"
+    if !File.exist?(socket)
+      skip "cound not find socket at #{socket}"
+    end
 
     client = new_unix_client(socket)
     refute_nil client
@@ -773,6 +775,8 @@ class ClientTest < TrilogyTest
     end
 
     assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
+
+    assert client.ping
   ensure
     ensure_closed client
   end
@@ -791,6 +795,8 @@ class ClientTest < TrilogyTest
     end
 
     assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
+
+    assert client.ping
   ensure
     ensure_closed client
   end
@@ -809,6 +815,8 @@ class ClientTest < TrilogyTest
     end
 
     assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
+
+    assert client.ping
   ensure
     ensure_closed client
   end
@@ -833,6 +841,10 @@ class ClientTest < TrilogyTest
     end
 
     refute_match(/TRILOGY_MAX_PACKET_EXCEEDED/, exception.message)
+
+    assert_raises_connection_error do
+      client.ping
+    end
   ensure
     ensure_closed client
   end
@@ -851,6 +863,8 @@ class ClientTest < TrilogyTest
     end
 
     assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
+
+    assert client.ping
   ensure
     ensure_closed client
   end
@@ -998,6 +1012,18 @@ class ClientTest < TrilogyTest
     end
   end
 
+  def test_discard_closes_connection
+    client = new_tcp_client
+
+    assert_equal [1], client.query("SELECT 1").to_a.first
+
+    client.discard!
+
+    assert_raises Trilogy::ConnectionClosed do
+      client.query("SELECT 1")
+    end
+  end
+
   def test_discard_doesnt_terminate_parent_connection
     skip("Fork isn't supported on this platform") unless Process.respond_to?(:fork)
 
@@ -1072,5 +1098,15 @@ class ClientTest < TrilogyTest
     client = new_tcp_client(**options)
 
     assert client.query("SELECT 1")
+  end
+
+  def test_error_classes_exclusively_match_subclasses
+    klass = Trilogy::SyscallError::ECONNRESET
+    assert_operator klass, :===, klass.new
+    refute_operator klass, :===, Errno::ECONNRESET.new
+
+    assert_operator Errno::ECONNRESET, :===, klass.new
+    assert_operator SystemCallError, :===, klass.new
+    assert_operator Trilogy::ConnectionError, :===, klass.new
   end
 end

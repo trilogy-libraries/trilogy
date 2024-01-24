@@ -27,7 +27,6 @@ $ gem install trilogy
 ``` ruby
 client = Trilogy.new(host: "127.0.0.1", port: 3306, username: "root", read_timeout: 2)
 if client.ping
-  client.query_options[:database_timezone] = :utc
   client.change_db "mydb"
 
   result = client.query("SELECT id, created_at FROM users LIMIT 10")
@@ -63,7 +62,7 @@ bundle exec rake build
 
 The official Ruby bindings are inside of the canonical trilogy repository itself.
 
-1. Fork it ( https://github.com/github/trilogy/fork )
+1. Fork it ( https://github.com/trilogy-libraries/trilogy/fork )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
