@@ -71,8 +71,8 @@ class ClientTest < TrilogyTest
       tls_min_version: 3,
     }
     assert_equal expected_connection_options, client.connection_options
-    
-    assert_output('', /WARNING/) {  new_tcp_client({ unknown: "key" }) }
+
+    assert_output('', /\[WARNING\] Unknown Trilogy options: :foo, "bar"/) {  new_tcp_client({ foo: "", "bar" => "" }) }
   end
 
   def test_trilogy_ping
