@@ -7,7 +7,19 @@ require "trilogy/cext"
 require "trilogy/encoding"
 
 class Trilogy
+  VALID_OPTIONS = %i[
+    host port path database username password encoding
+    ssl ssl_mode tls_min_version read_timeout write_timeout connect_timeout
+    multi_statement
+  ].freeze
+
   def initialize(options = {})
+    original_options = options.dup
+    options = VALID_OPTIONS.each_with_object({}) do |key, hash|
+      hash[key] = original_options.delete(key) if original_options.key?(key)
+    end
+    $stderr.puts "WARNING: Unknown Trilogy options: #{original_options.keys.join(", ")}" unless original_options.empty?
+
     options[:port] = options[:port].to_i if options[:port]
     mysql_encoding = options[:encoding] || "utf8mb4"
     encoding = Trilogy::Encoding.find(mysql_encoding)
