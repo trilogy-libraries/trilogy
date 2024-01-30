@@ -9,16 +9,15 @@ require "trilogy/encoding"
 class Trilogy
   VALID_OPTIONS = %i[
     host port path database username password encoding
-    ssl ssl_mode tls_min_version read_timeout write_timeout connect_timeout
+    ssl ssl_mode ssl_cipher ssl_ca ssl_capath ssl_key ssl_cert
+    tls_min_version tls_max_version tls_ciphersuites
+    read_timeout write_timeout connect_timeout
     multi_statement
   ].freeze
 
   def initialize(options = {})
-    original_options = options.dup
-    options = VALID_OPTIONS.each_with_object({}) do |key, hash|
-      hash[key] = original_options.delete(key) if original_options.key?(key)
-    end
-    $stderr.puts "WARNING: Unknown Trilogy options: #{original_options.keys.join(", ")}" unless original_options.empty?
+    invalid_keys = options.keys - VALID_OPTIONS
+    $stderr.puts "WARNING: Unknown Trilogy options: #{invalid_keys.keys.join(", ")}" unless original_options.empty?
 
     options[:port] = options[:port].to_i if options[:port]
     mysql_encoding = options[:encoding] || "utf8mb4"
