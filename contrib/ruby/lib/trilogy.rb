@@ -17,7 +17,7 @@ class Trilogy
 
   def initialize(options = {})
     invalid_keys = options.keys - VALID_OPTIONS
-    $stderr.puts "WARNING: Unknown Trilogy options: #{invalid_keys.keys.join(", ")}" unless invalid_keys.empty?
+    $stderr.puts "WARNING: Unknown Trilogy options: #{invalid_keys.join(", ")}" unless invalid_keys.empty?
 
     options[:port] = options[:port].to_i if options[:port]
     mysql_encoding = options[:encoding] || "utf8mb4"
