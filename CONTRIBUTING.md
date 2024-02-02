@@ -12,7 +12,13 @@ Please note that this project is released with a [Contributor Code of Conduct](C
 ## Submitting a pull request
 
 0. [Fork][] and clone the repository
-0. Build it and make sure the tests pass on your machine: `script/cibuild`
+0. Build it and make sure the tests pass on your machine: `script/cibuild`. It will run both trilogy and ruby bindings suites in docker environment.
+ 
+    To shorten the development loop you can:
+     
+    a) run trilogy tests locally with: `make test`  
+    b) run ruby binding tests with `cd contrib/ruby`, `bundle exec rake test`. It's possible to run a test single example by passing a `TESTOPTS` environment variable like so: `TESTOPTS=-n/test_packet_size_greater_than_trilogy_max_packet_len/`.
+   
 0. Create a new branch: `git checkout -b my-branch-name`
 0. Make your change, add tests, and make sure the tests still pass
 0. Push to your fork and [submit a pull request][pr]
