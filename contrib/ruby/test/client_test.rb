@@ -552,7 +552,7 @@ class ClientTest < TrilogyTest
     end
   end
 
-  def test_connect_timeout
+  def test_handshake_timeout
     serv = TCPServer.new(0)
     port = serv.addr[1]
 
@@ -561,6 +561,20 @@ class ClientTest < TrilogyTest
     end
   ensure
     ensure_closed serv
+  end
+
+  def test_connect_timeout
+    assert_raises Trilogy::TimeoutError do
+      # 192.0.2.0/24 is TEST-NET-1 which should only be for docs/examples
+      new_tcp_client(host: "192.0.2.1", connect_timeout: 0.1)
+    end
+  end
+
+  def test_connect_timeout_with_only_write_timeout
+    assert_raises Trilogy::TimeoutError do
+      # 192.0.2.0/24 is TEST-NET-1 which should only be for docs/examples
+      new_tcp_client(host: "192.0.2.1", write_timeout: 0.1)
+    end
   end
 
   def test_large_query

@@ -13,6 +13,7 @@ typedef enum {
     TRILOGY_WAIT_READ = 0,
     TRILOGY_WAIT_WRITE = 1,
     TRILOGY_WAIT_HANDSHAKE = 2,
+    TRILOGY_WAIT_CONNECT = 3,
 } trilogy_wait_t;
 
 // We use the most strict mode as value 1 so if anyone ever

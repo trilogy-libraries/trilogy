@@ -239,7 +239,18 @@ static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
         wait_flag = RB_WAITFD_OUT;
         break;
 
+    case TRILOGY_WAIT_CONNECT:
+        // wait for connection to be writable
+        timeout = &sock->opts.connect_timeout;
+        if (timeout->tv_sec == 0 && timeout->tv_usec == 0) {
+            // We used to use the write timeout for this, so if a connect timeout isn't configured, default to that.
+            timeout = &sock->opts.write_timeout;
+        }
+        wait_flag = RB_WAITFD_OUT;
+        break;
+
     case TRILOGY_WAIT_HANDSHAKE:
+        // wait for handshake packet on initial connection
         timeout = &sock->opts.connect_timeout;
         wait_flag = RB_WAITFD_IN;
         break;
