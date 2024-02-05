@@ -479,6 +479,20 @@ class ClientTest < TrilogyTest
     ensure_closed client
   end
 
+  def test_trilogy_check
+    client = new_tcp_client
+
+    assert_equal true, client.check
+
+    client.close
+
+    assert_raises Trilogy::ConnectionClosed do
+      client.check
+    end
+  ensure
+    ensure_closed client
+  end
+
   def test_read_timeout
     client = new_tcp_client(read_timeout: 0.1)
 

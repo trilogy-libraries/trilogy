@@ -724,3 +724,25 @@ fail:
     sock->ssl = NULL;
     return TRILOGY_OPENSSL_ERR;
 }
+
+int trilogy_sock_check(trilogy_sock_t *_sock)
+{
+    struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
+    char buf[1];
+    while (1) {
+        ssize_t data_read = recv(sock->fd, buf, 1, MSG_PEEK);
+        if (data_read > 0) {
+            return TRILOGY_OK;
+        }
+        if (data_read == 0) {
+            return TRILOGY_CLOSED_CONNECTION;
+        }
+        if (errno == EINTR) {
+            continue;
+        }
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return TRILOGY_OK;
+        }
+        return TRILOGY_SYSERR;
+    }
+}
