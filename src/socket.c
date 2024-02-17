@@ -40,6 +40,7 @@ static int _cb_wait(trilogy_sock_t *_sock, trilogy_wait_t wait)
     case TRILOGY_WAIT_READ:
         pfd.events = POLLIN;
         break;
+    case TRILOGY_WAIT_CONNECT:
     case TRILOGY_WAIT_WRITE:
         pfd.events = POLLOUT;
         break;
@@ -252,7 +253,7 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
         }
     }
 
-    if ((rc = trilogy_sock_wait_write((trilogy_sock_t *)sock)) < 0) {
+    if ((rc = trilogy_sock_wait((trilogy_sock_t *)sock, TRILOGY_WAIT_CONNECT)) < 0) {
         goto failrc;
     }
 
