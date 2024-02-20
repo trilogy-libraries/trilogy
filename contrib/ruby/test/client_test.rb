@@ -80,7 +80,7 @@ class ClientTest < TrilogyTest
     ensure_closed client
   end
 
-  def test_trilogy_ping_after_close_returns_false
+  def test_trilogy_ping_after_close_raises
     client = new_tcp_client
     assert client.ping
     client.close
