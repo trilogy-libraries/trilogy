@@ -36,11 +36,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Setup MySQL
+      env:
+        MYSQL_VERSION: ${{ matrix.mysql }}
       run: |
         brew install mysql@${{ matrix.mysql }}
         (unset CI; brew postinstall mysql@${{ matrix.mysql }})
         brew services start mysql@${{ matrix.mysql }}
         sleep 5
+        [[ "$MYSQL_VERSION" == "8.0" ]] && echo "im on mysql 8.0"
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot -e 'CREATE DATABASE test'
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < docker-entrypoint-initdb.d/native_password_user.sql
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < docker-entrypoint-initdb.d/x509_user.sql
