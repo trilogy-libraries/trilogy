@@ -23,18 +23,36 @@ class ClientTest < TrilogyTest
     end
   end
 
-  def test_trilogy_connect_with_native_password_auth_switch
-    client = new_tcp_client username: "native"
+  def test_trilogy_connect_with_auth_switch
+    client_with_version = new_tcp_client.server_version
+
+    if client_with_version >= "8.0"
+      client = new_tcp_client username: "caching_sha2", password: "password"
+    else
+      client = new_tcp_client username: "native"
+    end
+
     refute_nil client
   ensure
     ensure_closed client
   end
 
-  def test_trilogy_connect_with_caching_sha2_password_auth_switch
-    client = new_tcp_client username: "caching_sha2", password: "password"
-    refute_nil client
-  ensure
-    ensure_closed client
+  def test_connection_error
+    client_with_version = new_tcp_client.server_version
+
+    if client_with_version >= "8.0"
+      err = assert_raises Trilogy::ConnectionError do
+        new_tcp_client(username: "caching_sha2", password: "incorrect")
+      end
+
+      assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
+    else
+      err = assert_raises Trilogy::ConnectionError do
+        new_tcp_client(username: "native", password: "incorrect")
+      end
+
+      assert_includes err.message, "Access denied for user 'native"
+    end
   end
 
   def test_trilogy_connect_tcp_to_wrong_port
@@ -672,14 +690,6 @@ class ClientTest < TrilogyTest
   ensure
     ensure_closed(client_1)
     ensure_closed(client_2)
-  end
-
-  def test_connection_error
-    err = assert_raises Trilogy::ConnectionError do
-      new_tcp_client(username: "native", password: "incorrect")
-    end
-
-    assert_includes err.message, "Access denied for user 'native'"
   end
 
   def test_connection_closed_error
