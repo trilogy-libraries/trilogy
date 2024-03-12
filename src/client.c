@@ -336,9 +336,8 @@ int trilogy_connect_recv(trilogy_conn_t *conn, trilogy_handshake_t *handshake_ou
 int trilogy_auth_send(trilogy_conn_t *conn, const trilogy_handshake_t *handshake)
 {
     trilogy_builder_t builder;
-    bool use_ssl = (conn->socket->opts.flags & TRILOGY_CAPABILITIES_SSL) != 0;
 
-    int rc = begin_command_phase(&builder, conn, use_ssl ? 2 : 1);
+    int rc = begin_command_phase(&builder, conn, conn->packet_parser.sequence_number);
 
     if (rc < 0) {
         return rc;
@@ -360,7 +359,7 @@ int trilogy_ssl_request_send(trilogy_conn_t *conn)
 {
     trilogy_builder_t builder;
 
-    int rc = begin_command_phase(&builder, conn, 1);
+    int rc = begin_command_phase(&builder, conn, conn->packet_parser.sequence_number);
 
     if (rc < 0) {
         return rc;
@@ -380,8 +379,7 @@ int trilogy_auth_switch_send(trilogy_conn_t *conn, const trilogy_handshake_t *ha
 {
     trilogy_builder_t builder;
 
-    bool use_ssl = (conn->socket->opts.flags & TRILOGY_CAPABILITIES_SSL) != 0;
-    int rc = begin_command_phase(&builder, conn, use_ssl ? 4 : 3);
+    int rc = begin_command_phase(&builder, conn, conn->packet_parser.sequence_number);
 
     if (rc < 0) {
         return rc;
