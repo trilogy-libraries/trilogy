@@ -420,6 +420,13 @@ int trilogy_auth_recv(trilogy_conn_t *conn, trilogy_handshake_t *handshake)
 
     switch (current_packet_type(conn)) {
     case TRILOGY_PACKET_AUTH_MORE_DATA: {
+        bool use_ssl = (conn->socket->opts.flags & TRILOGY_CAPABILITIES_SSL) != 0;
+        bool has_unix_socket = (conn->socket->opts.path != NULL);
+
+        if (!use_ssl && !has_unix_socket) {
+            return TRILOGY_UNSUPPORTED;
+        }
+
         uint8_t byte = conn->packet_buffer.buff[1];
         switch (byte) {
             case FAST_AUTH_OK:
