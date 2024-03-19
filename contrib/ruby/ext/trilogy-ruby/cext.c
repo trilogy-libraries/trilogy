@@ -375,7 +375,7 @@ static void auth_switch(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake)
     }
 }
 
-static void authenticate(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, trilogy_ssl_mode_t ssl_mode)
+static void authenticate(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, trilogy_ssl_mode_t ssl_mode, bool cleartext_plugin_enabled)
 {
     int rc;
 
@@ -522,6 +522,10 @@ static VALUE rb_trilogy_connect(VALUE self, VALUE encoding, VALUE charset, VALUE
         connopt.flags |= TRILOGY_CAPABILITIES_CONNECT_WITH_DB;
     }
 
+    if (RTEST(rb_hash_aref(opts, ID2SYM(id_cleartext_plugin_enabled)))) {
+        connopt.cleartext_plugin_enabled = true;
+    }
+
     if (RTEST(rb_hash_aref(opts, ID2SYM(id_found_rows)))) {
         connopt.flags |= TRILOGY_CAPABILITIES_FOUND_ROWS;
     }
@@ -597,7 +601,7 @@ static VALUE rb_trilogy_connect(VALUE self, VALUE encoding, VALUE charset, VALUE
     memcpy(ctx->server_version, handshake.server_version, TRILOGY_SERVER_VERSION_SIZE);
     ctx->server_version[TRILOGY_SERVER_VERSION_SIZE] = 0;
 
-    authenticate(ctx, &handshake, connopt.ssl_mode);
+    authenticate(ctx, &handshake, connopt.ssl_mode, connopt.cleartext_plugin_enabled);
 
     return Qnil;
 }
@@ -1208,6 +1212,7 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
     id_keepalive_count = rb_intern("keepalive_count");
     id_keepalive_interval = rb_intern("keepalive_interval");
     id_database = rb_intern("database");
+    id_cleartext_plugin_enabled = rb_intern("cleartext_plugin_enabled");
     id_ssl_ca = rb_intern("ssl_ca");
     id_ssl_capath = rb_intern("ssl_capath");
     id_ssl_cert = rb_intern("ssl_cert");

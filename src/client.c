@@ -346,7 +346,8 @@ int trilogy_auth_send(trilogy_conn_t *conn, const trilogy_handshake_t *handshake
     rc = trilogy_build_auth_packet(&builder, conn->socket->opts.username, conn->socket->opts.password,
                                    conn->socket->opts.password_len, conn->socket->opts.database,
                                    conn->socket->opts.encoding, handshake->auth_plugin, handshake->scramble,
-                                   conn->socket->opts.flags);
+                                   conn->socket->opts.flags,
+                                   conn->socket->opts.cleartext_plugin_enabled);
 
     if (rc < 0) {
         return rc;

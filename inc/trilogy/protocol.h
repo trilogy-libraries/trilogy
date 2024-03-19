@@ -429,7 +429,7 @@ typedef enum {
  */
 int trilogy_build_auth_packet(trilogy_builder_t *builder, const char *user, const char *pass, size_t pass_len,
                               const char *database, TRILOGY_CHARSET_t client_encoding, const char *auth_plugin,
-                              const char *scramble, TRILOGY_CAPABILITIES_t flags);
+                              const char *scramble, TRILOGY_CAPABILITIES_t flags, bool cleartext_plugin_enabled);
 
 /* trilogy_build_auth_switch_response_packet - Build a response for when
  * authentication switching it requested.

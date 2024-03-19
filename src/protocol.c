@@ -532,7 +532,8 @@ static void trilogy_pack_scramble_sha2_hash(const char *scramble, const char *pa
 
 int trilogy_build_auth_packet(trilogy_builder_t *builder, const char *user, const char *pass, size_t pass_len,
                               const char *database, TRILOGY_CHARSET_t client_encoding, const char *auth_plugin,
-                              const char *scramble, TRILOGY_CAPABILITIES_t flags)
+                              const char *scramble, TRILOGY_CAPABILITIES_t flags,
+                              bool cleartext_plugin_enabled)
 {
     int rc = TRILOGY_OK;
 
