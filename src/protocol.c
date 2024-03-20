@@ -532,8 +532,7 @@ static void trilogy_pack_scramble_sha2_hash(const char *scramble, const char *pa
 
 int trilogy_build_auth_packet(trilogy_builder_t *builder, const char *user, const char *pass, size_t pass_len,
                               const char *database, TRILOGY_CHARSET_t client_encoding, const char *auth_plugin,
-                              const char *scramble, TRILOGY_CAPABILITIES_t flags,
-                              bool enable_cleartext_plugin)
+                              const char *scramble, TRILOGY_CAPABILITIES_t flags)
 {
     int rc = TRILOGY_OK;
 
@@ -571,7 +570,6 @@ int trilogy_build_auth_packet(trilogy_builder_t *builder, const char *user, cons
         // Fallback to te default unless we have SHA2 requested
         if (!strcmp("mysql_clear_password", auth_plugin)) {
             memcpy(auth_response, pass, pass_len);
-            auth_plugin = "mysql_clear_password";
         } else if (!strcmp("caching_sha2_password", auth_plugin)) {
             trilogy_pack_scramble_sha2_hash(scramble, pass, pass_len, auth_response, &auth_response_len);
         } else {

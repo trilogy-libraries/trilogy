@@ -336,6 +336,7 @@ int trilogy_connect_recv(trilogy_conn_t *conn, trilogy_handshake_t *handshake_ou
 int trilogy_auth_send(trilogy_conn_t *conn, const trilogy_handshake_t *handshake)
 {
     trilogy_builder_t builder;
+    const char *auth_plugin;
 
     int rc = begin_command_phase(&builder, conn, conn->packet_parser.sequence_number);
 
@@ -343,11 +344,16 @@ int trilogy_auth_send(trilogy_conn_t *conn, const trilogy_handshake_t *handshake
         return rc;
     }
 
+    if (conn->socket->opts.enable_cleartext_plugin) {
+        auth_plugin = "mysql_clear_password";
+    } else {
+        auth_plugin = handshake->auth_plugin;
+    }
+
     rc = trilogy_build_auth_packet(&builder, conn->socket->opts.username, conn->socket->opts.password,
                                    conn->socket->opts.password_len, conn->socket->opts.database,
-                                   conn->socket->opts.encoding, handshake->auth_plugin, handshake->scramble,
-                                   conn->socket->opts.flags,
-                                   conn->socket->opts.enable_cleartext_plugin);
+                                   conn->socket->opts.encoding, auth_plugin, handshake->scramble,
+                                   conn->socket->opts.flags);
 
     if (rc < 0) {
         return rc;

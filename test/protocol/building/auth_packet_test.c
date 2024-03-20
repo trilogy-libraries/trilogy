@@ -24,7 +24,7 @@ TEST test_build_auth_packet_native()
 
     static const char scramble[] = "kw6C.]j}Wy|%<@jx>gml";
 
-    err = trilogy_build_auth_packet(&builder, user, NULL, 0, NULL, 45, "mysql_native_password", scramble, 0, false);
+    err = trilogy_build_auth_packet(&builder, user, NULL, 0, NULL, 45, "mysql_native_password", scramble, 0);
     ASSERT_OK(err);
 
     static const uint8_t expected[] = {0x3c, 0x00, 0x00, 0x01, 0x00, 0xa2, 0x88, 0x01, 0xff, 0xff, 0xff, 0x00, 0x2d,
@@ -54,7 +54,7 @@ TEST test_build_auth_packet_sha2()
 
     static const char scramble[] = "kw6C.]j}Wy|%<@jx>gml";
 
-    err = trilogy_build_auth_packet(&builder, user, NULL, 0, NULL, 45, "caching_sha2_password", scramble, 0, false);
+    err = trilogy_build_auth_packet(&builder, user, NULL, 0, NULL, 45, "caching_sha2_password", scramble, 0);
     ASSERT_OK(err);
 
     static const uint8_t expected[] = {0x3c, 0x00, 0x00, 0x01, 0x00, 0xa2, 0x88, 0x01, 0xff, 0xff, 0xff, 0x00, 0x2d,
@@ -84,14 +84,14 @@ TEST test_build_auth_packet_cleartext()
 
     static const char scramble[] = "kw6C.]j}Wy|%<@jx>gml";
 
-    err = trilogy_build_auth_packet(&builder, user, NULL, 0, NULL, 45, "mysql_native_password", scramble, 0, true);
+    err = trilogy_build_auth_packet(&builder, user, NULL, 0, NULL, 45, "mysql_clear_password", scramble, 0);
     ASSERT_OK(err);
 
     static const uint8_t expected[] = {
-        0x3c, 0x00, 0x00, 0x01, 0x00, 0xa2, 0x88, 0x01, 0xff, 0xff, 0xff, 0x00, 0x2d, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x3b, 0x00, 0x00, 0x01, 0x00, 0xa2, 0x88, 0x01, 0xff, 0xff, 0xff, 0x00, 0x2d, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x72, 0x6f, 0x6f, 0x74, 0x00, 0x00, 0x6d, 0x79, 0x73, 0x71, 0x6c, 0x5f, 0x6e, 0x61, 0x74, 0x69, 0x76, 0x65,
-        0x5f, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x00
+        0x72, 0x6f, 0x6f, 0x74, 0x00, 0x00, 0x6d, 0x79, 0x73, 0x71, 0x6c, 0x5f, 0x63, 0x6c, 0x65, 0x61, 0x72, 0x5f,
+        0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x00
     };
 
     ASSERT_MEM_EQ(expected, buff.buff, sizeof(expected));
@@ -114,7 +114,7 @@ TEST test_build_auth_packet_native_with_pass()
 
     static const char scramble[] = "I/JiR>}{tU-{G3e$\"{hx";
 
-    err = trilogy_build_auth_packet(&builder, user, pass, strlen(pass), NULL, 45, "mysql_native_password", scramble, 0, false);
+    err = trilogy_build_auth_packet(&builder, user, pass, strlen(pass), NULL, 45, "mysql_native_password", scramble, 0);
     ASSERT_OK(err);
 
     static const uint8_t expected[] = {
@@ -144,7 +144,7 @@ TEST test_build_auth_packet_sha2_with_pass()
 
     static const char scramble[] = "I/JiR>}{tU-{G3e$\"{hx";
 
-    err = trilogy_build_auth_packet(&builder, user, pass, strlen(pass), NULL, 45, "caching_sha2_password", scramble, 0, false);
+    err = trilogy_build_auth_packet(&builder, user, pass, strlen(pass), NULL, 45, "caching_sha2_password", scramble, 0);
     ASSERT_OK(err);
 
     static const uint8_t expected[] = {
@@ -175,7 +175,7 @@ TEST test_build_auth_packet_cleartext_with_pass()
 
     static const char scramble[] = "I/JiR>}{tU-{G3e$\"{hx";
 
-    err = trilogy_build_auth_packet(&builder, user, pass, strlen(pass), NULL, 45, "mysql_native_password", scramble, 0, true);
+    err = trilogy_build_auth_packet(&builder, user, pass, strlen(pass), NULL, 45, "mysql_clear_password", scramble, 0);
     ASSERT_OK(err);
 
     static const uint8_t expected[] = {
@@ -205,7 +205,7 @@ TEST test_build_auth_packet_native_with_database()
 
     static const char scramble[] = "kw6C.]j}Wy|%<@jx>gml";
 
-    err = trilogy_build_auth_packet(&builder, user, NULL, 0, "test", 45, "mysql_native_password", scramble, 0, false);
+    err = trilogy_build_auth_packet(&builder, user, NULL, 0, "test", 45, "mysql_native_password", scramble, 0);
     ASSERT_OK(err);
 
     static const uint8_t expected[] = {
@@ -234,7 +234,7 @@ TEST test_build_auth_packet_sha2_with_database()
 
     static const char scramble[] = "kw6C.]j}Wy|%<@jx>gml";
 
-    err = trilogy_build_auth_packet(&builder, user, NULL, 0, "test", 45, "caching_sha2_password", scramble, 0, false);
+    err = trilogy_build_auth_packet(&builder, user, NULL, 0, "test", 45, "caching_sha2_password", scramble, 0);
     ASSERT_OK(err);
 
     static const uint8_t expected[] = {
@@ -263,14 +263,14 @@ TEST test_build_auth_cleartext_with_database()
 
     static const char scramble[] = "kw6C.]j}Wy|%<@jx>gml";
 
-    err = trilogy_build_auth_packet(&builder, user, NULL, 0, "test", 45, "mysql_native_password", scramble, 0, true);
+    err = trilogy_build_auth_packet(&builder, user, NULL, 0, "test", 45, "mysql_clear_password", scramble, 0);
     ASSERT_OK(err);
 
     static const uint8_t expected[] = {
-        0x41, 0x00, 0x00, 0x01, 0x08, 0xa2, 0x88, 0x01, 0xff, 0xff, 0xff, 0x00, 0x2d, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x40, 0x00, 0x00, 0x01, 0x08, 0xa2, 0x88, 0x01, 0xff, 0xff, 0xff, 0x00, 0x2d, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x72, 0x6f, 0x6f, 0x74, 0x00, 0x00, 0x74, 0x65, 0x73, 0x74, 0x00, 0x6d, 0x79, 0x73, 0x71, 0x6c, 0x5f, 0x6e,
-        0x61, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x00
+        0x72, 0x6f, 0x6f, 0x74, 0x00, 0x00, 0x74, 0x65, 0x73, 0x74, 0x00, 0x6d, 0x79, 0x73, 0x71, 0x6c, 0x5f, 0x63,
+        0x6c, 0x65, 0x61, 0x72, 0x5f, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x00
     };
 
     ASSERT_MEM_EQ(expected, buff.buff, sizeof(expected));
@@ -293,7 +293,7 @@ TEST test_build_auth_packet_native_with_pass_and_database()
 
     static const char scramble[] = "I/JiR>}{tU-{G3e$\"{hx";
 
-    err = trilogy_build_auth_packet(&builder, user, pass, strlen(pass), "test", 45, "mysql_native_password", scramble, 0, false);
+    err = trilogy_build_auth_packet(&builder, user, pass, strlen(pass), "test", 45, "mysql_native_password", scramble, 0);
     ASSERT_OK(err);
 
     static const uint8_t expected[] = {
@@ -323,7 +323,7 @@ TEST test_build_auth_packet_sha2_with_pass_and_database()
 
     static const char scramble[] = "I/JiR>}{tU-{G3e$\"{hx";
 
-    err = trilogy_build_auth_packet(&builder, user, pass, strlen(pass), "test", 45, "caching_sha2_password", scramble, 0, false);
+    err = trilogy_build_auth_packet(&builder, user, pass, strlen(pass), "test", 45, "caching_sha2_password", scramble, 0);
     ASSERT_OK(err);
 
     static const uint8_t expected[] = {
@@ -354,7 +354,7 @@ TEST test_build_auth_packet_cleartext_with_pass_and_database()
 
     static const char scramble[] = "I/JiR>}{tU-{G3e$\"{hx";
 
-    err = trilogy_build_auth_packet(&builder, user, pass, strlen(pass), "test", 45, "mysql_native_password", scramble, 0, true);
+    err = trilogy_build_auth_packet(&builder, user, pass, strlen(pass), "test", 45, "mysql_clear_password", scramble, 0);
     ASSERT_OK(err);
 
     static const uint8_t expected[] = {
