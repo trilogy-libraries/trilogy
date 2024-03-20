@@ -67,7 +67,7 @@ typedef struct {
     uint16_t keepalive_count;
     uint16_t keepalive_interval;
 
-    bool cleartext_plugin_enabled;
+    bool enable_cleartext_plugin;
 
     TRILOGY_CAPABILITIES_t flags;
 
