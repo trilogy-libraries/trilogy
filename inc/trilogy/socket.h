@@ -67,6 +67,8 @@ typedef struct {
     uint16_t keepalive_count;
     uint16_t keepalive_interval;
 
+    bool enable_cleartext_plugin;
+
     TRILOGY_CAPABILITIES_t flags;
 
     size_t max_allowed_packet;
