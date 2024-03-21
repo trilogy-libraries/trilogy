@@ -375,7 +375,7 @@ static void auth_switch(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake)
     }
 }
 
-static void authenticate(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, trilogy_ssl_mode_t ssl_mode, bool enable_cleartext_plugin)
+static void authenticate(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, trilogy_ssl_mode_t ssl_mode)
 {
     int rc;
 
@@ -601,7 +601,7 @@ static VALUE rb_trilogy_connect(VALUE self, VALUE encoding, VALUE charset, VALUE
     memcpy(ctx->server_version, handshake.server_version, TRILOGY_SERVER_VERSION_SIZE);
     ctx->server_version[TRILOGY_SERVER_VERSION_SIZE] = 0;
 
-    authenticate(ctx, &handshake, connopt.ssl_mode, connopt.enable_cleartext_plugin);
+    authenticate(ctx, &handshake, connopt.ssl_mode);
 
     return Qnil;
 }
