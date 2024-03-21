@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+- Add support for `caching_sha2_password` when using MySQL 8.0+.
+
 ## 2.7.0
 
 ### Changed
