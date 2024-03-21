@@ -567,12 +567,12 @@ int trilogy_build_auth_packet(trilogy_builder_t *builder, const char *user, cons
     }
 
     if (pass_len > 0) {
-        // Fallback to te default unless we have SHA2 requested
         if (!strcmp("mysql_clear_password", auth_plugin)) {
             memcpy(auth_response, pass, pass_len);
         } else if (!strcmp("caching_sha2_password", auth_plugin)) {
             trilogy_pack_scramble_sha2_hash(scramble, pass, pass_len, auth_response, &auth_response_len);
         } else {
+            // Fallback to the default unless we have SHA2 or cleartext requested
             trilogy_pack_scramble_native_hash(scramble, pass, pass_len, auth_response, &auth_response_len);
             auth_plugin = default_auth_plugin;
         }
