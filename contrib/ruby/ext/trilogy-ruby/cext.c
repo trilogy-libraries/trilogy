@@ -156,6 +156,10 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
         rb_raise(Trilogy_EOFError, "%" PRIsVALUE ": TRILOGY_CLOSED_CONNECTION", rbmsg);
     }
 
+    case TRILOGY_UNSUPPORTED: {
+        rb_raise(Trilogy_BaseConnectionError, "%" PRIsVALUE ": TRILOGY_UNSUPPORTED", rbmsg);
+    }
+
     default:
         rb_raise(Trilogy_QueryError, "%" PRIsVALUE ": %s", rbmsg, trilogy_error(rc));
     }
@@ -419,7 +423,12 @@ static void authenticate(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake
         }
 
         if (rc != TRILOGY_AGAIN) {
-            handle_trilogy_error(ctx, rc, "trilogy_auth_recv");
+            if (rc == TRILOGY_UNSUPPORTED) {
+                handle_trilogy_error(ctx, rc, "trilogy_auth_recv: caching_sha2_password requires either TCP with TLS or a unix socket");
+            }
+            else {
+                handle_trilogy_error(ctx, rc, "trilogy_auth_recv");
+            }
         }
 
         rc = trilogy_sock_wait_read(ctx->conn.socket);
