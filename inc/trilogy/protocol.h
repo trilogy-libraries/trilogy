@@ -367,6 +367,7 @@ typedef enum {
 // Typical response packet types
 typedef enum {
     TRILOGY_PACKET_OK = 0x0,
+    TRILOGY_PACKET_AUTH_MORE_DATA = 0x01,
     TRILOGY_PACKET_EOF = 0xfe,
     TRILOGY_PACKET_ERR = 0xff,
     TRILOGY_PACKET_UNKNOWN
@@ -1036,5 +1037,7 @@ int trilogy_parse_stmt_ok_packet(const uint8_t *buff, size_t len, trilogy_stmt_o
  */
 int trilogy_parse_stmt_row_packet(const uint8_t *buff, size_t len, trilogy_column_packet_t *columns,
                                   uint64_t column_count, trilogy_binary_value_t *out_values);
+
+int trilogy_build_auth_clear_password(trilogy_builder_t *builder, const char *pass, size_t pass_len);
 
 #endif
