@@ -625,7 +625,7 @@ int trilogy_build_auth_switch_response_packet(trilogy_builder_t *builder, const 
         } else {
             if (!strcmp("caching_sha2_password", auth_plugin)) {
                 trilogy_pack_scramble_sha2_hash(scramble, pass, pass_len, auth_response, &auth_response_len);
-            } else if (!strcmp("caching_sha2_password", auth_plugin)) {
+            } else if (!strcmp("mysql_native_password", auth_plugin)) {
                 trilogy_pack_scramble_native_hash(scramble, pass, pass_len, auth_response, &auth_response_len);
             } else {
                 return TRILOGY_AUTH_PLUGIN_ERROR;
