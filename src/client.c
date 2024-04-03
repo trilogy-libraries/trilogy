@@ -248,8 +248,9 @@ static int read_auth_switch_packet(trilogy_conn_t *conn, trilogy_handshake_t *ha
     }
 
     if (strcmp("mysql_native_password", auth_switch_packet.auth_plugin) &&
-        strcmp("caching_sha2_password", auth_switch_packet.auth_plugin)) {
-        // Only support native password & caching sha2 password here.
+        strcmp("caching_sha2_password", auth_switch_packet.auth_plugin) &&
+        strcmp("mysql_clear_password", auth_switch_packet.auth_plugin)) {
+        // Only support native password, caching sha2 and cleartext password here.
         return TRILOGY_PROTOCOL_VIOLATION;
     }
 
@@ -387,7 +388,7 @@ int trilogy_auth_switch_send(trilogy_conn_t *conn, const trilogy_handshake_t *ha
 
     rc = trilogy_build_auth_switch_response_packet(&builder, conn->socket->opts.password,
                                                    conn->socket->opts.password_len, handshake->auth_plugin,
-                                                   handshake->scramble);
+                                                   handshake->scramble, conn->socket->opts.enable_cleartext_plugin);
 
     if (rc < 0) {
         return rc;
