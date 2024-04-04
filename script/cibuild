@@ -15,7 +15,7 @@ output_fold() {
 
   # Only echo the tags when in CI_MODE
   if [ "$CI_MODE" ]; then
-    echo "%%%FOLD {$label}%%%"
+    echo "::group::{$label}"
   fi
 
   # run the remaining arguments. If the command exits non-0, the `||` will
@@ -25,7 +25,7 @@ output_fold() {
 
   # Only echo the tags when in CI_MODE
   if [ "$CI_MODE" ]; then
-    echo "%%%END FOLD%%%"
+    echo "::endgroup::"
   fi
 
   # preserve the exit code from the subcommand.
@@ -34,9 +34,9 @@ output_fold() {
 
 function cleanup() {
   echo
-  echo "%%%FOLD {Shutting down services...}%%%"
-  docker-compose down -v
-  echo "%%%END FOLD%%%"
+  echo "::group::{Shutting down services...}"
+  docker compose down -v
+  echo "::endgroup::"
 }
 
 trap cleanup EXIT
@@ -50,8 +50,8 @@ if [ -z "$RUBY_VERSION" ];  then export RUBY_VERSION=3.2 ; fi
 DISTRIBUTION_SLUG="$(echo "$DISTRIBUTION" | awk '{ gsub(":", "_") ; print $0 }')"
 export DISTRIBUTION_SLUG
 
-docker-compose rm -s -f -v
-output_fold "Pull cache image..." docker-compose pull app || true
-output_fold "Bootstrapping container..." docker-compose build
-output_fold "Running tests..." docker-compose run --rm app
-output_fold "Pushing cache image..." docker-compose push app || true # Don't fail if push fails
+docker compose rm -s -f -v
+output_fold "Pull cache image..." docker compose pull app || true
+output_fold "Bootstrapping container..." docker compose build
+output_fold "Running tests..." docker compose run --rm app
+output_fold "Pushing cache image..." docker compose push app || true # Don't fail if push fails
