@@ -16,6 +16,7 @@ services:
     volumes:
       - "db-data:/var/lib/mysql"
       - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ./test/auth_plugins/auth_test_plugin.so:/usr/lib/mysql/plugin/auth_test_plugin.so
   app:
     image: ghcr.io/trilogy-libraries/trilogy/ci-app:distro-${DISTRIBUTION_SLUG}-ruby-${RUBY_VERSION}-mysql-${MYSQL_VERSION}
     privileged: true
@@ -24,7 +25,7 @@ services:
       args:
         - DISTRIBUTION=${DISTRIBUTION}
         - RUBY_VERSION=${RUBY_VERSION}
-      cache_from: 
+      cache_from:
         - ghcr.io/trilogy-libraries/trilogy/ci-app:distro-${DISTRIBUTION_SLUG}-ruby-${RUBY_VERSION}-mysql-${MYSQL_VERSION}
     environment:
       MYSQL_HOST: db.local
