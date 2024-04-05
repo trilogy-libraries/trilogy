@@ -1210,8 +1210,8 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
     Trilogy_EOFError = rb_const_get(Trilogy, rb_intern("EOFError"));
     rb_global_variable(&Trilogy_EOFError);
 
-    Trilogy_AuthPluginError = rb_const_get(Trilogy, rb_intern("AuthPluginError"));
     rb_global_variable(&Trilogy_AuthPluginError);
+    Trilogy_AuthPluginError = rb_const_get(Trilogy, rb_intern("AuthPluginError"));
 
     id_socket = rb_intern("socket");
     id_host = rb_intern("host");
