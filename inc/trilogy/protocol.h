@@ -443,14 +443,16 @@ int trilogy_build_auth_packet(trilogy_builder_t *builder, const char *user, cons
  * pass_len    - The length of password in bytes.
  * auth_plugin - Plugin authentication mechanism that the server requested.
  * scramble    - The scramble value received from the server.
+ * enable_cleartext_plugin - Send cleartext password if requested by server.
  *
  * Return values:
  *   TRILOGY_OK     - The packet was successfully built and written to the
  *                    builder's internal buffer.
  *   TRILOGY_SYSERR - A system error occurred, check errno.
+ *   TRILOGY_AUTH_PLUGIN_ERROR - The server requested auth plugin is not supported.
  */
 int trilogy_build_auth_switch_response_packet(trilogy_builder_t *builder, const char *pass, size_t pass_len,
-                                              const char *auth_plugin, const char *scramble);
+                                              const char *auth_plugin, const char *scramble, const bool enable_cleartext_plugin);
 
 /* trilogy_build_change_db_packet - Build a change database command packet. This
  * command will change the default database for the connection.

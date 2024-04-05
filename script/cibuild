@@ -15,7 +15,7 @@ output_fold() {
 
   # Only echo the tags when in CI_MODE
   if [ "$CI_MODE" ]; then
-    echo "::group::{$label}"
+    echo "::group::${label}"
   fi
 
   # run the remaining arguments. If the command exits non-0, the `||` will
@@ -34,7 +34,7 @@ output_fold() {
 
 function cleanup() {
   echo
-  echo "::group::{Shutting down services...}"
+  echo "::group::Shutting down services..."
   docker compose down -v
   echo "::endgroup::"
 }

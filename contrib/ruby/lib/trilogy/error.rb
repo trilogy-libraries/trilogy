@@ -115,4 +115,9 @@ class Trilogy
   # attempted on a socket which previously encountered an error.
   class EOFError < BaseConnectionError
   end
+
+  # Occurs when the server request an auth switch to an incompatible
+  # authentication plugin
+  class AuthPluginError < Trilogy::BaseConnectionError
+  end
 end

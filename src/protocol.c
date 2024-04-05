@@ -609,21 +609,32 @@ fail:
 }
 
 int trilogy_build_auth_switch_response_packet(trilogy_builder_t *builder, const char *pass, size_t pass_len,
-                                              const char *auth_plugin, const char *scramble)
+                                              const char *auth_plugin, const char *scramble, const bool enable_cleartext_plugin)
 {
     int rc = TRILOGY_OK;
     unsigned int auth_response_len = 0;
     uint8_t auth_response[EVP_MAX_MD_SIZE];
 
     if (pass_len > 0) {
-        if (!strcmp("caching_sha2_password", auth_plugin)) {
-            trilogy_pack_scramble_sha2_hash(scramble, pass, pass_len, auth_response, &auth_response_len);
+        if (!strcmp("mysql_clear_password", auth_plugin)) {
+            if (enable_cleartext_plugin) {
+                CHECKED(trilogy_builder_write_buffer(builder, pass, pass_len));
+            } else {
+                return TRILOGY_AUTH_PLUGIN_ERROR;
+            }
         } else {
-            trilogy_pack_scramble_native_hash(scramble, pass, pass_len, auth_response, &auth_response_len);
+            if (!strcmp("caching_sha2_password", auth_plugin)) {
+                trilogy_pack_scramble_sha2_hash(scramble, pass, pass_len, auth_response, &auth_response_len);
+            } else if (!strcmp("mysql_native_password", auth_plugin)) {
+                trilogy_pack_scramble_native_hash(scramble, pass, pass_len, auth_response, &auth_response_len);
+            } else {
+                return TRILOGY_AUTH_PLUGIN_ERROR;
+            }
+
+            CHECKED(trilogy_builder_write_buffer(builder, auth_response, auth_response_len));
         }
     }
 
-    CHECKED(trilogy_builder_write_buffer(builder, auth_response, auth_response_len));
     trilogy_builder_finalize(builder);
 
     return TRILOGY_OK;
