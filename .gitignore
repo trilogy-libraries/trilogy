@@ -4,3 +4,7 @@
 /trilogy
 /test/test
 /example/trilogy_query
+
+# Ignore everything in the tmp directory except for the keep file.
+/tmp/**/*
+!/tmp/.keep
