@@ -5,7 +5,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-- Add support for `caching_sha2_password` when using MySQL 8.0+.
+## 2.8.0
+
+### Added
+
+- Add support for `caching_sha2_password` when using MySQL 8.0+. #165
+- Add support for `mysql_clear_password` client plugin. #171
+- Add connection `#check`. #154
+
+### Fixed
+
+- Use `connect_timeout` for initial connection. #159
 
 ## 2.7.0
 

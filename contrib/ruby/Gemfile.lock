@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    trilogy (2.7.0)
+    trilogy (2.8.0)
 
 GEM
   remote: https://rubygems.org/
