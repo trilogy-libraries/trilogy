@@ -8,6 +8,9 @@ services:
       - --gtid-mode=ON
       - --enforce-gtid-consistency=ON
       - --log-bin=mysql-bin.log
+      - --ssl-ca=/mysql-certs/ca.pem
+      - --ssl-cert=/mysql-certs/server-cert.pem
+      - --ssl-key=/mysql-certs/server-key.pem
     build:
       context: .
       dockerfile: Dockerfile.mysql

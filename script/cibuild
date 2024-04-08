@@ -35,6 +35,7 @@ output_fold() {
 function cleanup() {
   echo
   echo "::group::Shutting down services..."
+  docker compose logs db
   docker compose down --volumes
   echo "::endgroup::"
 }
