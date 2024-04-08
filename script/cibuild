@@ -35,7 +35,7 @@ output_fold() {
 function cleanup() {
   echo
   echo "::group::Shutting down services..."
-  docker compose down -v
+  docker compose down --volumes
   echo "::endgroup::"
 }
 
@@ -43,14 +43,21 @@ trap cleanup EXIT
 
 export CI_MODE=true
 
-if [ -z "$MYSQL_VERSION" ]; then export MYSQL_VERSION=8 ; fi
+if [ -z "$MYSQL_VERSION" ]; then export MYSQL_VERSION=8.0 ; fi
 if [ -z "$DISTRIBUTION" ];  then export DISTRIBUTION=debian:buster ; fi
 if [ -z "$RUBY_VERSION" ];  then export RUBY_VERSION=3.2 ; fi
 
 DISTRIBUTION_SLUG="$(echo "$DISTRIBUTION" | awk '{ gsub(":", "_") ; print $0 }')"
 export DISTRIBUTION_SLUG
 
-docker compose rm -s -f -v
+# Prepare the shared directory where the certificates will be stored. We need to create
+# and chmod this directory on the host so that the permissions are persisted when the
+# the directory is mounted in the containers. Since the mysql container runs as a non-root
+# user, we need to ensure that the directory is writable by all users.
+mkdir tmp/mysql-certs
+chmod 777 tmp/mysql-certs
+
+docker compose rm --stop --force --volumes
 output_fold "Pull cache image..." docker compose pull app || true
 output_fold "Bootstrapping container..." docker compose build
 output_fold "Running tests..." docker compose run --rm app
