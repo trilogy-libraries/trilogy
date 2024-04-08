@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-cd /var/lib/mysql
+cd /mysql-certs
 
 # Generate a CA to test with
 
@@ -53,8 +53,3 @@ openssl x509 -req -sha256 -CA ca.pem -CAkey ca-key.pem -set_serial 2 \
     -days 365 \
     -in  client-csr.pem \
     -out client-cert.pem
-
-# Copy the certificates to the shared directory so that it's accessible from the app
-# container.
-
-cp /var/lib/mysql/*.pem /mysql-certs
