@@ -1,4 +1,5 @@
-name: macOS
+name: CI
+
 on:
   push:
     branches:
@@ -8,8 +9,33 @@ on:
   pull_request:
 
 jobs:
-  test:
-    name: Test
+  linux-test:
+    name: ${{ format('{0} (Ruby {1}, MySQL {2})', matrix.distribution, matrix.ruby, matrix.mysql) }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mysql: ["5.7", "8.0"]
+        distribution: ["debian:buster", "ubuntu:focal", "ubuntu:bionic"]
+        ruby: ["3.3.0"]
+        include:
+          - mysql: "5.7"
+            distribution: "debian:buster"
+            ruby: "2.7.8"
+    steps:
+    - uses: actions/checkout@v4
+    - name: Docker login
+      run: echo $GITHUB_TOKEN | docker login ghcr.io --username trilogy --password-stdin
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Run tests
+      env:
+        MYSQL_VERSION: ${{ matrix.mysql }}
+        DISTRIBUTION: ${{ matrix.distribution }}
+        RUBY_VERSION: ${{ matrix.ruby }}
+      run: script/cibuild
+  macos-test:
+    name: ${{ format('macOS (MySQL {0})', matrix.mysql) }}
     runs-on: macos-latest
     strategy:
       matrix:
@@ -27,8 +53,8 @@ jobs:
       run: CFLAGS="-I$(brew --prefix openssl@1.1)/include" LDFLAGS="-L$(brew --prefix openssl@1.1)/lib" make all test/test
     - name: test
       run: test/test
-  test-ruby:
-    name: Test Ruby
+  macos-test-ruby:
+    name: ${{ format('macOS Ruby (MySQL {0})', matrix.mysql) }}
     runs-on: macos-latest
     strategy:
       matrix:
