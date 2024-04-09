@@ -218,7 +218,7 @@ static int read_err_packet(trilogy_conn_t *conn)
     return TRILOGY_ERR;
 }
 
-static int read_eof_packet(trilogy_conn_t *conn)
+static int read_deprecated_eof_packet(trilogy_conn_t *conn)
 {
     trilogy_eof_packet_t eof_packet;
 
@@ -235,6 +235,21 @@ static int read_eof_packet(trilogy_conn_t *conn)
     }
 
     return TRILOGY_EOF;
+}
+
+static int read_eof_packet(trilogy_conn_t *conn)
+{
+    int rc;
+
+    if (conn->capabilities & TRILOGY_CAPABILITIES_DEPRECATE_EOF) {
+        return read_ok_packet(conn);
+    } else {
+        if ((rc = read_deprecated_eof_packet(conn)) != TRILOGY_EOF) {
+            return rc;
+        }
+
+        return TRILOGY_OK;
+    }
 }
 
 static int read_auth_switch_packet(trilogy_conn_t *conn, trilogy_handshake_t *handshake)
@@ -647,15 +662,7 @@ static int read_eof(trilogy_conn_t *conn)
         return rc;
     }
 
-    if (conn->capabilities & TRILOGY_CAPABILITIES_DEPRECATE_EOF) {
-        return read_ok_packet(conn);
-    } else {
-        if ((rc = read_eof_packet(conn)) != TRILOGY_EOF) {
-            return rc;
-        }
-
-        return TRILOGY_OK;
-    }
+    return read_eof_packet(conn);
 }
 
 int trilogy_read_row(trilogy_conn_t *conn, trilogy_value_t *values_out)
@@ -680,14 +687,12 @@ int trilogy_read_row(trilogy_conn_t *conn, trilogy_value_t *values_out)
         return rc;
     }
 
-    if (conn->capabilities & TRILOGY_CAPABILITIES_DEPRECATE_EOF && current_packet_type(conn) == TRILOGY_PACKET_EOF) {
-        if ((rc = read_ok_packet(conn)) != TRILOGY_OK) {
+    if (current_packet_type(conn) == TRILOGY_PACKET_EOF && conn->packet_buffer.len < 9) {
+        if ((rc = read_eof_packet(conn)) != TRILOGY_OK) {
             return rc;
         }
 
         return TRILOGY_EOF;
-    } else if (current_packet_type(conn) == TRILOGY_PACKET_EOF && conn->packet_buffer.len < 9) {
-        return read_eof_packet(conn);
     } else if (current_packet_type(conn) == TRILOGY_PACKET_ERR) {
         return read_err_packet(conn);
     } else {
@@ -953,20 +958,18 @@ int trilogy_stmt_bind_data_send(trilogy_conn_t *conn, trilogy_stmt_t *stmt, uint
 int trilogy_stmt_read_row(trilogy_conn_t *conn, trilogy_stmt_t *stmt, trilogy_column_packet_t *columns,
                           trilogy_binary_value_t *values_out)
 {
-    int err = read_packet(conn);
+    int rc = read_packet(conn);
 
-    if (err < 0) {
-        return err;
+    if (rc < 0) {
+        return rc;
     }
 
-    if (conn->capabilities & TRILOGY_CAPABILITIES_DEPRECATE_EOF && current_packet_type(conn) == TRILOGY_PACKET_EOF) {
-        if ((err = read_ok_packet(conn)) != TRILOGY_OK) {
-            return err;
+    if (current_packet_type(conn) == TRILOGY_PACKET_EOF && conn->packet_buffer.len < 9) {
+        if ((rc = read_eof_packet(conn)) != TRILOGY_OK) {
+            return rc;
         }
 
         return TRILOGY_EOF;
-    } else if (current_packet_type(conn) == TRILOGY_PACKET_EOF && conn->packet_buffer.len < 9) {
-        return read_eof_packet(conn);
     } else if (current_packet_type(conn) == TRILOGY_PACKET_ERR) {
         return read_err_packet(conn);
     } else {
