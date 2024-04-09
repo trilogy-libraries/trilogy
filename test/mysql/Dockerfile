@@ -20,4 +20,5 @@ RUN set -eux \
 # This is the final stage inwhich we copy the plugins from the test stage. Doing it this way allows
 # us to not have to install the test package in the final image since we only need the plugins.
 FROM mysql:${MYSQL_VERSION}-debian
+LABEL maintainer="github@github.com"
 COPY --from=0 /usr/lib/mysql/plugin/ /usr/lib/mysql/plugin/

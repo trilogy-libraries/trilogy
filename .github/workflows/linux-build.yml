@@ -1,4 +1,4 @@
-name: CI
+name: Linux
 
 on:
   push:
@@ -9,8 +9,8 @@ on:
   pull_request:
 
 jobs:
-  build:
-    name: ${{ format('Build ({0}, {1}, {2})', matrix.mysql, matrix.distribution, matrix.ruby) }}
+  test:
+    name: ${{ format('Test (Ruby {0}, MySQL {1}, {2})', matrix.ruby, matrix.mysql, matrix.distribution) }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -24,7 +24,7 @@ jobs:
             ruby: "2.7.8"
     steps:
     - uses: actions/checkout@v4
-    - name: docker login
+    - name: Docker login
       run: echo $GITHUB_TOKEN | docker login ghcr.io --username trilogy --password-stdin
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
