@@ -404,7 +404,12 @@ int trilogy_auth_switch_send(trilogy_conn_t *conn, const trilogy_handshake_t *ha
 void trilogy_auth_clear_password(trilogy_conn_t *conn)
 {
     if (conn->socket->opts.password) {
-        memset(conn->socket->opts.password, 0, conn->socket->opts.password_len);
+        volatile char *password_ptr = (volatile char*)(conn->socket->opts.password);
+        while (conn->socket->opts.password_len--) {
+            *password_ptr++ = 0;
+        }
+        free(conn->socket->opts.password);
+        conn->socket->opts.password = NULL;
     }
 }
 

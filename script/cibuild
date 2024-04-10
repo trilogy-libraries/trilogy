@@ -55,7 +55,7 @@ export DISTRIBUTION_SLUG
 # and chmod this directory on the host so that the permissions are persisted when the
 # the directory is mounted in the containers. Since the mysql container runs as a non-root
 # user, we need to ensure that the directory is writable by all users.
-mkdir tmp/mysql-certs
+mkdir -p tmp/mysql-certs
 chmod 777 tmp/mysql-certs
 
 docker compose rm --stop --force --volumes
