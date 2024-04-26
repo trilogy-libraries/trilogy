@@ -270,6 +270,7 @@ class ClientTest < TrilogyTest
 
     assert_instance_of(Trilogy::ProtocolError, e)
     assert_match(/1047: Unknown command/, e.message)
+    assert_match(/trilogy_set_option_recv/, e.message)
   end
 
   def test_trilogy_set_server_option_multi_statement
@@ -283,6 +284,7 @@ class ClientTest < TrilogyTest
 
     assert_instance_of(Trilogy::QueryError, e)
     assert_match(/1064: You have an error in your SQL syntax/, e.message)
+    assert_match(/trilogy_query_recv/, e.message)
 
     client.set_server_option(Trilogy::SET_SERVER_MULTI_STATEMENTS_ON)
     client.query("INSERT INTO trilogy_test (int_test) VALUES ('4'); INSERT INTO trilogy_test (int_test) VALUES ('1')")
@@ -301,6 +303,7 @@ class ClientTest < TrilogyTest
 
     assert_instance_of(Trilogy::QueryError, e)
     assert_match(/1064: You have an error in your SQL syntax/, e.message)
+    assert_match(/trilogy_query_recv/, e.message)
   end
 
   def test_trilogy_query_result_object
