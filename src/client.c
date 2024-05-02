@@ -310,9 +310,6 @@ int trilogy_connect_send_socket(trilogy_conn_t *conn, trilogy_sock_t *sock)
 
 int trilogy_connect_recv(trilogy_conn_t *conn, trilogy_handshake_t *handshake_out)
 {
-    // reset the sequence number with each connect recv attempt
-    conn->packet_parser.sequence_number = 0;
-
     int rc = read_packet(conn);
 
     if (rc < 0) {
