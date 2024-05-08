@@ -305,7 +305,7 @@ int trilogy_connect_send_socket(trilogy_conn_t *conn, trilogy_sock_t *sock)
         return rc;
 
     conn->socket = sock;
-    conn->packet_parser.sequence_numer = 0;
+    conn->packet_parser.sequence_number = 0;
 
     return TRILOGY_OK;
 }
