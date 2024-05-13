@@ -133,7 +133,8 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
         rb_raise(Trilogy_TimeoutError, "%" PRIsVALUE, rbmsg);
 
     case TRILOGY_ERR: {
-        VALUE message = rb_str_new(ctx->conn.error_message, ctx->conn.error_message_len);
+        VALUE conn_message = rb_str_new(ctx->conn.error_message, ctx->conn.error_message_len);
+        VALUE message = rb_sprintf("%" PRIsVALUE " (%" PRIsVALUE ")", conn_message, rbmsg);
         VALUE exc = rb_funcall(Trilogy_ProtocolError, id_from_code, 2, message, INT2NUM(ctx->conn.error_code));
         rb_exc_raise(exc);
     }

@@ -93,6 +93,7 @@ class AuthTest < TrilogyTest
       end
 
       assert_includes err.message, "Access denied for user 'native"
+      assert_includes err.message, "trilogy_auth_recv"
     end
   end
 
@@ -105,6 +106,7 @@ class AuthTest < TrilogyTest
         new_tcp_client(username: "caching_sha2", password: "incorrect")
       end
       assert_includes err.message, "Access denied for user 'caching_sha2"
+      assert_includes err.message, "trilogy_auth_recv"
     end
   end
 
