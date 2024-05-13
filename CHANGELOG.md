@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+### Fixed
+
+- Fix "Got packets our of order" errors on connect. #184
+
 ## 2.8.0
 
 ### Added
