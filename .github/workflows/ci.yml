@@ -9,22 +9,22 @@ on:
   pull_request:
 
 jobs:
-  build:
-    name: ${{ format('Build ({0}, {1}, {2})', matrix.mysql, matrix.distribution, matrix.ruby) }}
+  linux-test:
+    name: ${{ format('{0} (Ruby {1}, MySQL {2})', matrix.distribution, matrix.ruby, matrix.mysql) }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         mysql: ["5.7", "8.0"]
         distribution: ["debian:buster", "ubuntu:focal", "ubuntu:bionic"]
-        ruby: ["3.3"]
+        ruby: ["3.3.0"]
         include:
           - mysql: "5.7"
             distribution: "debian:buster"
             ruby: "2.7.8"
     steps:
     - uses: actions/checkout@v4
-    - name: docker login
+    - name: Docker login
       run: echo $GITHUB_TOKEN | docker login ghcr.io --username trilogy --password-stdin
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -34,3 +34,51 @@ jobs:
         DISTRIBUTION: ${{ matrix.distribution }}
         RUBY_VERSION: ${{ matrix.ruby }}
       run: script/cibuild
+  macos-test:
+    name: ${{ format('macOS (MySQL {0})', matrix.mysql) }}
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        mysql: ["5.7", "8.0"]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup MySQL
+      run: |
+        brew install mysql@${{ matrix.mysql }}
+        (unset CI; brew postinstall mysql@${{ matrix.mysql }})
+        brew services start mysql@${{ matrix.mysql }}
+        sleep 5
+        $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot -e 'CREATE DATABASE test'
+    - name: Build
+      run: CFLAGS="-I$(brew --prefix openssl@1.1)/include" LDFLAGS="-L$(brew --prefix openssl@1.1)/lib" make all test/test
+    - name: test
+      run: test/test
+  macos-test-ruby:
+    name: ${{ format('macOS Ruby (MySQL {0})', matrix.mysql) }}
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        mysql: ["5.7", "8.0"]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup MySQL
+      env:
+        MYSQL_VERSION: ${{ matrix.mysql }}
+      run: |
+        brew install mysql@${{ matrix.mysql }}
+        (unset CI; brew postinstall mysql@${{ matrix.mysql }})
+        brew services start mysql@${{ matrix.mysql }}
+        sleep 5
+        $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot -e 'CREATE DATABASE test'
+        [[ "$MYSQL_VERSION" == "8.0" ]] && $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/caching_sha2_password_user.sql
+        $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/native_password_user.sql
+        $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/x509_user.sql
+        $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/cleartext_user.sql
+    - name: Install dependencies
+      run: |
+        cd contrib/ruby
+        bundle --without benchmark
+    - name: Run tests
+      run: |
+        cd contrib/ruby
+        bundle exec rake
