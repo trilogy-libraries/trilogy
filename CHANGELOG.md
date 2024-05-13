@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.8.1
+
 ### Fixed
 
 - Fix "Got packets out of order" errors on connect. #184
