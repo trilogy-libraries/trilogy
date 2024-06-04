@@ -272,6 +272,20 @@ class ClientTest < TrilogyTest
     assert_match(/1047: Unknown command/, e.message)
   end
 
+  def test_trilogy_last_result_size
+    client = new_tcp_client
+    create_test_table(client)
+
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('3')")
+
+    result = client.query("SELECT id, int_test FROM trilogy_test")
+    result_size = client.last_result_size
+
+    assert_equal [1, 4, 2, 3], result.rows.flatten
+    assert_includes 150..170, result_size, "Expected last_result_size to be between 150 and 170, but was #{result_size}"
+  end
+
   def test_trilogy_set_server_option_multi_statement
     # Start with multi_statement disabled, enable it during connection
     client = new_tcp_client
