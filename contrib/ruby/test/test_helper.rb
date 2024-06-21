@@ -47,11 +47,10 @@ class TrilogyTest < Minitest::Test
       ssl: true,
       ssl_mode: Trilogy::SSL_PREFERRED_NOVERIFY,
       tls_min_version: Trilogy::TLS_VERSION_12,
+      init_command: "SET SESSION sql_mode = ''",
     }.merge(opts)
 
-    c = Trilogy.new defaults
-    c.query "SET SESSION sql_mode = ''"
-    c
+    Trilogy.new defaults
   end
 
   def new_unix_client(socket, opts = {})
