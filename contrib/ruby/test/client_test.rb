@@ -62,6 +62,7 @@ class ClientTest < TrilogyTest
       ssl: true,
       ssl_mode: 4,
       tls_min_version: 3,
+      init_command: "SET SESSION sql_mode = ''",
     }
     assert_equal expected_connection_options, client.connection_options
   end
@@ -1121,5 +1122,12 @@ class ClientTest < TrilogyTest
     assert_operator Errno::ECONNRESET, :===, klass.new
     assert_operator SystemCallError, :===, klass.new
     assert_operator Trilogy::ConnectionError, :===, klass.new
+  end
+
+  def test_init_command
+    client = new_tcp_client(init_command: "SET SQL_MODE=NO_BACKSLASH_ESCAPES")
+
+    result = client.query("SELECT @@sql_mode").first.first
+    assert_equal result, "NO_BACKSLASH_ESCAPES"
   end
 end

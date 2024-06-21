@@ -16,6 +16,8 @@ class Trilogy
     @connected_host = nil
 
     _connect(encoding, charset, options)
+
+    query(options[:init_command]) if options[:init_command]
   end
 
   def connection_options
