@@ -289,6 +289,7 @@ typedef enum {
     XX(TRILOGY_TYPE_YEAR, 0x0d)                                                                                        \
     XX(TRILOGY_TYPE_VARCHAR, 0x0f)                                                                                     \
     XX(TRILOGY_TYPE_BIT, 0x10)                                                                                         \
+    XX(TRILOGY_TYPE_VECTOR, 0xf2)                                                                                      \
     XX(TRILOGY_TYPE_JSON, 0xf5)                                                                                        \
     XX(TRILOGY_TYPE_NEWDECIMAL, 0xf6)                                                                                  \
     XX(TRILOGY_TYPE_ENUM, 0xf7)                                                                                        \
