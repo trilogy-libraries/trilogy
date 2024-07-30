@@ -22,6 +22,37 @@ Or install it yourself as:
 $ gem install trilogy
 ```
 
+## Rails Setup
+
+After installation, you need to make sure your `config/database.yml` file is using Trilogy.
+
+If you're running MySQL on the same box as Rails, you can use a socket file:
+
+```
+development:
+  adapter: trilogy
+  encoding: utf8mb4
+  database: blog_development
+  pool: 5
+  username: root
+  password:
+  socket: /tmp/mysql.sock
+```
+
+If your MySQL is in another container or across the network, specify the `host` and make sure to require TLS connections:
+
+```
+development:
+  adapter: trilogy
+  encoding: utf8mb4
+  database: blog_development
+  pool: 5
+  username: root
+  password:
+  host: db
+  ssl_mode: :required
+```
+
 ## Usage
 
 ``` ruby
