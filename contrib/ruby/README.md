@@ -86,3 +86,9 @@ differences:
   the transcoding step up to the caller.
 * There is no `as` query option. Calling `Trilogy::Result#each` will yield an array
   of row values. If you want a hash you should use `Trilogy::Result#each_hash`.
+* When using raw sql with the execute method of active_record
+  (`ActiveRecord::Base.connection.execute`), mysql2 returns a `Mysql2::Result` object
+  whereas trilogy will return an `Activerecord::Result` object.
+  Though this doesn't cause any issues with the execution of the sql query, but if
+  you are trying to use the result from the method you cannot do that exactly like
+  you did with mysql2.
