@@ -1134,6 +1134,10 @@ static VALUE rb_trilogy_server_version(VALUE self) { return rb_str_new_cstr(get_
 
 RUBY_FUNC_EXPORTED void Init_cext(void)
 {
+    #ifdef HAVE_RB_EXT_RACTOR_SAFE
+        rb_ext_ractor_safe(true);
+    #endif
+
     VALUE Trilogy = rb_const_get(rb_cObject, rb_intern("Trilogy"));
     rb_define_alloc_func(Trilogy, allocate_trilogy);
 
