@@ -182,7 +182,7 @@ int trilogy_builder_write_buffer(trilogy_builder_t *builder, const void *data, s
 
     size_t fragment_remaining = TRILOGY_MAX_PACKET_LEN - builder->fragment_length;
 
-    if (builder->packet_length >= builder->packet_max_length - len) {
+    if (builder->packet_length + len >= builder->packet_max_length) {
         return TRILOGY_MAX_PACKET_EXCEEDED;
     }
 

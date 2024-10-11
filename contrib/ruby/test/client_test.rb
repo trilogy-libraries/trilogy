@@ -832,6 +832,12 @@ class ClientTest < TrilogyTest
 
     assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
 
+    exception = assert_raises Trilogy::QueryError do
+      client.query query_for_target_packet_size(32 * 1024 * 1024 + 1)
+    end
+
+    assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
+
     assert client.ping
   ensure
     ensure_closed client
