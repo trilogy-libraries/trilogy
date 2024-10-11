@@ -5,6 +5,20 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.9.0
+
+### Added
+
+- Add support for the VECTOR type. #194
+
+### Changed
+- Mark C-extension as Ractor-safe. #192
+
+### Fixed
+
+- Fix bug allowing queries larger than the configured `max_allowed_packet`. #203
+- Restore error message context that was accidentally removed. #187
+
 ## 2.8.1
 
 ### Fixed
