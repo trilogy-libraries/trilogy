@@ -84,6 +84,7 @@ typedef struct trilogy_sock_t {
     int (*fd_cb)(struct trilogy_sock_t *self);
 
     trilogy_sockopt_t opts;
+    void *user_data;
 } trilogy_sock_t;
 
 static inline int trilogy_sock_connect(trilogy_sock_t *sock) { return sock->connect_cb(sock); }
