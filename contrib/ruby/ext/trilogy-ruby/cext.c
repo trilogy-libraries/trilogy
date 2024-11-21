@@ -172,9 +172,9 @@ static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, 
 
 struct trilogy_ctx {
     trilogy_conn_t conn;
-    char server_version[TRILOGY_SERVER_VERSION_SIZE + 1];
+    rb_encoding *encoding;
     unsigned int query_flags;
-    VALUE encoding;
+    char server_version[TRILOGY_SERVER_VERSION_SIZE + 1];
 };
 
 static void rb_trilogy_acquire_buffer(struct trilogy_ctx *ctx)
@@ -189,12 +189,6 @@ static void rb_trilogy_release_buffer(struct trilogy_ctx *ctx)
     if (ctx->conn.packet_buffer.buff) {
         buffer_checkin(&ctx->conn.packet_buffer);
     }
-}
-
-static void mark_trilogy(void *ptr)
-{
-    struct trilogy_ctx *ctx = ptr;
-    rb_gc_mark(ctx->encoding);
 }
 
 static void free_trilogy(void *ptr)
@@ -218,7 +212,7 @@ static size_t trilogy_memsize(const void *ptr) {
 static const rb_data_type_t trilogy_data_type = {
     .wrap_struct_name = "trilogy",
     .function = {
-        .dmark = mark_trilogy,
+        .dmark = NULL,
         .dfree = free_trilogy,
         .dsize = trilogy_memsize,
     },
@@ -614,7 +608,7 @@ static VALUE rb_trilogy_connect(VALUE self, VALUE encoding, VALUE charset, VALUE
     trilogy_handshake_t handshake;
     VALUE val;
 
-    RB_OBJ_WRITE(self, &ctx->encoding, encoding);
+    ctx->encoding = rb_to_encoding(encoding);
     connopt.encoding = NUM2INT(charset);
 
     Check_Type(opts, T_HASH);
@@ -983,10 +977,10 @@ static VALUE read_query_response(VALUE vargs)
             }
         }
 
-#ifdef HAVE_RB_INTERNED_STR
-        VALUE column_name = rb_interned_str(column.name, column.name_len);
+#ifdef HAVE_RB_ENC_INTERNED_STR
+        VALUE column_name = rb_enc_interned_str(column.name, column.name_len, ctx->encoding);
 #else
-        VALUE column_name = rb_str_new(column.name, column.name_len);
+        VALUE column_name = rb_enc_str_new(column.name, column.name_len, ctx->encoding);
         OBJ_FREEZE(column_name);
 #endif
 
@@ -1098,7 +1092,7 @@ static VALUE rb_trilogy_query(VALUE self, VALUE query)
     struct trilogy_ctx *ctx = get_open_ctx(self);
 
     StringValue(query);
-    query = rb_str_export_to_enc(query, rb_to_encoding(ctx->encoding));
+    query = rb_str_export_to_enc(query, ctx->encoding);
 
     rb_trilogy_acquire_buffer(ctx);
 
