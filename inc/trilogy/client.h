@@ -106,6 +106,15 @@ typedef struct {
  */
 int trilogy_init(trilogy_conn_t *conn);
 
+/* trilogy_init_no_buffer - Same as trilogy_init but doesn't allocate the packet buffer
+ *
+ * conn - A pre-allocated trilogy_conn_t pointer.
+ *
+ * Return values:
+ *   TRILOGY_OK     - The trilogy_conn_t pointer was properly initialized
+ */
+int trilogy_init_no_buffer(trilogy_conn_t *conn);
+
 /* trilogy_flush_writes - Attempt to flush the internal packet buffer to the
  * network. This must be used if a `_send` function returns TRILOGY_AGAIN, and
  * should continue to be called until it returns a value other than
