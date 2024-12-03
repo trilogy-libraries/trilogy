@@ -53,6 +53,19 @@ int trilogy_buffer_expand(trilogy_buffer_t *buffer, size_t needed);
  */
 int trilogy_buffer_putc(trilogy_buffer_t *buffer, uint8_t c);
 
+/* trilogy_buffer_write - Appends multiple bytes to the buffer, resizing the underlying
+ * allocation if necessary.
+ *
+ * buffer - A pointer to a pre-initialized trilogy_buffer_t.
+ * ptr    - The pointer to the byte array.
+ * len    - How many bytes to append.
+ *
+ * Return values:
+ *   TRILOGY_OK     - The character was appended to the buffer
+ *   TRILOGY_SYSERR - A system error occurred, check errno.
+ */
+int trilogy_buffer_write(trilogy_buffer_t *buffer, const uint8_t *ptr, size_t len);
+
 /* trilogy_buffer_free - Free an trilogy_buffer_t's underlying storage. The buffer
  * must be re-initialized with trilogy_buffer_init if it is to be reused. Any
  * operations performed on an unintialized or freed buffer are undefined.
