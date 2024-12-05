@@ -2,12 +2,14 @@ PATH
   remote: .
   specs:
     trilogy (2.9.0)
+      bigdecimal
 
 GEM
   remote: https://rubygems.org/
   specs:
     benchmark-ips (2.7.2)
-    minitest (5.11.3)
+    bigdecimal (3.1.8)
+    minitest (5.25.4)
     mysql2 (0.5.6)
     rake (13.0.1)
     rake-compiler (1.0.7)
@@ -24,4 +26,4 @@ DEPENDENCIES
   trilogy!
 
 BUNDLED WITH
-   2.4.12
+   2.5.23
