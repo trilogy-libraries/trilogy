@@ -22,6 +22,8 @@ Gem::Specification.new do |s|
 
   s.require_paths = ["lib"]
 
+  s.add_dependency "bigdecimal"
+
   s.add_development_dependency "rake-compiler", "~> 1.0"
   s.add_development_dependency "minitest", "~> 5.5"
 end
