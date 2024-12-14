@@ -1131,4 +1131,14 @@ class ClientTest < TrilogyTest
     assert_operator SystemCallError, :===, klass.new
     assert_operator Trilogy::ConnectionError, :===, klass.new
   end
+
+  if defined?(::Ractor)
+    def test_is_ractor_compatible
+      ractor = Ractor.new do
+        client = TrilogyTest.new(nil).new_tcp_client
+        client.query("SELECT 1")
+      end
+      assert_equal [[1]], ractor.take.to_a
+    end
+  end
 end
