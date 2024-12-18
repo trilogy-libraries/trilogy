@@ -21,10 +21,10 @@ if GC.respond_to?(:verify_compaction_references)
 end
 
 class TrilogyTest < Minitest::Test
-  DEFAULT_HOST = ENV["MYSQL_HOST"] || "127.0.0.1"
+  DEFAULT_HOST = (ENV["MYSQL_HOST"] || "127.0.0.1").freeze
   DEFAULT_PORT = (port = ENV["MYSQL_PORT"].to_i) && port != 0 ? port : 3306
-  DEFAULT_USER = ENV["MYSQL_USER"] || "root"
-  DEFAULT_PASS = ENV["MYSQL_PASS"]
+  DEFAULT_USER = (ENV["MYSQL_USER"] || "root").freeze
+  DEFAULT_PASS = ENV["MYSQL_PASS"].freeze
 
   def assert_equal_timestamp(time1, time2)
     assert_equal time1.to_i, time2.to_i

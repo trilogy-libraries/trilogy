@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Trilogy
   module Encoding
     RUBY_ENCODINGS = {
