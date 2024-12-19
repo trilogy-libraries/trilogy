@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "trilogy/buffer.h"
 #include "trilogy/error.h"
@@ -53,6 +54,19 @@ int trilogy_buffer_putc(trilogy_buffer_t *buffer, uint8_t c)
     }
 
     buffer->buff[buffer->len++] = c;
+
+    return TRILOGY_OK;
+}
+
+int trilogy_buffer_write(trilogy_buffer_t *buffer, const uint8_t *ptr, size_t len)
+{
+    int rc = trilogy_buffer_expand(buffer, len);
+    if (rc) {
+        return rc;
+    }
+
+    memcpy(buffer->buff + buffer->len, ptr, len);
+    buffer->len += len;
 
     return TRILOGY_OK;
 }

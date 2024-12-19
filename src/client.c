@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <string.h>
 
 #include "trilogy/client.h"
 #include "trilogy/error.h"
@@ -722,7 +723,7 @@ int trilogy_drain_results(trilogy_conn_t *conn)
     }
 }
 
-static uint8_t escape_lookup_table[256] = {
+static const uint8_t escape_lookup_table[256] = {
     ['"'] = '"', ['\0'] = '0', ['\''] = '\'', ['\\'] = '\\', ['\n'] = 'n', ['\r'] = 'r', [26] = 'Z',
 };
 
@@ -735,28 +736,40 @@ int trilogy_escape(trilogy_conn_t *conn, const char *str, size_t len, const char
 
     b->len = 0;
 
-    if (conn->server_status & TRILOGY_SERVER_STATUS_NO_BACKSLASH_ESCAPES) {
-        for (size_t i = 0; i < len; i++) {
-            const uint8_t c = (uint8_t)str[i];
+    // Escaped string will be at least as large as the source string,
+    // so might as well pre-expand the buffer.
+    CHECKED(trilogy_buffer_expand(b, len));
 
-            if (c == '\'') {
-                CHECKED(trilogy_buffer_putc(b, '\''));
-                CHECKED(trilogy_buffer_putc(b, '\''));
+    const uint8_t *cursor = (const uint8_t *)str;
+    const uint8_t *end = cursor + len;
+
+    if (conn->server_status & TRILOGY_SERVER_STATUS_NO_BACKSLASH_ESCAPES) {
+        while (cursor < end) {
+            uint8_t *next_escape = memchr(cursor, '\'', (size_t)(end - cursor));
+            if (next_escape) {
+                CHECKED(trilogy_buffer_write(b, cursor, (size_t)(next_escape - cursor)));
+                CHECKED(trilogy_buffer_write(b, (uint8_t *)"\'\'", 2));
+                cursor = next_escape + 1;
             } else {
-                CHECKED(trilogy_buffer_putc(b, c));
+                CHECKED(trilogy_buffer_write(b, cursor, (size_t)(end - cursor)));
+                break;
             }
         }
     } else {
-        for (size_t i = 0; i < len; i++) {
-            const uint8_t c = (uint8_t)str[i];
+        while (cursor < end) {
+            uint8_t escaped = 0;
+            const uint8_t *start = cursor;
+            while (cursor < end && !(escaped = escape_lookup_table[*cursor])) {
+                cursor++;
+            }
 
-            uint8_t escaped = escape_lookup_table[(uint8_t)c];
-
+            CHECKED(trilogy_buffer_write(b, start, (size_t)(cursor - start)));
             if (escaped) {
                 CHECKED(trilogy_buffer_putc(b, '\\'));
                 CHECKED(trilogy_buffer_putc(b, escaped));
+                cursor++;
             } else {
-                CHECKED(trilogy_buffer_putc(b, c));
+                break;
             }
         }
     }
