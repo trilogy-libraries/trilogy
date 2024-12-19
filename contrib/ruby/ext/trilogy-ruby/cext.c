@@ -1132,6 +1132,8 @@ static VALUE rb_trilogy_server_status(VALUE self) { return LONG2FIX(get_open_ctx
 
 static VALUE rb_trilogy_server_version(VALUE self) { return rb_str_new_cstr(get_open_ctx(self)->server_version); }
 
+static VALUE rb_trilogy_last_result_size(VALUE self) { return rb_int_new(get_open_ctx(self)->conn.recv_buff_len); }
+
 RUBY_FUNC_EXPORTED void Init_cext(void)
 {
     #ifdef HAVE_RB_EXT_RACTOR_SAFE
@@ -1166,6 +1168,7 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
     rb_define_method(Trilogy, "more_results_exist?", rb_trilogy_more_results_exist, 0);
     rb_define_method(Trilogy, "next_result", rb_trilogy_next_result, 0);
     rb_define_method(Trilogy, "set_server_option", rb_trilogy_set_server_option, 1);
+    rb_define_method(Trilogy, "last_result_size", rb_trilogy_last_result_size, 0);
     rb_define_const(Trilogy, "TLS_VERSION_10", INT2NUM(TRILOGY_TLS_VERSION_10));
     rb_define_const(Trilogy, "TLS_VERSION_11", INT2NUM(TRILOGY_TLS_VERSION_11));
     rb_define_const(Trilogy, "TLS_VERSION_12", INT2NUM(TRILOGY_TLS_VERSION_12));
