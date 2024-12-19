@@ -43,7 +43,9 @@ static void buffer_pool_free(void *data)
     buffer_pool *pool = (buffer_pool *)data;
     if (pool->capa) {
         for (size_t index = 0; index < pool->len; index++) {
-            xfree(pool->entries[index].buff);
+            // NB: buff was allocated by trilogy/buffer.h using raw `malloc`
+            // hence we must use raw `free`.
+            free(pool->entries[index].buff);
         }
         xfree(pool->entries);
     }
