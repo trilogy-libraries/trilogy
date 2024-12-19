@@ -117,10 +117,8 @@ static int begin_write(trilogy_conn_t *conn)
     return trilogy_flush_writes(conn);
 }
 
-int trilogy_init(trilogy_conn_t *conn)
+int trilogy_init_no_buffer(trilogy_conn_t *conn)
 {
-    int rc;
-
     conn->affected_rows = 0;
     conn->last_insert_id = 0;
     conn->warning_count = 0;
@@ -142,8 +140,14 @@ int trilogy_init(trilogy_conn_t *conn)
     trilogy_packet_parser_init(&conn->packet_parser, &packet_parser_callbacks);
     conn->packet_parser.user_data = &conn->packet_buffer;
 
-    CHECKED(trilogy_buffer_init(&conn->packet_buffer, TRILOGY_DEFAULT_BUF_SIZE));
+    return TRILOGY_OK;
+}
 
+int trilogy_init(trilogy_conn_t *conn)
+{
+    int rc;
+    trilogy_init_no_buffer(conn);
+    CHECKED(trilogy_buffer_init(&conn->packet_buffer, TRILOGY_DEFAULT_BUF_SIZE));
     return TRILOGY_OK;
 }
 

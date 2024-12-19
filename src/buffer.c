@@ -23,6 +23,9 @@ int trilogy_buffer_expand(trilogy_buffer_t *buffer, size_t needed)
 {
     // expand buffer if necessary
     if (buffer->len + needed > buffer->cap) {
+        if (buffer->buff == NULL)
+            return TRILOGY_MEM_ERROR;
+
         size_t new_cap = buffer->cap;
 
         while (buffer->len + needed > new_cap) {
@@ -59,7 +62,9 @@ int trilogy_buffer_putc(trilogy_buffer_t *buffer, uint8_t c)
 
 void trilogy_buffer_free(trilogy_buffer_t *buffer)
 {
-    free(buffer->buff);
-    buffer->buff = NULL;
-    buffer->len = buffer->cap = 0;
+    if (buffer->buff) {
+        free(buffer->buff);
+        buffer->buff = NULL;
+        buffer->len = buffer->cap = 0;
+    }
 }
