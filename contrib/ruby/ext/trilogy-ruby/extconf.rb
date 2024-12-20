@@ -16,6 +16,6 @@ dir_config("openssl")
 
 have_library("crypto", "CRYPTO_malloc")
 have_library("ssl", "SSL_new")
-have_func("rb_interned_str", "ruby.h")
+have_func("rb_enc_interned_str", "ruby.h")
 
 create_makefile "trilogy/cext"
