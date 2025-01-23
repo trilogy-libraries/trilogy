@@ -88,6 +88,8 @@ typedef struct trilogy_sock_t {
 
 static inline int trilogy_sock_connect(trilogy_sock_t *sock) { return sock->connect_cb(sock); }
 
+void trilogy_sock_set_fd(trilogy_sock_t *sock, int fd);
+
 static inline ssize_t trilogy_sock_read(trilogy_sock_t *sock, void *buf, size_t n)
 {
     return sock->read_cb(sock, buf, n);

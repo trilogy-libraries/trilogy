@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "socket"
 require "trilogy/version"
 require "trilogy/error"
 require "trilogy/result"
@@ -7,6 +8,14 @@ require "trilogy/cext"
 require "trilogy/encoding"
 
 class Trilogy
+  IO_TIMEOUT_ERROR =
+    if defined?(IO::TimeoutError)
+      IO::TimeoutError
+    else
+      Class.new(StandardError)
+    end
+  private_constant :IO_TIMEOUT_ERROR
+
   Synchronization = Module.new
 
   source = public_instance_methods(false).map do |method|
@@ -35,7 +44,54 @@ class Trilogy
     @connection_options = options
     @connected_host = nil
 
-    _connect(encoding, charset, options)
+    socket = nil
+    begin
+      if host = options[:host]
+        port = options[:port] || 3306
+        connect_timeout = options[:connect_timeout] || options[:write_timeout]
+
+        socket = TCPSocket.new(host, port, connect_timeout: connect_timeout)
+
+        socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
+
+        if keepalive_enabled = options[:keepalive_enabled]
+          keepalive_idle = options[:keepalive_idle]
+          keepalive_interval = options[:keepalive_interval]
+          keepalive_count = options[:keepalive_count]
+
+          socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, true)
+
+          if keepalive_idle > 0 && defined?(Socket::TCP_KEEPIDLE)
+            socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_KEEPIDLE, keepalive_idle)
+          end
+          if keepalive_interval > 0 && defined?(Socket::TCP_KEEPINTVL)
+            socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_KEEPINTVL, keepalive_interval)
+          end
+          if keepalive_count > 0 && defined?(Socket::TCP_KEEPCNT)
+            socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_KEEPCNT, keepalive_count)
+          end
+        end
+      else
+        path = options[:socket] ||= "/tmp/mysql.sock"
+        socket = UNIXSocket.new(path)
+      end
+    rescue Errno::ETIMEDOUT, IO_TIMEOUT_ERROR => e
+      raise Trilogy::TimeoutError, e.message
+    rescue SocketError => e
+      connection_str = host ? "#{host}:#{port}" : path
+      raise Trilogy::BaseConnectionError, "unable to connect to \"#{connection_str}\": #{e.message}"
+    rescue => e
+      if e.respond_to?(:errno)
+        raise Trilogy::SyscallError.from_errno(e.errno, e.message)
+      else
+        raise
+      end
+    end
+
+    _connect(socket, encoding, charset, options)
+  ensure
+    # Socket's fd will be dup'd in C
+    socket&.close
   end
 
   def connection_options
