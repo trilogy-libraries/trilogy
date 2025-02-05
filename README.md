@@ -39,6 +39,18 @@ It's currently in production use on github.com.
 
 Trilogy should build out of the box on most UNIX systems which have OpenSSL installed.
 
+### CMake
+
+If you wish you can make it with cmake:
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
+
+cd build
+make
+make install
+```
+
 ## API Documentation
 
 Documentation for Trilogy's various APIs can be found in these header files:
