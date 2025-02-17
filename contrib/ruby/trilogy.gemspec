@@ -28,4 +28,5 @@ Gem::Specification.new do |s|
 
   s.add_development_dependency "rake-compiler", "~> 1.0"
   s.add_development_dependency "minitest", "~> 5.5"
+  s.add_development_dependency "openssl", "~> 3.0"
 end

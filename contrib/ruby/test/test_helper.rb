@@ -186,4 +186,74 @@ class TrilogyTest < Minitest::Test
 
     err
   end
+
+  def build_mysql_handshake_packet
+    protocol_version = 10
+    server_version = "8.0.24\0"  # null-terminated string
+    connection_id = [1234].pack("V")
+    auth_plugin_data_part1 = "12345678"
+    filler = "\0"
+    capability_flags_lower = [0xFFFF].pack("v")  # All capabilities enabled for testing
+    character_set = "\x21"  # utf8_general_ci
+    status_flags = [0x0002].pack("v")  # SERVER_STATUS_AUTOCOMMIT
+    capability_flags_upper = [0xFFFF].pack("v")  # All capabilities enabled for testing
+    auth_plugin_data_length = "\x15"  # 21 bytes of auth data total
+    reserved = "\0" * 10
+    auth_plugin_data_part2 = "123456789012345"
+    auth_plugin_name = "mysql_native_password\0"
+
+    handshake = [
+      protocol_version,
+      server_version,
+      connection_id,
+      auth_plugin_data_part1,
+      filler,
+      capability_flags_lower,
+      character_set,
+      status_flags,
+      capability_flags_upper,
+      auth_plugin_data_length,
+      reserved,
+      auth_plugin_data_part2,
+      auth_plugin_name
+    ].pack("CA*A*A8A*A*A*A*A*A*A*A*A*")
+
+    # Add MySQL packet header (4 bytes: 3 bytes length + 1 byte sequence id)
+    packet_length = [handshake.length].pack("V")[0..2]  # Only first 3 bytes
+    sequence_id = "\0"
+
+    packet_length + sequence_id + handshake
+  end
+
+  def upgrade_socket_to_ssl(socket)
+    ssl_ctx = OpenSSL::SSL::SSLContext.new
+    ssl_ctx.ciphers = "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:AES128-GCM-SHA256"
+    ssl_ctx.min_version = OpenSSL::SSL::TLS1_2_VERSION
+    ssl_ctx.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    
+    # Generate a self-signed certificate
+    key = OpenSSL::PKey::RSA.new(2048)
+    cert = OpenSSL::X509::Certificate.new
+    cert.version = 2
+    cert.serial = 1
+    cert.subject = OpenSSL::X509::Name.parse("/CN=localhost")
+    cert.issuer = cert.subject
+    cert.public_key = key.public_key
+    cert.not_before = Time.now
+    cert.not_after = Time.now + 3600  # Valid for 1 hour
+    
+    ef = OpenSSL::X509::ExtensionFactory.new
+    ef.subject_certificate = cert
+    ef.issuer_certificate = cert
+    cert.add_extension(ef.create_extension("basicConstraints", "CA:TRUE", true))
+    cert.add_extension(ef.create_extension("keyUsage", "keyCertSign, cRLSign", true))
+    cert.add_extension(ef.create_extension("subjectKeyIdentifier", "hash"))
+    cert.sign(key, OpenSSL::Digest.new('SHA256'))
+    
+    ssl_ctx.key = key
+    ssl_ctx.cert = cert
+    
+    OpenSSL::SSL::SSLSocket.new(socket, ssl_ctx)
+  end
+
 end

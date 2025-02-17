@@ -1,4 +1,5 @@
 require "test_helper"
+require 'openssl'
 
 class ClientTest < TrilogyTest
   def test_trilogy_connected_host
@@ -557,6 +558,45 @@ class ClientTest < TrilogyTest
     end
   ensure
     ensure_closed serv
+  end
+
+  def test_ssl_handshake_timeout
+    fake_server = TCPServer.new("127.0.0.1", 0)
+    _, fake_port = fake_server.addr
+
+    accept_thread = Thread.new do
+      client_socket = fake_server.accept
+
+      client_socket.write(build_mysql_handshake_packet)
+      client_socket.readpartial(1024) # discard handshake response
+
+      ssl_socket = upgrade_socket_to_ssl(client_socket)
+      ssl_socket.accept
+
+      ssl_socket.readpartial(1024) # discard the incoming request
+
+      error_packet = [
+        0xFF,  # Error packet type
+        2026,  # Error code
+        "#HY000",  # SQL state marker and state
+        "TLS/SSL error: Connection timed out (110)",
+      ].pack("CvZ6a*")
+      
+      packet_length = [error_packet.length].pack("V")[0..2]  # Only first 3 bytes
+      sequence_id = "\3"  # Sequence number 3 (after handshake, SSL request, and auth)
+      
+      ssl_socket.write(packet_length + sequence_id + error_packet)
+      ssl_socket.close
+    end
+
+    ex = assert_raises Trilogy::BaseConnectionError do
+      client = new_tcp_client(host: "127.0.0.1", port: fake_port, connect_timeout: 0.1, ssl_mode: Trilogy::SSL_REQUIRED_NOVERIFY)
+      client.query("SELECT 'hello'").to_a
+    end
+    assert_equal 2026, ex.error_code
+  ensure
+    accept_thread.join
+    ensure_closed fake_server
   end
 
   def test_connect_timeout
