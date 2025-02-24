@@ -266,74 +266,40 @@ static double timeval_to_double(struct timeval tv)
 struct rb_trilogy_wait_args {
     struct timeval *timeout;
     int wait_flag;
+
+#ifdef TRILOGY_RB_IO_WAIT
+    VALUE io;
+#else
     int fd;
+#endif
+
     int rc;
 };
 
-#ifdef TRILOGY_RB_IO_WAIT
-static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
-{
-    struct trilogy_ctx *ctx = sock->user_data;
-    struct timeval *timeout = NULL;
-    int wait_flag = 0;
-
-    switch (wait) {
-    case TRILOGY_WAIT_READ:
-        timeout = &sock->opts.read_timeout;
-        wait_flag = RUBY_IO_READABLE;
-        break;
-
-    case TRILOGY_WAIT_WRITE:
-        timeout = &sock->opts.write_timeout;
-        wait_flag = RUBY_IO_WRITABLE;
-        break;
-
-    case TRILOGY_WAIT_CONNECT:
-        // wait for connection to be writable
-        timeout = &sock->opts.connect_timeout;
-        if (timeout->tv_sec == 0 && timeout->tv_usec == 0) {
-            // We used to use the write timeout for this, so if a connect timeout isn't configured, default to that.
-            timeout = &sock->opts.write_timeout;
-        }
-        wait_flag = RUBY_IO_WRITABLE;
-        break;
-
-    case TRILOGY_WAIT_HANDSHAKE:
-        // wait for handshake packet on initial connection
-        timeout = &sock->opts.connect_timeout;
-        wait_flag = RUBY_IO_READABLE;
-        break;
-
-    default:
-        return TRILOGY_ERR;
-    }
-
-    if (ctx->io == Qnil) {
-        VALUE io = rb_io_open_descriptor(rb_cIO, trilogy_sock_fd(sock), FMODE_EXTERNAL, RUBY_Qnil, RUBY_Qnil, NULL);
-        RB_OBJ_WRITE(ctx->self, &ctx->io, io);
-    }
-
-    if (timeout->tv_sec == 0 && timeout->tv_usec == 0) {
-        timeout = NULL;
-    }
-
-    VALUE result = rb_io_wait(ctx->io, RB_INT2NUM(wait_flag), rb_fiber_scheduler_make_timeout(timeout));
-
-    if (result == RUBY_Qfalse) {
-        return TRILOGY_TIMEOUT;
-    }
-
-    if (RTEST(result)) {
-        return TRILOGY_OK;
-    } else {
-        return TRILOGY_SYSERR;
-    }
-}
-#else
 static VALUE rb_trilogy_wait_protected(VALUE vargs) {
     struct rb_trilogy_wait_args *args = (void *)vargs;
 
-    args->rc = rb_wait_for_single_fd(args->fd, args->wait_flag, args->timeout);
+#ifdef TRILOGY_RB_IO_WAIT
+    VALUE result = rb_io_wait(args->io, RB_INT2NUM(args->wait_flag), rb_fiber_scheduler_make_timeout(args->timeout));
+    
+    if (result == RUBY_Qfalse) {
+        args->rc = TRILOGY_TIMEOUT;
+    } else if (RTEST(result)) {
+        args->rc = TRILOGY_OK;
+    } else {
+        args->rc = TRILOGY_SYSERR;
+    }
+#else
+    int result = rb_wait_for_single_fd(args->fd, args->wait_flag, args->timeout);
+
+    if (result == 0) {
+        args->rc = TRILOGY_TIMEOUT;
+    } else if (result < 0) {
+        args->rc = TRILOGY_SYSERR;
+    } else {
+        args->rc = TRILOGY_OK;
+    }
+#endif
 
     return Qnil;
 }
@@ -379,6 +345,21 @@ static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
     }
 
     struct rb_trilogy_wait_args args;
+
+#ifdef TRILOGY_RB_IO_WAIT
+    struct trilogy_ctx *ctx = sock->user_data;
+
+    // Create the IO instance on demand:
+    if (ctx->io == Qnil) {
+        VALUE io = rb_io_open_descriptor(rb_cIO, trilogy_sock_fd(sock), FMODE_EXTERNAL, RUBY_Qnil, RUBY_Qnil, NULL);
+        RB_OBJ_WRITE(ctx->self, &ctx->io, io);
+    }
+
+    args.io = ctx->io;
+#else
+    args.fd = trilogy_sock_fd(sock);
+#endif
+
     args.fd = trilogy_sock_fd(sock);
     args.wait_flag = wait_flag;
     args.timeout = timeout;
@@ -391,16 +372,8 @@ static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
         rb_jump_tag(state);
     }
 
-    // rc here comes from rb_wait_for_single_fd which (similar to poll(3)) returns 0 to indicate that the call timed out
-    // or -1 to indicate a system error with errno set.
-    if (args.rc < 0)
-        return TRILOGY_SYSERR;
-    if (args.rc == 0)
-        return TRILOGY_TIMEOUT;
-
-    return TRILOGY_OK;
+    return args.rc;
 }
-#endif
 
 struct nogvl_sock_args {
     int rc;
@@ -423,8 +396,8 @@ static int try_connect(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, 
 
     struct nogvl_sock_args args = {.rc = 0, .sock = sock};
 
-    // Attempt to resolve a non-numeric hostname using the fiber scheduler if possible.
 #ifdef TRILOGY_RB_IO_WAIT
+    // Attempt to resolve a non-numeric hostname using the fiber scheduler if possible.
     if (opts->hostname != NULL) {
         VALUE scheduler = rb_fiber_scheduler_current();
 
