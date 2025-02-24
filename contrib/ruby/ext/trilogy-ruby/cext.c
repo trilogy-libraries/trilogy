@@ -69,8 +69,7 @@ static void trilogy_ctx_compact(void *ptr)
     ctx->self = rb_gc_location(ctx->self);
 
 #ifdef TRILOGY_RB_IO_WAIT
-    if (RTEST(ctx->io))
-        ctx->io = rb_gc_location(ctx->io);
+    ctx->io = rb_gc_location(ctx->io);
 #endif
 
     ctx->encoding = rb_gc_location(ctx->encoding);
