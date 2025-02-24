@@ -15,7 +15,7 @@
 
 #include "trilogy-ruby.h"
 
-#if defined(HAVE_RB_IO_WAIT) && defined(RB_IO_OPEN_DESCRIPTOR) && defined(HAVE_RUBY_FIBER_SCHEDULER_H)
+#if defined(HAVE_RB_IO_WAIT) && defined(RB_IO_OPEN_DESCRIPTOR) && defined(HAVE_RB_FIBER_SCHEDULER_MAKE_TIMEOUT) && defined(HAVE_RUBY_FIBER_SCHEDULER_H)
 #define TRILOGY_RB_IO_WAIT
 #endif
 

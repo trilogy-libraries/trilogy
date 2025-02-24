@@ -20,6 +20,7 @@ have_func("rb_interned_str", "ruby.h")
 
 have_func("rb_io_wait", "ruby.h")
 have_func("rb_io_open_descriptor", "ruby.h")
+have_func("rb_fiber_scheduler_make_timeout")
 have_header("ruby/fiber/scheduler.h")
 
 create_makefile "trilogy/cext"
