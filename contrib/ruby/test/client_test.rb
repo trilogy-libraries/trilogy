@@ -1142,6 +1142,21 @@ class ClientTest < TrilogyTest
     end
   end
 
+  if defined?(Process.fork)
+    def test_free_on_exit
+      pid = fork do
+        thread = Thread.new do
+          client = new_tcp_client
+          client.query("SELECT sleep(2)")
+        end
+        thread.join(0.2)
+        # Exit, hence free an instance, while a query is being performed.
+      end
+      _, status = Process.wait2(pid)
+      assert_predicate status, :success?
+    end
+  end
+
   def test_buffer_pool_size_can_be_configured
     assert_equal 8, Trilogy.buffer_pool_size
     Trilogy.buffer_pool_size = 4

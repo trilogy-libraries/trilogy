@@ -113,6 +113,18 @@ static inline buffer_pool *get_buffer_pool(bool create)
     if (NIL_P(rb_pool)) {
         return NULL;
     }
+
+    if (!create) {
+        // We can't call TypedData_Get_Struct directly because if `rb_pool`
+        // was gargbage collected, TypedData_Get_Struct will try to raise an
+        // exception and cause a crash because that is allocating during garbage
+        // collection.
+        if (!RB_TYPE_P(rb_pool, T_DATA) || !RTYPEDDATA_TYPE(rb_pool)) {
+            // The buffer pool was garbaged collected, Ruby or the current Ractor exiting.
+            return NULL;
+        }
+    }
+
     TypedData_Get_Struct(rb_pool, buffer_pool, &buffer_pool_type, pool);
     return pool;
 }
