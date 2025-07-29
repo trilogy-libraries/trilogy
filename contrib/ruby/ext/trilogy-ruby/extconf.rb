@@ -10,7 +10,7 @@ File.binwrite("trilogy.c",
   }.join)
 
 $objs = %w[trilogy.o cast.o cext.o]
-append_cflags(["-I #{__dir__}/inc","-std=gnu99","-fvisibility=hidden"])
+append_cflags(["-I #{__dir__}/inc", "-std=gnu99", "-fvisibility=hidden"])
 
 dir_config("openssl")
 
