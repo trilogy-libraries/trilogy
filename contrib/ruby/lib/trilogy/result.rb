@@ -6,6 +6,8 @@ class Trilogy
       rows.count
     end
 
+    alias_method :size, :count
+
     def each_hash
       return enum_for(:each_hash) unless block_given?
 

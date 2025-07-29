@@ -5,7 +5,37 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
-- Add support for `caching_sha2_password` when using MySQL 8.0+.
+## 2.9.0
+
+### Added
+
+- Add support for the VECTOR type. #194
+
+### Changed
+- Mark C-extension as Ractor-safe. #192
+
+### Fixed
+
+- Fix bug allowing queries larger than the configured `max_allowed_packet`. #203
+- Restore error message context that was accidentally removed. #187
+
+## 2.8.1
+
+### Fixed
+
+- Fix "Got packets out of order" errors on connect. #184
+
+## 2.8.0
+
+### Added
+
+- Add support for `caching_sha2_password` when using MySQL 8.0+. #165
+- Add support for `mysql_clear_password` client plugin. #171
+- Add connection `#check`. #154
+
+### Fixed
+
+- Use `connect_timeout` for initial connection. #159
 
 ## 2.7.0
 

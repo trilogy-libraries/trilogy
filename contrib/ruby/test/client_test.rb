@@ -270,6 +270,7 @@ class ClientTest < TrilogyTest
 
     assert_instance_of(Trilogy::ProtocolError, e)
     assert_match(/1047: Unknown command/, e.message)
+    assert_match(/trilogy_set_option_recv/, e.message)
   end
 
   def test_trilogy_set_server_option_multi_statement
@@ -283,6 +284,7 @@ class ClientTest < TrilogyTest
 
     assert_instance_of(Trilogy::QueryError, e)
     assert_match(/1064: You have an error in your SQL syntax/, e.message)
+    assert_match(/trilogy_query_recv/, e.message)
 
     client.set_server_option(Trilogy::SET_SERVER_MULTI_STATEMENTS_ON)
     client.query("INSERT INTO trilogy_test (int_test) VALUES ('4'); INSERT INTO trilogy_test (int_test) VALUES ('1')")
@@ -301,6 +303,7 @@ class ClientTest < TrilogyTest
 
     assert_instance_of(Trilogy::QueryError, e)
     assert_match(/1064: You have an error in your SQL syntax/, e.message)
+    assert_match(/trilogy_query_recv/, e.message)
   end
 
   def test_trilogy_query_result_object
@@ -829,6 +832,12 @@ class ClientTest < TrilogyTest
 
     assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
 
+    exception = assert_raises Trilogy::QueryError do
+      client.query query_for_target_packet_size(32 * 1024 * 1024 + 1)
+    end
+
+    assert_equal "trilogy_query_send: TRILOGY_MAX_PACKET_EXCEEDED", exception.message
+
     assert client.ping
   ensure
     ensure_closed client
@@ -1138,5 +1147,15 @@ class ClientTest < TrilogyTest
     assert_equal value.length, result.rows[0][0].length
   ensure
     ensure_closed client
+  end
+
+  if defined?(::Ractor)
+    def test_is_ractor_compatible
+      ractor = Ractor.new do
+        client = TrilogyTest.new(nil).new_tcp_client
+        client.query("SELECT 1")
+      end
+      assert_equal [[1]], ractor.take.to_a
+    end
   end
 end

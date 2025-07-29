@@ -21,10 +21,10 @@ if GC.respond_to?(:verify_compaction_references)
 end
 
 class TrilogyTest < Minitest::Test
-  DEFAULT_HOST = ENV["MYSQL_HOST"] || "127.0.0.1"
+  DEFAULT_HOST = (ENV["MYSQL_HOST"] || "127.0.0.1").freeze
   DEFAULT_PORT = (port = ENV["MYSQL_PORT"].to_i) && port != 0 ? port : 3306
-  DEFAULT_USER = ENV["MYSQL_USER"] || "root"
-  DEFAULT_PASS = ENV["MYSQL_PASS"]
+  DEFAULT_USER = (ENV["MYSQL_USER"] || "root").freeze
+  DEFAULT_PASS = ENV["MYSQL_PASS"].freeze
 
   def assert_equal_timestamp(time1, time2)
     assert_equal time1.to_i, time2.to_i
@@ -88,6 +88,38 @@ class TrilogyTest < Minitest::Test
 
   def ensure_closed(socket)
     socket.close if socket
+  end
+
+  def create_and_delete_test_user(opts = {}, &block)
+    client = new_tcp_client
+    user_created = create_test_user(client, opts)
+    yield
+  ensure
+    delete_test_user(client, opts) if user_created
+    ensure_closed client
+  end
+
+  def create_test_user(client, opts = {})
+    username = opts[:username]
+    password = opts[:password] || "password"
+    host = opts[:host] || DEFAULT_HOST
+    auth_plugin = opts[:auth_plugin]
+
+    raise ArgumentError if username.nil? || auth_plugin.nil?
+    user_exists = client.query("SELECT user FROM mysql.user WHERE user = '#{username}';").rows.first
+    return if user_exists
+
+    client.query("CREATE USER '#{username}'@'#{host}'")
+    client.query("GRANT ALL PRIVILEGES ON test.* TO '#{username}'@'#{host}';")
+    client.query("ALTER USER '#{username}'@'#{host}' IDENTIFIED WITH #{auth_plugin} BY '#{password}';")
+    client.query("SELECT user FROM mysql.user WHERE user = '#{username}';").rows.first
+  end
+
+  def delete_test_user(client, opts = {})
+    username = opts[:username] || "auth_user"
+    host = opts[:host] || DEFAULT_HOST
+
+    client.query("DROP USER IF EXISTS '#{username}'@'#{host}'")
   end
 
   def create_test_table(client)

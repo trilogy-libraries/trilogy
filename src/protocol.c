@@ -926,6 +926,8 @@ int trilogy_build_stmt_execute_packet(trilogy_builder_t *builder, uint32_t stmt_
             case TRILOGY_TYPE_VAR_STRING:
             case TRILOGY_TYPE_STRING:
             case TRILOGY_TYPE_GEOMETRY:
+            case TRILOGY_TYPE_JSON:
+            case TRILOGY_TYPE_VECTOR:
                 CHECKED(trilogy_builder_write_lenenc_buffer(builder, val.as.str.data, val.as.str.len));
 
                 break;
@@ -1059,6 +1061,7 @@ int trilogy_parse_stmt_row_packet(const uint8_t *buff, size_t len, trilogy_colum
             case TRILOGY_TYPE_DECIMAL:
             case TRILOGY_TYPE_NEWDECIMAL:
             case TRILOGY_TYPE_JSON:
+            case TRILOGY_TYPE_VECTOR:
                 CHECKED(trilogy_reader_get_lenenc_buffer(&reader, &out_values[i].as.str.len,
                                                       (const void **)&out_values[i].as.str.data));
 

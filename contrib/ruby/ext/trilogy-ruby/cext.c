@@ -133,7 +133,8 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
         rb_raise(Trilogy_TimeoutError, "%" PRIsVALUE, rbmsg);
 
     case TRILOGY_ERR: {
-        VALUE message = rb_str_new(ctx->conn.error_message, ctx->conn.error_message_len);
+        VALUE conn_message = rb_str_new(ctx->conn.error_message, ctx->conn.error_message_len);
+        VALUE message = rb_sprintf("%" PRIsVALUE " (%" PRIsVALUE ")", conn_message, rbmsg);
         VALUE exc = rb_funcall(Trilogy_ProtocolError, id_from_code, 2, message, INT2NUM(ctx->conn.error_code));
         rb_exc_raise(exc);
     }
@@ -1133,6 +1134,10 @@ static VALUE rb_trilogy_server_version(VALUE self) { return rb_str_new_cstr(get_
 
 RUBY_FUNC_EXPORTED void Init_cext(void)
 {
+    #ifdef HAVE_RB_EXT_RACTOR_SAFE
+        rb_ext_ractor_safe(true);
+    #endif
+
     VALUE Trilogy = rb_const_get(rb_cObject, rb_intern("Trilogy"));
     rb_define_alloc_func(Trilogy, allocate_trilogy);
 
