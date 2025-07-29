@@ -45,7 +45,7 @@ trap cleanup EXIT
 export CI_MODE=true
 
 if [ -z "$MYSQL_VERSION" ]; then export MYSQL_VERSION=8.0 ; fi
-if [ -z "$DISTRIBUTION" ];  then export DISTRIBUTION=debian:buster ; fi
+if [ -z "$DISTRIBUTION" ];  then export DISTRIBUTION=debian:bookworm ; fi
 if [ -z "$RUBY_VERSION" ];  then export RUBY_VERSION=3.2 ; fi
 
 DISTRIBUTION_SLUG="$(echo "$DISTRIBUTION" | awk '{ gsub(":", "_") ; print $0 }')"

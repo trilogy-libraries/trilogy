@@ -1,4 +1,4 @@
-ARG MYSQL_VERSION
+ARG MYSQL_VERSION=8.0
 
 FROM mysql:${MYSQL_VERSION}-debian
 # Make all apt-get commands non-interactive. Setting this as an ARG will apply to the entire
@@ -9,6 +9,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 # https://github.com/docker-library/mysql/pull/1019
 # Copy the gpg key from the latest MySQL image.
 COPY --from=mysql:8.0-debian /etc/apt/keyrings/mysql.gpg /etc/apt/keyrings/mysql.gpg
+
+RUN sed -i -e "s,deb.debian.org,archive.debian.org," /etc/apt/sources.list
 
 # Install the MySQL test package so that we can get test plugins.
 # https://github.com/docker-library/mysql/issues/1040
