@@ -60,6 +60,6 @@ chmod 777 tmp/mysql-certs
 
 docker compose rm --stop --force --volumes
 output_fold "Pull cache image..." docker compose pull app db || true
-output_fold "Bootstrapping container..." docker compose build
+output_fold "Bootstrapping container..." docker compose build --build-arg MYSQL_VERSION=${MYSQL_VERSION} --build-arg DISTRIBUTION=${DISTRIBUTION} --build-arg RUBY_VERSION=${RUBY_VERSION}
 output_fold "Running tests..." docker compose run --rm app
 output_fold "Pushing cache image..." docker compose push app db || true # Don't fail if push fails
