@@ -16,11 +16,11 @@ jobs:
       fail-fast: false
       matrix:
         mysql: ["5.7", "8.0"]
-        distribution: ["debian:buster", "ubuntu:focal", "ubuntu:bionic"]
+        distribution: ["debian:bookworm", "ubuntu:focal", "ubuntu:bionic"]
         ruby: ["3.3"]
         include:
           - mysql: "5.7"
-            distribution: "debian:buster"
+            distribution: "debian:bookworm"
             ruby: "3.0.7"
     steps:
     - uses: actions/checkout@v4

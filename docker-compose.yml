@@ -7,6 +7,7 @@ services:
       dockerfile: test/mysql/Dockerfile
       args:
         - MYSQL_VERSION=${MYSQL_VERSION}
+        - DISTRIBUTION=${DISTRIBUTION}
       cache_from:
         - ghcr.io/trilogy-libraries/trilogy/ci-mysql:${MYSQL_VERSION}-debian
     environment:
