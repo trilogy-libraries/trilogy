@@ -2,7 +2,7 @@ ARG DISTRIBUTION=debian:bookworm
 FROM ${DISTRIBUTION}
 LABEL maintainer="github@github.com"
 
-RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y build-essential ca-certificates wget libssl-dev default-libmysqlclient-dev clang clang-tools llvm valgrind netcat
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y build-essential ca-certificates wget libssl-dev default-libmysqlclient-dev clang clang-tools llvm valgrind netcat-traditional
 
 # Install libclang-rt-14-dev for Debian Bookworm so that Trilogy builds.
 ARG DISTRIBUTION=debian:bookworm
