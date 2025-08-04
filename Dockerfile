@@ -17,9 +17,9 @@ RUN if [ "${DISTRIBUTION}" = "ubuntu:noble" ]; then \
 
 RUN update-ca-certificates
 
-RUN wget https://github.com/postmodern/ruby-install/releases/download/v0.9.0/ruby-install-0.9.0.tar.gz && \
-    tar -xzvf ruby-install-0.9.0.tar.gz && \
-    cd ruby-install-0.9.0/ && \
+RUN wget https://github.com/postmodern/ruby-install/releases/download/v0.10.1/ruby-install-0.10.1.tar.gz && \
+    tar -xzvf ruby-install-0.10.1.tar.gz && \
+    cd ruby-install-0.10.1/ && \
     make install
 
 ARG RUBY_VERSION=3.4
