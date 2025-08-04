@@ -22,7 +22,7 @@ RUN wget https://github.com/postmodern/ruby-install/releases/download/v0.9.0/rub
     cd ruby-install-0.9.0/ && \
     make install
 
-ARG RUBY_VERSION=3.2
+ARG RUBY_VERSION=3.4
 RUN ruby-install --system ruby ${RUBY_VERSION}
 RUN ruby --version
 
