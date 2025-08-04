@@ -33,8 +33,12 @@ jobs:
     strategy:
       matrix:
         mysql: ["8.0"]
+        ruby: ["3.3", "3.4"]
     steps:
     - uses: actions/checkout@v4
+    - uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby }}
     - name: Setup MySQL
       env:
         MYSQL_VERSION: ${{ matrix.mysql }}
