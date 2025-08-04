@@ -10,6 +10,11 @@ RUN if [ "${DISTRIBUTION}" = "debian:bookworm" ]; then \
     DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y libclang-rt-14-dev; \
     fi
 
+# Install libclang-rt-18-dev for Ubuntu Noble so that Trilogy builds.
+RUN if [ "${DISTRIBUTION}" = "ubuntu:noble" ]; then \
+    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y libclang-rt-18-dev; \
+    fi
+
 RUN update-ca-certificates
 
 RUN wget https://github.com/postmodern/ruby-install/releases/download/v0.9.0/ruby-install-0.9.0.tar.gz && \

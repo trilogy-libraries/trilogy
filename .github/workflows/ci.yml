@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         mysql: ["8.0"]
-        distribution: ["debian:bookworm", "ubuntu:focal", "ubuntu:bionic"]
+        distribution: ["debian:bookworm", "ubuntu:noble", "ubuntu:jammy", "ubuntu:focal"]
         ruby: ["3.3"]
     steps:
     - uses: actions/checkout@v4
