@@ -1,6 +1,5 @@
 ARG MYSQL_VERSION=8.0
-
-FROM mysql:${MYSQL_VERSION}-debian
+FROM mysql:8.0-debian
 
 # Make all apt-get commands non-interactive. Setting this as an ARG will apply to the entire
 # build phase, but not leak into the final image and run phase.
@@ -14,5 +13,5 @@ RUN set -eux \
 
 # This is the final stage in which we copy the plugins from the test stage. Doing it this way allows
 # us to not have to install the test package in the final image since we only need the plugins.
-FROM mysql:${MYSQL_VERSION}-debian
-COPY --from=0 /usr/lib/mysql/plugin/ /usr/lib/mysql/plugin/
+FROM mysql:${MYSQL_VERSION}
+COPY --from=0 /usr/lib/mysql/plugin/ /usr/lib64/mysql/plugin/
