@@ -4,16 +4,24 @@
 #include <ruby/encoding.h>
 #include <ruby/io.h>
 #include <ruby/thread.h>
+
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/un.h>
-
 #include <unistd.h>
 #include <fcntl.h>
 
 #include <trilogy.h>
 
 #include "trilogy-ruby.h"
+
+#if defined(HAVE_RB_IO_WAIT) && defined(RB_IO_OPEN_DESCRIPTOR) && defined(HAVE_RB_FIBER_SCHEDULER_MAKE_TIMEOUT) && defined(HAVE_RUBY_FIBER_SCHEDULER_H)
+#define TRILOGY_RB_IO_WAIT
+#endif
+
+#ifdef TRILOGY_RB_IO_WAIT
+#include <ruby/fiber/scheduler.h>
+#endif
 
 VALUE Trilogy_CastError;
 static VALUE Trilogy_BaseConnectionError, Trilogy_ProtocolError, Trilogy_SSLError, Trilogy_QueryError,
@@ -28,26 +36,57 @@ static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, 
     id_from_code, id_from_errno, id_connection_options, id_max_allowed_packet;
 
 struct trilogy_ctx {
+    VALUE self;
+
     trilogy_conn_t conn;
+
+#ifdef TRILOGY_RB_IO_WAIT
+    VALUE io;
+#endif
+
     char server_version[TRILOGY_SERVER_VERSION_SIZE + 1];
     unsigned int query_flags;
     VALUE encoding;
 };
 
-static void mark_trilogy(void *ptr)
+static void trilogy_ctx_mark(void *ptr)
 {
     struct trilogy_ctx *ctx = ptr;
-    rb_gc_mark(ctx->encoding);
+
+    rb_gc_mark_movable(ctx->self);
+
+#ifdef TRILOGY_RB_IO_WAIT
+    rb_gc_mark_movable(ctx->io);
+#endif
+
+    rb_gc_mark_movable(ctx->encoding);
 }
 
-static void free_trilogy(void *ptr)
+static void trilogy_ctx_compact(void *ptr)
 {
     struct trilogy_ctx *ctx = ptr;
-    trilogy_free(&ctx->conn);
+
+    ctx->self = rb_gc_location(ctx->self);
+
+#ifdef TRILOGY_RB_IO_WAIT
+    ctx->io = rb_gc_location(ctx->io);
+#endif
+
+    ctx->encoding = rb_gc_location(ctx->encoding);
+}
+
+static void trilogy_ctx_free(void *ptr)
+{
+    struct trilogy_ctx *ctx = ptr;
+
+    if (ctx->conn.socket != NULL) {
+        trilogy_free(&ctx->conn);
+    }
+
     xfree(ptr);
 }
 
-static size_t trilogy_memsize(const void *ptr) {
+static size_t trilogy_ctx_memsize(const void *ptr) {
     const struct trilogy_ctx *ctx = ptr;
     size_t memsize = sizeof(struct trilogy_ctx);
     if (ctx->conn.socket != NULL) {
@@ -60,9 +99,10 @@ static size_t trilogy_memsize(const void *ptr) {
 static const rb_data_type_t trilogy_data_type = {
     .wrap_struct_name = "trilogy",
     .function = {
-        .dmark = mark_trilogy,
-        .dfree = free_trilogy,
-        .dsize = trilogy_memsize,
+        .dmark = trilogy_ctx_mark,
+        .dcompact = trilogy_ctx_compact,
+        .dfree = trilogy_ctx_free,
+        .dsize = trilogy_ctx_memsize,
     },
     .flags = RUBY_TYPED_FREE_IMMEDIATELY | RUBY_TYPED_WB_PROTECTED
 };
@@ -176,6 +216,12 @@ static VALUE allocate_trilogy(VALUE klass)
 
     VALUE obj = TypedData_Make_Struct(klass, struct trilogy_ctx, &trilogy_data_type, ctx);
 
+    RB_OBJ_WRITE(obj, &ctx->self, obj);
+
+#ifdef TRILOGY_RB_IO_WAIT
+    ctx->io = Qnil;
+#endif
+
     ctx->query_flags = TRILOGY_FLAGS_DEFAULT;
 
     if (trilogy_init(&ctx->conn) < 0) {
@@ -220,14 +266,40 @@ static double timeval_to_double(struct timeval tv)
 struct rb_trilogy_wait_args {
     struct timeval *timeout;
     int wait_flag;
+
+#ifdef TRILOGY_RB_IO_WAIT
+    VALUE io;
+#else
     int fd;
+#endif
+
     int rc;
 };
 
 static VALUE rb_trilogy_wait_protected(VALUE vargs) {
     struct rb_trilogy_wait_args *args = (void *)vargs;
 
-    args->rc = rb_wait_for_single_fd(args->fd, args->wait_flag, args->timeout);
+#ifdef TRILOGY_RB_IO_WAIT
+    VALUE result = rb_io_wait(args->io, RB_INT2NUM(args->wait_flag), rb_fiber_scheduler_make_timeout(args->timeout));
+    
+    if (result == RUBY_Qfalse) {
+        args->rc = TRILOGY_TIMEOUT;
+    } else if (RTEST(result)) {
+        args->rc = TRILOGY_OK;
+    } else {
+        args->rc = TRILOGY_SYSERR;
+    }
+#else
+    int result = rb_wait_for_single_fd(args->fd, args->wait_flag, args->timeout);
+
+    if (result == 0) {
+        args->rc = TRILOGY_TIMEOUT;
+    } else if (result < 0) {
+        args->rc = TRILOGY_SYSERR;
+    } else {
+        args->rc = TRILOGY_OK;
+    }
+#endif
 
     return Qnil;
 }
@@ -273,6 +345,21 @@ static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
     }
 
     struct rb_trilogy_wait_args args;
+
+#ifdef TRILOGY_RB_IO_WAIT
+    struct trilogy_ctx *ctx = sock->user_data;
+
+    // Create the IO instance on demand:
+    if (ctx->io == Qnil) {
+        VALUE io = rb_io_open_descriptor(rb_cIO, trilogy_sock_fd(sock), FMODE_EXTERNAL, RUBY_Qnil, RUBY_Qnil, NULL);
+        RB_OBJ_WRITE(ctx->self, &ctx->io, io);
+    }
+
+    args.io = ctx->io;
+#else
+    args.fd = trilogy_sock_fd(sock);
+#endif
+
     args.fd = trilogy_sock_fd(sock);
     args.wait_flag = wait_flag;
     args.timeout = timeout;
@@ -285,14 +372,7 @@ static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
         rb_jump_tag(state);
     }
 
-    // rc here comes from rb_wait_for_single_fd which (similar to poll(3)) returns 0 to indicate that the call timed out
-    // or -1 to indicate a system error with errno set.
-    if (args.rc < 0)
-        return TRILOGY_SYSERR;
-    if (args.rc == 0)
-        return TRILOGY_TIMEOUT;
-
-    return TRILOGY_OK;
+    return args.rc;
 }
 
 struct nogvl_sock_args {
@@ -307,7 +387,7 @@ static void *no_gvl_resolve(void *data)
     return NULL;
 }
 
-static int try_connect(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, const trilogy_sockopt_t *opts)
+static int try_connect(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, trilogy_sockopt_t *opts)
 {
     trilogy_sock_t *sock = trilogy_sock_new(opts);
     if (sock == NULL) {
@@ -315,6 +395,28 @@ static int try_connect(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, 
     }
 
     struct nogvl_sock_args args = {.rc = 0, .sock = sock};
+
+#ifdef TRILOGY_RB_IO_WAIT
+    // Attempt to resolve a non-numeric hostname using the fiber scheduler if possible.
+    if (opts->hostname != NULL) {
+        VALUE scheduler = rb_fiber_scheduler_current();
+
+        if (scheduler != Qnil) {
+            VALUE addresses = rb_fiber_scheduler_address_resolve(scheduler, rb_str_new_cstr(opts->hostname));
+
+            if (RARRAY_LEN(addresses) == 0) {
+                return TRILOGY_DNS_ERR;
+            }
+
+            free(opts->hostname);
+            opts->hostname = NULL;
+            VALUE address = rb_ary_entry(addresses, 0);
+            StringValue(address);
+
+            opts->hostname = strndup(RSTRING_PTR(address), RSTRING_LEN(address));
+        }
+    }
+#endif
 
     // Do the DNS resolving with the GVL unlocked. At this point all
     // configuration data is copied and available to the trilogy socket.
@@ -330,6 +432,8 @@ static int try_connect(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake, 
     /* replace the default wait callback with our GVL-aware callback so we can
 escape the GVL on each wait operation without going through call_without_gvl */
     sock->wait_cb = _cb_ruby_wait;
+    sock->user_data = ctx;
+
     rc = trilogy_connect_send_socket(&ctx->conn, sock);
     if (rc < 0) {
         trilogy_sock_close(sock);
