@@ -1,3 +1,6 @@
+permissions:
+  contents: read
+
 name: macOS
 on:
   push:
