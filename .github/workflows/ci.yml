@@ -15,15 +15,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mysql: ["5.7", "8.0"]
-        distribution: ["debian:buster", "ubuntu:focal", "ubuntu:bionic"]
-        ruby: ["3.3"]
-        include:
-          - mysql: "5.7"
-            distribution: "debian:buster"
-            ruby: "3.0.7"
+        mysql: ["8.0", "8.4"]
+        distribution: ["debian:bookworm", "ubuntu:noble", "ubuntu:jammy", "ubuntu:focal"]
+        ruby: ["3.3", "3.4"]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: docker login
       run: echo $GITHUB_TOKEN | docker login ghcr.io --username trilogy --password-stdin
       env:

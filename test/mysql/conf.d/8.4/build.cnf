@@ -1,0 +1,21 @@
+# This MySQL configuration file is mounted into the Database container (/etc/mysql/conf.d)
+# at boot and is picked up automatically.
+
+[mysqld]
+
+sql_mode = NO_ENGINE_SUBSTITUTION
+server_id = 1
+gtid_mode = ON
+enforce_gtid_consistency = ON
+log_bin = mysql-bin.log
+mysql_native_password=ON
+
+# Since we generate our own certificates for testing purposes, we need to instruct MySQL
+# on where to find them. The certifcates are generated as an entrypoint script located at:
+# mysql/docker-entrypoint-initdb.d/generate_keys.sh
+# The /mysql-certs directory is mounted into both the database container and the app
+# container so that they both can have access to the generated certificates.
+# --
+ssl_ca = /mysql-certs/ca.pem
+ssl_cert = /mysql-certs/server-cert.pem
+ssl_key = /mysql-certs/server-key.pem
