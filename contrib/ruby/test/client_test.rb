@@ -891,6 +891,23 @@ class ClientTest < TrilogyTest
     ensure_closed client
   end
 
+  def test_reads_row_for_8_byte_length_encoded_int
+    # We're going to write a big packet, so ensure we are allowed to send it
+    set_max_allowed_packet(32 * 1024 * 1024)
+    client = new_tcp_client
+    create_test_table(client)
+
+    # Write a value whose length will require an 8-byte length-encoded int
+    value = "x" * 2 ** 24
+    client.query("INSERT INTO `trilogy_test` (`long_text_test`) VALUES (\"#{value}\")")
+
+    # Ensure we read the row and don't confuse it with an EOF packet
+    result = client.query("SELECT `long_text_test` FROM `trilogy_test` LIMIT 1")
+    assert_equal value.length, result.rows[0][0].length
+  ensure
+    ensure_closed client
+  end
+
   def test_too_many_connections
     connection_error_packet = [
       0x17, 0x00, 0x00, 0x00, 0xff, 0x10, 0x04, 0x54,
