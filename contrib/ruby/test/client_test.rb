@@ -1156,12 +1156,4 @@ class ClientTest < TrilogyTest
       assert_predicate status, :success?
     end
   end
-
-  def test_buffer_pool_size_can_be_configured
-    assert_equal 8, Trilogy.buffer_pool_size
-    Trilogy.buffer_pool_size = 4
-    assert_equal 4, Trilogy.buffer_pool_size
-  ensure
-    Trilogy.buffer_pool_size = 8
-  end
 end

@@ -26,13 +26,11 @@ typedef struct _buffer_pool_struct {
     buffer_pool_entry *entries;
 } buffer_pool;
 
-#ifdef HAVE_RB_RACTOR_LOCAL_STORAGE_VALUE_NEWKEY
-#include <ruby/atomic.h>
-static rb_atomic_t buffer_pool_max_size = 8;
-#else
-static unsigned int buffer_pool_max_size = 8;
+#ifndef HAVE_RB_RACTOR_LOCAL_STORAGE_VALUE_NEWKEY
 static VALUE _global_buffer_pool = Qnil;
 #endif
+
+#define BUFFER_POOL_MAX_SIZE 8
 
 static void buffer_pool_free(void *data)
 {
@@ -146,7 +144,7 @@ static bool buffer_checkin(trilogy_buffer_t *buffer)
 {
     buffer_pool * pool = get_buffer_pool(true);
 
-    if (pool->len >= buffer_pool_max_size) {
+    if (pool->len >= BUFFER_POOL_MAX_SIZE) {
         xfree(buffer->buff);
         buffer->buff = NULL;
         buffer->cap = 0;
@@ -1353,21 +1351,6 @@ static VALUE rb_trilogy_server_status(VALUE self) { return LONG2FIX(get_open_ctx
 
 static VALUE rb_trilogy_server_version(VALUE self) { return rb_str_new_cstr(get_open_ctx(self)->server_version); }
 
-static VALUE rb_trilogy_buffer_pool_size(VALUE klass)
-{
-    return UINT2NUM(buffer_pool_max_size);
-}
-
-static VALUE rb_trilogy_buffer_pool_size_set(VALUE klass, VALUE size)
-{
-#ifdef HAVE_RB_RACTOR_LOCAL_STORAGE_VALUE_NEWKEY
-    RUBY_ATOMIC_SET(buffer_pool_max_size, NUM2UINT(size));
-#else
-    buffer_pool_max_size = NUM2UINT(size);
-#endif
-    return size;
-}
-
 RUBY_FUNC_EXPORTED void Init_cext(void)
 {
     #ifdef HAVE_RB_RACTOR_LOCAL_STORAGE_VALUE_NEWKEY
@@ -1377,9 +1360,6 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
 
     VALUE Trilogy = rb_const_get(rb_cObject, rb_intern("Trilogy"));
     rb_define_alloc_func(Trilogy, allocate_trilogy);
-
-    rb_define_singleton_method(Trilogy, "buffer_pool_size", rb_trilogy_buffer_pool_size, 0);
-    rb_define_singleton_method(Trilogy, "buffer_pool_size=", rb_trilogy_buffer_pool_size_set, 1);
 
     rb_define_private_method(Trilogy, "_connect", rb_trilogy_connect, 3);
     rb_define_method(Trilogy, "change_db", rb_trilogy_change_db, 1);
