@@ -306,6 +306,42 @@ class ClientTest < TrilogyTest
     assert_match(/trilogy_query_recv/, e.message)
   end
 
+  def test_pipeline
+    client = new_tcp_client
+    create_test_table(client)
+    first, second = client.pipelined_query(["SELECT 1 AS a, 2 AS b", "SELECT 3 AS c, 4 AS d"])
+
+    assert_equal ["a", "b"], first.fields
+    assert_equal [[1, 2]], first.rows
+    assert_equal [{ "a" => 1, "b" => 2 }], first.each_hash.to_a
+    assert_equal [[1, 2]], first.to_a
+    assert_kind_of Float, first.query_time
+    assert_in_delta 0.1, first.query_time, 0.1
+
+    assert_equal ["c", "d"], second.fields
+    assert_equal [[3, 4]], second.rows
+    assert_equal [{ "c" => 3, "d" => 4 }], second.each_hash.to_a
+    assert_equal [[3, 4]], second.to_a
+    assert_kind_of Float, second.query_time
+    assert_in_delta 0.1, second.query_time, 0.1
+
+    results = client.pipelined_query([
+      "INSERT INTO trilogy_test (int_test) VALUES ('4')",
+      "INSERT INTO trilogy_test (int_test) VALUES ('3')",
+      "INSERT INTO trilogy_test (int_test) VALUES ('1')",
+      "SELECT * FROM trilogy_test",
+    ])
+    assert_equal 4, results.size
+    3.times do |i|
+      assert_equal 1, results[i].affected_rows
+      assert_predicate results[i].fields, :empty?
+    end
+    result = results.last
+    assert_equal 3, result.rows.size
+    index = result.fields.index("int_test")
+    assert_equal [1, 3, 4], result.rows.map { |r| r[index] }.sort
+  end
+
   def test_trilogy_query_result_object
     client = new_tcp_client
 
