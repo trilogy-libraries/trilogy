@@ -85,42 +85,31 @@ static VALUE create_rb_buffer_pool(void)
 #include <ruby/ractor.h>
 static rb_ractor_local_key_t buffer_pool_key;
 
-static VALUE get_rb_buffer_pool(bool create)
+static VALUE get_rb_buffer_pool(void)
 {
     VALUE pool;
-    if (!rb_ractor_local_storage_value_lookup(buffer_pool_key, &pool) && create) {
+    if (!rb_ractor_local_storage_value_lookup(buffer_pool_key, &pool)) {
         pool = create_rb_buffer_pool();
         rb_ractor_local_storage_value_set(buffer_pool_key, pool);
     }
     return pool;
 }
 #else
-static VALUE get_rb_buffer_pool(bool create)
+static VALUE get_rb_buffer_pool(void)
 {
-    if (NIL_P(_global_buffer_pool) && create) {
+    if (NIL_P(_global_buffer_pool)) {
         _global_buffer_pool = create_rb_buffer_pool();
     }
     return _global_buffer_pool;
 }
 #endif
 
-static inline buffer_pool *get_buffer_pool(bool create)
+static inline buffer_pool *get_buffer_pool(void)
 {
     buffer_pool *pool;
-    VALUE rb_pool = get_rb_buffer_pool(create);
+    VALUE rb_pool = get_rb_buffer_pool();
     if (NIL_P(rb_pool)) {
         return NULL;
-    }
-
-    if (!create) {
-        // We can't call TypedData_Get_Struct directly because if `rb_pool`
-        // was gargbage collected, TypedData_Get_Struct will try to raise an
-        // exception and cause a crash because that is allocating during garbage
-        // collection.
-        if (!RB_TYPE_P(rb_pool, T_DATA) || !RTYPEDDATA_TYPE(rb_pool)) {
-            // The buffer pool was garbaged collected, Ruby or the current Ractor exiting.
-            return NULL;
-        }
     }
 
     TypedData_Get_Struct(rb_pool, buffer_pool, &buffer_pool_type, pool);
@@ -129,7 +118,7 @@ static inline buffer_pool *get_buffer_pool(bool create)
 
 static void buffer_checkout(trilogy_buffer_t *buffer, size_t initial_capacity)
 {
-    buffer_pool * pool = get_buffer_pool(true);
+    buffer_pool * pool = get_buffer_pool();
     if (pool->len) {
         pool->len--;
         buffer->buff = pool->entries[pool->len].buff;
@@ -142,7 +131,7 @@ static void buffer_checkout(trilogy_buffer_t *buffer, size_t initial_capacity)
 
 static bool buffer_checkin(trilogy_buffer_t *buffer)
 {
-    buffer_pool * pool = get_buffer_pool(true);
+    buffer_pool * pool = get_buffer_pool();
 
     if (pool->len >= BUFFER_POOL_MAX_SIZE) {
         xfree(buffer->buff);
@@ -167,19 +156,6 @@ static bool buffer_checkin(trilogy_buffer_t *buffer)
     buffer->cap = 0;
 
     return true;
-}
-
-static bool buffer_checkin_no_alloc(trilogy_buffer_t *buffer)
-{
-    if (get_buffer_pool(false)) {
-        return buffer_checkin(buffer);
-    }
-
-    // The pool was freed, we're likely during Ruby shutdown
-    xfree(buffer->buff);
-    buffer->buff = NULL;
-    buffer->cap = 0;
-    return false;
 }
 
 VALUE Trilogy_CastError;
@@ -224,10 +200,6 @@ static void mark_trilogy(void *ptr)
 static void free_trilogy(void *ptr)
 {
     struct trilogy_ctx *ctx = ptr;
-
-    if (ctx->conn.packet_buffer.buff) {
-        buffer_checkin_no_alloc(&ctx->conn.packet_buffer);
-    }
 
     trilogy_free(&ctx->conn);
     xfree(ptr);
