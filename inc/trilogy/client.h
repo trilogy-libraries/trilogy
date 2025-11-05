@@ -352,6 +352,53 @@ int trilogy_set_option_send(trilogy_conn_t *conn, const uint16_t option);
  */
 int trilogy_set_option_recv(trilogy_conn_t *conn);
 
+/* trilogy_binlog_dump - Send a binlog dump command to the server.
+ *
+ * This should only be called while the connection is ready for commands.
+ *
+ * conn     - A connected trilogy_conn_t pointer. Using a disconnected
+ *            trilogy_conn_t is undefined.
+ * data     - The binlog dump request data.
+ * data_len - The length of the request data in bytes.
+ *
+ * Return values:
+ *   TRILOGY_OK     - The binlog dump command was successfully sent to the
+ *                    server.
+ *   TRILOGY_AGAIN  - The socket wasn't ready for writing. The caller should wait
+ *                    for writeability using `conn->sock`. Then call
+ *                    trilogy_flush_writes.
+ *   TRILOGY_SYSERR - A system error occurred, check errno.
+ */
+int trilogy_binlog_dump(trilogy_conn_t *conn, const char *data, size_t data_len);
+
+/* trilogy_binlog_dump_recv - Read a binlog event from the server.
+ *
+ * This should be called after all data written by trilogy_binlog_dump is
+ * flushed to the network. Calling this at any other time during the connection
+ * lifecycle is undefined.
+ *
+ * conn          - A connected trilogy_conn_t pointer. Using a disconnected
+ *                 trilogy_conn_t is undefined.
+ * binlog_event  - Out parameter; A pre-allocated trilogy_binlog_event_t pointer.
+ *                 If TRILOGY_OK is returned, this struct will be filled out with
+ *                 the binlog event data.
+ *
+ * Return values:
+ *   TRILOGY_OK                 - A binlog event was successfully read from the
+ *                                server.
+ *   TRILOGY_AGAIN              - The socket wasn't ready for reading. The caller
+ *                                should wait for readability using `conn->sock`.
+ *                                Then call this function until it returns a
+ *                                different value.
+ *   TRILOGY_UNEXPECTED_PACKET  - The response packet wasn't what was expected.
+ *   TRILOGY_PROTOCOL_VIOLATION - An error occurred while processing a network
+ *                                packet.
+ *   TRILOGY_CLOSED_CONNECTION  - The connection is closed.
+ *   TRILOGY_SYSERR             - A system error occurred, check errno.
+ */
+int trilogy_binlog_dump_recv(trilogy_conn_t *conn, trilogy_binlog_event_t* binlog_event);
+
+
 /* trilogy_query_send - Send a query command to the server.
  *
  * This should only be called while the connection is ready for commands.
