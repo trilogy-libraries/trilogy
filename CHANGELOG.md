@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+### Added
+
+- Support `caching_sha2_password` over TCP without TLS by requesting the server RSA public key when needed. #26
+
 ## 2.10.0
 
 ### Added

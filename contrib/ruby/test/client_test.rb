@@ -52,7 +52,7 @@ class ClientTest < TrilogyTest
   end
 
   def test_trilogy_connection_options
-    client = new_tcp_client
+    client = new_tcp_client(ssl: true, ssl_mode: Trilogy::SSL_PREFERRED_NOVERIFY)
 
     expected_connection_options = {
       host: DEFAULT_HOST,
@@ -1160,8 +1160,14 @@ class ClientTest < TrilogyTest
     class ::Ractor; alias value take unless method_defined?(:value); end
 
     def test_is_ractor_compatible
-      ractor = Ractor.new do
-        client = TrilogyTest.new(nil).new_tcp_client
+      # Capture connection params before entering Ractor since ENV isn't Ractor-safe
+      host = DEFAULT_HOST
+      port = DEFAULT_PORT
+      user = DEFAULT_USER
+      pass = DEFAULT_PASS
+
+      ractor = Ractor.new(host, port, user, pass) do |h, p, u, pw|
+        client = Trilogy.new(host: h, port: p, username: u, password: pw)
         client.query("SELECT 1")
       end
       assert_equal [[1]], ractor.value.to_a
