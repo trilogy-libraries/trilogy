@@ -13,7 +13,7 @@ on:
 
 jobs:
   mysql:
-    name: ${{ format('MySQL {0} ({1}, Ruby {2})', matrix.db_version, matrix.distribution, matrix.ruby) }}
+    name: ${{ format('MySQL {0} ({1}, Ruby {2}, ssl={3})', matrix.db_version, matrix.distribution, matrix.ruby, matrix.default_ssl) }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -21,6 +21,7 @@ jobs:
         db_version: ["8.0", "8.4", "9.5"]
         distribution: ["debian:bookworm", "ubuntu:noble", "ubuntu:jammy", "ubuntu:focal"]
         ruby: ["3.3", "3.4"]
+        default_ssl: ["true", "false"]
     steps:
     - uses: actions/checkout@v6
     - name: docker login
@@ -33,6 +34,7 @@ jobs:
         DB_VERSION: ${{ matrix.db_version }}
         DISTRIBUTION: ${{ matrix.distribution }}
         RUBY_VERSION: ${{ matrix.ruby }}
+        TRILOGY_DEFAULT_SSL: ${{ matrix.default_ssl }}
       run: script/cibuild
 
   mariadb:
@@ -41,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        db_version: ["10.6", "10.11", "11.4", "11.8", "12.1"]
+        db_version: ["10.6", "10.11", "11.4", "11.8"]
         distribution: ["debian:bookworm", "ubuntu:noble", "ubuntu:jammy", "ubuntu:focal"]
         ruby: ["3.3", "3.4"]
     steps:
@@ -56,4 +58,30 @@ jobs:
         DB_VERSION: ${{ matrix.db_version }}
         DISTRIBUTION: ${{ matrix.distribution }}
         RUBY_VERSION: ${{ matrix.ruby }}
+      run: script/cibuild
+
+  # MariaDB 12.1+ supports caching_sha2_password, so we test with ssl=true/false
+  mariadb-caching-sha2:
+    name: ${{ format('MariaDB {0} ({1}, Ruby {2}, ssl={3})', matrix.db_version, matrix.distribution, matrix.ruby, matrix.default_ssl) }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db_version: ["12.1"]
+        distribution: ["debian:bookworm", "ubuntu:noble", "ubuntu:jammy", "ubuntu:focal"]
+        ruby: ["3.3", "3.4"]
+        default_ssl: ["true", "false"]
+    steps:
+    - uses: actions/checkout@v6
+    - name: docker login
+      run: echo $GITHUB_TOKEN | docker login ghcr.io --username trilogy --password-stdin
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Run tests
+      env:
+        DB_VENDOR: mariadb
+        DB_VERSION: ${{ matrix.db_version }}
+        DISTRIBUTION: ${{ matrix.distribution }}
+        RUBY_VERSION: ${{ matrix.ruby }}
+        TRILOGY_DEFAULT_SSL: ${{ matrix.default_ssl }}
       run: script/cibuild
