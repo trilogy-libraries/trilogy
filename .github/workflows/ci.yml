@@ -22,7 +22,7 @@ jobs:
         distribution: ["debian:bookworm", "ubuntu:noble", "ubuntu:jammy", "ubuntu:focal"]
         ruby: ["3.3", "3.4"]
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: docker login
       run: echo $GITHUB_TOKEN | docker login ghcr.io --username trilogy --password-stdin
       env:
