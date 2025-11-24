@@ -11,6 +11,10 @@
 
 static inline TRILOGY_PACKET_TYPE_t current_packet_type(trilogy_conn_t *conn)
 {
+    if (conn->packet_buffer.buff == NULL || conn->packet_buffer.len == 0) {
+        return TRILOGY_PACKET_UNKNOWN;
+    }
+
     return (TRILOGY_PACKET_TYPE_t)conn->packet_buffer.buff[0];
 }
 
@@ -71,6 +75,10 @@ static int begin_command_phase(trilogy_builder_t *builder, trilogy_conn_t *conn,
 
 static int read_packet(trilogy_conn_t *conn)
 {
+    if (conn->socket == NULL || conn->packet_buffer.buff == NULL) {
+        return TRILOGY_CLOSED_CONNECTION;
+    }
+
     if (conn->recv_buff_pos == conn->recv_buff_len) {
         ssize_t nread = trilogy_sock_read(conn->socket, conn->recv_buff, sizeof(conn->recv_buff));
 
@@ -154,6 +162,10 @@ int trilogy_init(trilogy_conn_t *conn)
 
 int trilogy_flush_writes(trilogy_conn_t *conn)
 {
+    if (conn->socket == NULL) {
+        return TRILOGY_CLOSED_CONNECTION;
+    }
+
     void *ptr = conn->packet_buffer.buff + conn->packet_buffer_written;
     size_t len = conn->packet_buffer.len - conn->packet_buffer_written;
 

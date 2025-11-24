@@ -119,7 +119,8 @@ static inline buffer_pool *get_buffer_pool(void)
 static void buffer_checkout(trilogy_buffer_t *buffer, size_t initial_capacity)
 {
     buffer_pool * pool = get_buffer_pool();
-    if (pool->len) {
+
+    if (pool && pool->len) {
         pool->len--;
         buffer->buff = pool->entries[pool->len].buff;
         buffer->cap = pool->entries[pool->len].cap;
@@ -132,6 +133,13 @@ static void buffer_checkout(trilogy_buffer_t *buffer, size_t initial_capacity)
 static bool buffer_checkin(trilogy_buffer_t *buffer)
 {
     buffer_pool * pool = get_buffer_pool();
+
+    if (pool == NULL) {
+        xfree(buffer->buff);
+        buffer->buff = NULL;
+        buffer->cap = 0;
+        return false;
+    }
 
     if (pool->len >= BUFFER_POOL_MAX_SIZE) {
         xfree(buffer->buff);
@@ -348,6 +356,10 @@ static VALUE allocate_trilogy(VALUE klass)
 
 static int flush_writes(struct trilogy_ctx *ctx)
 {
+    if (ctx->conn.socket == NULL) {
+        return TRILOGY_CLOSED_CONNECTION;
+    }
+
     while (1) {
         int rc = trilogy_flush_writes(&ctx->conn);
 
@@ -930,6 +942,10 @@ static VALUE read_query_response(VALUE vargs)
         rc = trilogy_sock_wait_read(ctx->conn.socket);
         if (rc != TRILOGY_OK) {
             handle_trilogy_error(ctx, rc, "trilogy_query_recv");
+        }
+
+        if (ctx->conn.socket == NULL) {
+            rb_raise(Trilogy_ConnectionClosedError, "Connection closed while waiting for response");
         }
     }
 
