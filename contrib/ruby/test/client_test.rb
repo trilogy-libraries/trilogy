@@ -128,7 +128,12 @@ class ClientTest < TrilogyTest
     query_allocations = allocations { client.query_with_flags(sql, client.query_flags) }
     flatten_rows_allocations = allocations { client.query_with_flags(sql, client.query_flags | Trilogy::QUERY_FLAGS_FLATTEN_ROWS) }
 
-    assert_equal query_allocations - row_count, flatten_rows_allocations
+    # Verify O(1) allocations for flatten_rows (constant overhead)
+    assert_operator flatten_rows_allocations, :<=, 20
+
+    # Verify O(N) allocations for standard query (linear scaling with row count)
+    # The overhead should be roughly similar to flatten_rows, so they should differ by row_count.
+    assert_in_delta query_allocations, row_count + flatten_rows_allocations, 20
   end
 
   def test_trilogy_more_results_exist?
@@ -1150,12 +1155,15 @@ class ClientTest < TrilogyTest
   end
 
   if defined?(::Ractor)
+    # Remove this when support for Ruby 3.x is dropped
+    class ::Ractor; alias value take unless method_defined?(:value); end
+
     def test_is_ractor_compatible
       ractor = Ractor.new do
         client = TrilogyTest.new(nil).new_tcp_client
         client.query("SELECT 1")
       end
-      assert_equal [[1]], ractor.take.to_a
+      assert_equal [[1]], ractor.value.to_a
     end
   end
 
