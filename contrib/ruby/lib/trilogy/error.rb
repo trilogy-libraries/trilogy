@@ -54,6 +54,12 @@ class Trilogy
     include ConnectionError
   end
 
+  class SynchronizationError < BaseError
+    def initialize(message = "This connection is already in use by another thread or fiber")
+      super
+    end
+  end
+
   # Trilogy::ClientError is the base error type for invalid queries or parameters
   # that shouldn't be retried.
   class ClientError < BaseError
