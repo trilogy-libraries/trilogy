@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mysql: ["8.0", "8.4"]
+        mysql: ["8.0", "8.4", "9.5"]
         distribution: ["debian:bookworm", "ubuntu:noble", "ubuntu:jammy", "ubuntu:focal"]
         ruby: ["3.3", "3.4"]
     steps:

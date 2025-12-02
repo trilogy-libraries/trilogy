@@ -16,16 +16,22 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        mysql: ["8.0", "8.4"]
+        mysql: ["8.0", "8.4", "9.5"]
     steps:
     - uses: actions/checkout@v6
     - name: Setup MySQL
       run: |
         brew install mysql@${{ matrix.mysql }}
+        # Apply macOS-specific config if it exists (e.g., 8.4 needs mysql_native_password=ON)
+        # Homebrew MySQL reads config from $(brew --prefix)/etc/my.cnf
+        if [[ -f "test/mysql/conf.d/${{ matrix.mysql }}/macos.cnf" ]]; then
+          cat test/mysql/conf.d/${{ matrix.mysql }}/macos.cnf >> $(brew --prefix)/etc/my.cnf
+        fi
         (unset CI; brew postinstall mysql@${{ matrix.mysql }})
         brew services start mysql@${{ matrix.mysql }}
         sleep 5
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot -e 'CREATE DATABASE test'
+        $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/caching_sha2_password_user.sql
     - name: Build
       run: CFLAGS="-I$(brew --prefix openssl@1.1)/include" LDFLAGS="-L$(brew --prefix openssl@1.1)/lib" make all test/test
     - name: test
@@ -35,7 +41,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        mysql: ["8.0"]
+        mysql: ["8.0", "8.4", "9.5"]
         ruby: ["3.0", "3.1", "3.2", "3.3", "3.4"]
     steps:
     - uses: actions/checkout@v6
@@ -47,12 +53,20 @@ jobs:
         MYSQL_VERSION: ${{ matrix.mysql }}
       run: |
         brew install mysql@${{ matrix.mysql }}
+        # Apply macOS-specific config if it exists (e.g., 8.4 needs mysql_native_password=ON)
+        # Homebrew MySQL reads config from $(brew --prefix)/etc/my.cnf
+        if [[ -f "test/mysql/conf.d/${{ matrix.mysql }}/macos.cnf" ]]; then
+          cat test/mysql/conf.d/${{ matrix.mysql }}/macos.cnf >> $(brew --prefix)/etc/my.cnf
+        fi
         (unset CI; brew postinstall mysql@${{ matrix.mysql }})
         brew services start mysql@${{ matrix.mysql }}
         sleep 5
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot -e 'CREATE DATABASE test'
-        [[ "$MYSQL_VERSION" == "8.0" ]] && $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/caching_sha2_password_user.sql
-        $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/native_password_user.sql
+        $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/caching_sha2_password_user.sql
+        # mysql_native_password plugin was removed in MySQL 9.x
+        if [[ ! "${{ matrix.mysql }}" =~ ^9 ]]; then
+          $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot -e "CREATE USER 'native'@'%'; GRANT ALL PRIVILEGES ON test.* TO 'native'@'%'; ALTER USER 'native'@'%' IDENTIFIED WITH mysql_native_password BY 'password';"
+        fi
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/x509_user.sql
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/cleartext_user.sql
     - name: Install dependencies
