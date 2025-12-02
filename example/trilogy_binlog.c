@@ -366,6 +366,9 @@ int main(int argc, char *argv[])
             +-------------------------------------------------------+
             */
                 offset = 0;
+                if (formatdesc_event.post_header_len == NULL) {
+                    fail_on_error(&conn, TRILOGY_SYSERR, "FORMAT_DESCRIPTION_EVENT not received yet");
+                }
                 if (formatdesc_event.post_header_len[TABLE_MAP_EVENT-1] == 6) {
                     fail_on_error(&conn, TRILOGY_SYSERR, "not support(table id is 4 bytes)");
                 }
@@ -415,6 +418,9 @@ int main(int argc, char *argv[])
             The buffer layout for dynamic by data-types
             */
                 offset = 0;
+                if (formatdesc_event.post_header_len == NULL) {
+                    fail_on_error(&conn, TRILOGY_SYSERR, "FORMAT_DESCRIPTION_EVENT not received yet");
+                }
                 if (formatdesc_event.post_header_len[TABLE_MAP_EVENT - 1] == 6) {
                     fail_on_error(&conn, TRILOGY_SYSERR, "not support(table id is 4 bytes)");
                 }
