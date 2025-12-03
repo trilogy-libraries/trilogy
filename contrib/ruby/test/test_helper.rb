@@ -86,6 +86,20 @@ class TrilogyTest < Minitest::Test
     @@server_global_variables[name]
   end
 
+  @@is_mariadb = nil
+  def is_mariadb?
+    return @@is_mariadb unless @@is_mariadb.nil?
+    client = Trilogy.new(
+      host: DEFAULT_HOST,
+      port: DEFAULT_PORT,
+      username: DEFAULT_USER,
+      password: DEFAULT_PASS,
+    )
+    @@is_mariadb = client.server_version.downcase.include?("mariadb")
+  ensure
+    client&.close
+  end
+
   def ensure_closed(socket)
     socket.close if socket
   end
@@ -106,13 +120,22 @@ class TrilogyTest < Minitest::Test
     auth_plugin = opts[:auth_plugin]
 
     raise ArgumentError if username.nil? || auth_plugin.nil?
-    user_exists = client.query("SELECT user FROM mysql.user WHERE user = '#{username}';").rows.first
-    return if user_exists
 
-    client.query("CREATE USER '#{username}'@'#{host}'")
+    # Use CREATE USER IF NOT EXISTS to avoid querying mysql.user table
+    # (Trilogy has a bug reading mysql.user on MariaDB - TRILOGY_TRUNCATED_PACKET)
+    client.query("CREATE USER IF NOT EXISTS '#{username}'@'#{host}'")
     client.query("GRANT ALL PRIVILEGES ON test.* TO '#{username}'@'#{host}';")
-    client.query("ALTER USER '#{username}'@'#{host}' IDENTIFIED WITH #{auth_plugin} BY '#{password}';")
-    client.query("SELECT user FROM mysql.user WHERE user = '#{username}';").rows.first
+
+    # MariaDB uses different syntax for authentication plugins
+    # MySQL: IDENTIFIED WITH plugin BY 'password'
+    # MariaDB: IDENTIFIED VIA plugin USING PASSWORD('password')
+    if is_mariadb?
+      client.query("ALTER USER '#{username}'@'#{host}' IDENTIFIED VIA #{auth_plugin} USING PASSWORD('#{password}');")
+    else
+      client.query("ALTER USER '#{username}'@'#{host}' IDENTIFIED WITH #{auth_plugin} BY '#{password}';")
+    end
+    # Return true to indicate user was created/modified (for cleanup purposes)
+    true
   end
 
   def delete_test_user(client, opts = {})

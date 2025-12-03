@@ -1,0 +1,7 @@
+# MariaDB 11.4 macOS config
+# Appended to $(brew --prefix)/etc/my.cnf in CI
+
+[mysqld]
+# MariaDB 11.4+ disabled performance_schema by default
+# Tests need it for SSL status queries
+performance_schema = ON
