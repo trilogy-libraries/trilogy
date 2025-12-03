@@ -52,7 +52,7 @@ class ClientTest < TrilogyTest
   end
 
   def test_trilogy_connection_options
-    client = new_tcp_client
+    client = new_tcp_client(ssl: true, ssl_mode: Trilogy::SSL_PREFERRED_NOVERIFY)
 
     expected_connection_options = {
       host: DEFAULT_HOST,
@@ -760,8 +760,8 @@ class ClientTest < TrilogyTest
   def test_connect_by_multiple_names
     return skip unless ["127.0.0.1", "localhost"].include?(DEFAULT_HOST)
 
-    Trilogy.new(host: "127.0.0.1")
-    Trilogy.new(host: "localhost")
+    Trilogy.new(host: "127.0.0.1", username: DEFAULT_USER, password: DEFAULT_PASS)
+    Trilogy.new(host: "localhost", username: DEFAULT_USER, password: DEFAULT_PASS)
   end
 
   PADDED_QUERY_TEMPLATE = "SELECT LENGTH('%s')"
@@ -1091,7 +1091,8 @@ class ClientTest < TrilogyTest
     assert_equal "utf8mb4", client.query("SELECT @@character_set_client").first.first
     assert_equal "utf8mb4", client.query("SELECT @@character_set_results").first.first
     assert_equal "utf8mb4", client.query("SELECT @@character_set_connection").first.first
-    assert_equal "utf8mb4_general_ci", client.query("SELECT @@collation_connection").first.first
+    collation = client.query("SELECT @@collation_connection").first.first
+    assert collation.start_with?("utf8mb4_"), "Expected utf8mb4 collation, got #{collation}"
   end
 
   def test_bad_character_encoding
@@ -1159,8 +1160,14 @@ class ClientTest < TrilogyTest
     class ::Ractor; alias value take unless method_defined?(:value); end
 
     def test_is_ractor_compatible
-      ractor = Ractor.new do
-        client = TrilogyTest.new(nil).new_tcp_client
+      # Capture connection params before entering Ractor since ENV isn't Ractor-safe
+      host = DEFAULT_HOST
+      port = DEFAULT_PORT
+      user = DEFAULT_USER
+      pass = DEFAULT_PASS
+
+      ractor = Ractor.new(host, port, user, pass) do |h, p, u, pw|
+        client = Trilogy.new(host: h, port: p, username: u, password: pw)
         client.query("SELECT 1")
       end
       assert_equal [[1]], ractor.value.to_a

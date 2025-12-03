@@ -143,7 +143,8 @@ class SslTest < TrilogyTest
   end
 
   def ca_cert_path
-    ENV["TRILOGY_TEST_CERTS"]
+    path = ENV["TRILOGY_TEST_CERTS"]
+    path if path && File.exist?("#{path}/ca.pem")
   end
 
   def test_trilogy_ssl_verify_ca_without_ca

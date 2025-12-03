@@ -1,24 +1,27 @@
 services:
   db:
     platform: linux/x86_64
-    image: "ghcr.io/trilogy-libraries/trilogy/ci-mysql:${MYSQL_VERSION}-debian"
+    image: "ghcr.io/trilogy-libraries/trilogy/ci-${DB_VENDOR:-mysql}:${DB_VERSION:-8.0}-debian"
     build:
       context: .
-      dockerfile: test/mysql/Dockerfile
+      dockerfile: test/${DB_VENDOR:-mysql}/Dockerfile
       args:
-        - MYSQL_VERSION=${MYSQL_VERSION}
+        - MYSQL_VERSION=${DB_VERSION:-8.0}
+        - MARIADB_VERSION=${DB_VERSION:-10.11}
       cache_from:
-        - ghcr.io/trilogy-libraries/trilogy/ci-mysql:${MYSQL_VERSION}-debian
+        - ghcr.io/trilogy-libraries/trilogy/ci-${DB_VENDOR:-mysql}:${DB_VERSION:-8.0}-debian
     environment:
       MYSQL_ALLOW_EMPTY_PASSWORD: 1
+      MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: 1
       MYSQL_DATABASE: test
+      MARIADB_DATABASE: test
       MYSQL_HOST: db.local
     volumes:
       - ./tmp/mysql-certs:/mysql-certs
-      - ./test/mysql/conf.d/${MYSQL_VERSION}:/etc/mysql/conf.d
-      - ./test/mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ./test/${DB_VENDOR:-mysql}/conf.d/${DB_VERSION:-8.0}:/etc/mysql/conf.d
+      - ./test/${DB_VENDOR:-mysql}/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
   app:
-    image: ghcr.io/trilogy-libraries/trilogy/ci-app:distro-${DISTRIBUTION_SLUG}-ruby-${RUBY_VERSION}-mysql-${MYSQL_VERSION}
+    image: ghcr.io/trilogy-libraries/trilogy/ci-app:distro-${DISTRIBUTION_SLUG}-ruby-${RUBY_VERSION}-${DB_VENDOR:-mysql}-${DB_VERSION:-8.0}
     privileged: true
     build:
       context: .
@@ -27,10 +30,11 @@ services:
         - DISTRIBUTION=${DISTRIBUTION}
         - RUBY_VERSION=${RUBY_VERSION}
       cache_from:
-        - ghcr.io/trilogy-libraries/trilogy/ci-app:distro-${DISTRIBUTION_SLUG}-ruby-${RUBY_VERSION}-mysql-${MYSQL_VERSION}
+        - ghcr.io/trilogy-libraries/trilogy/ci-app:distro-${DISTRIBUTION_SLUG}-ruby-${RUBY_VERSION}-${DB_VENDOR:-mysql}-${DB_VERSION:-8.0}
     environment:
       MYSQL_HOST: db.local
       TRILOGY_TEST_CERTS: "/mysql-certs"
+      TRILOGY_DEFAULT_SSL: "${TRILOGY_DEFAULT_SSL}"
     depends_on:
       - db
     links:
