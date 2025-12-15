@@ -15,6 +15,9 @@ Please note that this project is released with a [Contributor Code of Conduct](C
 0. Build it and make sure the tests pass on your machine: `script/cibuild`. It will run both trilogy and ruby bindings suites in docker environment.
  
     To shorten the development loop you can:
+
+    > [!TIP]
+    > If you haven't already, you will need to create a database named `test`.
      
     a) run trilogy tests locally with: `make test`  
     b) run ruby binding tests with `cd contrib/ruby`, `bundle exec rake test`. It's possible to run a test single example by passing a `TESTOPTS` environment variable like so: `TESTOPTS=-n/test_packet_size_greater_than_trilogy_max_packet_len/`.
