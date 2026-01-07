@@ -5,6 +5,24 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.10.0
+
+### Added
+
+- Add `size` alias for `Trilogy::Result#count`. #209
+
+### Fixed
+
+- Declare bigdecimal dependency for Ruby 3.4+. #213
+- Fix Ractor support. #215
+- Use `append_cflags` instead of appending directly. #231
+- Don't confuse length encoded int with EOF. #179
+
+### Changed
+
+- Speed up `Trilogy#escape` by 3 to 5x. #212
+- Use a buffer pool. #214
+
 ## 2.9.0
 
 ### Added
