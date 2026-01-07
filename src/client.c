@@ -595,6 +595,46 @@ int trilogy_ping_send(trilogy_conn_t *conn)
 
 int trilogy_ping_recv(trilogy_conn_t *conn) { return read_generic_response(conn); }
 
+
+int trilogy_binlog_dump(trilogy_conn_t *conn, const char *data, size_t data_len)
+{
+    #define TRILOGY_CMD_BINLOG_DUMP 0x12
+
+    int err = 0;
+
+    trilogy_builder_t builder;
+    err = begin_command_phase(&builder, conn, 0);
+    if (err < 0) {
+        return err;
+    }
+    err = trilogy_builder_write_uint8(&builder, TRILOGY_CMD_BINLOG_DUMP);
+    if (err < 0) {
+        return err;
+    }
+    err = trilogy_builder_write_buffer(&builder, data, data_len);
+    if (err < 0) {
+        return err;
+    }
+    trilogy_builder_finalize(&builder);
+
+    conn->packet_parser.sequence_number = builder.seq;
+
+    return begin_write(conn);
+}
+
+int trilogy_binlog_dump_recv(trilogy_conn_t *conn, trilogy_binlog_event_t* binlog_event) {
+    int err = read_packet(conn);
+    if (err < 0) {
+        return err;
+    }
+    
+    return trilogy_parse_binlog_event_packet(
+        conn->packet_buffer.buff,
+        conn->packet_buffer.len,
+        binlog_event
+    );
+}
+
 int trilogy_query_send(trilogy_conn_t *conn, const char *query, size_t query_len)
 {
     int err = 0;
