@@ -17,7 +17,14 @@ class AuthTest < TrilogyTest
     server_version.split(".", 2)[0].to_i >= 8
   end
 
+  def has_native_password_plugin?
+    new_tcp_client.query("SELECT PLUGIN_NAME FROM information_schema.plugins WHERE PLUGIN_NAME = 'mysql_native_password'").count > 0
+  rescue Trilogy::Error
+    false
+  end
+
   def test_connect_native_with_password
+    return skip unless has_native_password_plugin?
     create_and_delete_test_user(username: "native", auth_plugin: "mysql_native_password") do
       client = new_tcp_client username: "native", password: "password"
 
@@ -86,6 +93,7 @@ class AuthTest < TrilogyTest
   end
 
   def test_connection_error_native
+    return skip unless has_native_password_plugin?
     create_and_delete_test_user(username: "native", auth_plugin: "mysql_native_password") do
 
       err = assert_raises Trilogy::ConnectionError do
