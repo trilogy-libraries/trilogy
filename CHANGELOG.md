@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 - Support `caching_sha2_password` over TCP without TLS by requesting the server RSA public key when needed. #26
 - Now raise an explicit error when a single connection is being used concurrently by multiple threads or fibers. #226.
 
+### Fixed
+
+- Column names in results are now encoded using the connection encoding. #210.
+
 ## 2.10.0
 
 ### Added
