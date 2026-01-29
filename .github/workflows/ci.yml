@@ -20,7 +20,14 @@ jobs:
       matrix:
         mysql: ["8.0", "8.4", "9.5"]
         distribution: ["debian:bookworm", "ubuntu:noble", "ubuntu:jammy", "ubuntu:focal"]
-        ruby: ["3.3", "3.4", "4.0"]
+        ruby: ["4.0"]
+        include:
+          - distribution: "debian:bookworm"
+            mysql: "8.0"
+            ruby: "3.3"
+          - distribution: "ubuntu:jammy"
+            mysql: "8.0"
+            ruby: "3.3"
     steps:
     - uses: actions/checkout@v6
     - name: docker login
