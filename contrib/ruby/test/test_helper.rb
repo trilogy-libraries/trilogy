@@ -39,13 +39,21 @@ class TrilogyTest < Minitest::Test
   end
 
   def new_tcp_client(opts = {})
+    default_ssl = ENV.fetch("TRILOGY_DEFAULT_SSL", "true") != "false"
+    default_ssl_mode = default_ssl ? Trilogy::SSL_PREFERRED_NOVERIFY : Trilogy::SSL_DISABLED
+
+    # If ssl: true is explicitly passed but ssl_mode isn't, use a sensible SSL mode
+    if opts[:ssl] == true && !opts.key?(:ssl_mode)
+      opts = opts.merge(ssl_mode: Trilogy::SSL_PREFERRED_NOVERIFY)
+    end
+
     defaults = {
       host: DEFAULT_HOST,
       port: DEFAULT_PORT,
       username: DEFAULT_USER,
       password: DEFAULT_PASS,
-      ssl: true,
-      ssl_mode: Trilogy::SSL_PREFERRED_NOVERIFY,
+      ssl: default_ssl,
+      ssl_mode: default_ssl_mode,
       tls_min_version: Trilogy::TLS_VERSION_12,
     }.merge(opts)
 
@@ -121,9 +129,11 @@ class TrilogyTest < Minitest::Test
 
     raise ArgumentError if username.nil? || auth_plugin.nil?
 
-    # Use CREATE USER IF NOT EXISTS to avoid querying mysql.user table
-    # (Trilogy has a bug reading mysql.user on MariaDB - TRILOGY_TRUNCATED_PACKET)
-    client.query("CREATE USER IF NOT EXISTS '#{username}'@'#{host}'")
+    # Ensure a clean slate so stale credentials from earlier test runs don't leak across cases.
+    # Using DROP/CREATE instead of CREATE IF NOT EXISTS to avoid querying mysql.user
+    # (Trilogy has issues reading mysql.user on MariaDB - TRILOGY_TRUNCATED_PACKET)
+    client.query("DROP USER IF EXISTS '#{username}'@'#{host}'")
+    client.query("CREATE USER '#{username}'@'#{host}' REQUIRE NONE")
     client.query("GRANT ALL PRIVILEGES ON test.* TO '#{username}'@'#{host}';")
 
     # MariaDB uses different syntax for authentication plugins

@@ -84,10 +84,11 @@ class AuthTest < TrilogyTest
     end
   end
 
-  def test_connect_without_ssl_or_unix_socket_caching_sha2_raises
+  def test_connect_without_ssl_or_unix_socket_caching_sha2_works
     return skip unless has_caching_sha2?
 
     create_and_delete_test_user(username: "caching_sha2", auth_plugin: "caching_sha2_password") do
+      client = nil
       options = {
         host: DEFAULT_HOST,
         port: DEFAULT_PORT,
@@ -97,12 +98,32 @@ class AuthTest < TrilogyTest
         ssl_mode: 0
       }
 
+      client = new_tcp_client options
+
+      refute_nil client
+    ensure
+      ensure_closed client
+    end
+  end
+
+  def test_connect_without_ssl_caching_sha2_wrong_password
+    return skip unless has_caching_sha2?
+
+    create_and_delete_test_user(username: "caching_sha2", auth_plugin: "caching_sha2_password") do
+      options = {
+        host: DEFAULT_HOST,
+        port: DEFAULT_PORT,
+        username: "caching_sha2",
+        password: "wrong",
+        ssl: false,
+        ssl_mode: 0
+      }
+
       err = assert_raises Trilogy::ConnectionError do
         new_tcp_client options
       end
 
-      assert_includes err.message, "TRILOGY_UNSUPPORTED"
-      assert_includes err.message, "caching_sha2_password requires either TCP with TLS or a unix socket"
+      assert_includes err.message, "Access denied for user 'caching_sha2"
     end
   end
 

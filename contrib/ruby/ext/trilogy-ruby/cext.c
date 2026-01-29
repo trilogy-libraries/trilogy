@@ -593,12 +593,7 @@ static void authenticate(struct trilogy_ctx *ctx, trilogy_handshake_t *handshake
         }
 
         if (rc != TRILOGY_AGAIN) {
-            if (rc == TRILOGY_UNSUPPORTED) {
-                handle_trilogy_error(ctx, rc, "trilogy_auth_recv: caching_sha2_password requires either TCP with TLS or a unix socket");
-            }
-            else {
-                handle_trilogy_error(ctx, rc, "trilogy_auth_recv");
-            }
+            handle_trilogy_error(ctx, rc, "trilogy_auth_recv");
         }
 
         rc = trilogy_sock_wait_read(ctx->conn.socket);

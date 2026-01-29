@@ -13,21 +13,29 @@ on:
 
 jobs:
   mysql:
-    name: ${{ format('MySQL {0} ({1}, Ruby {2})', matrix.db_version, matrix.distribution, matrix.ruby) }}
+    name: ${{ format('MySQL {0} ({1}, Ruby {2}, ssl={3})', matrix.db_version, matrix.distribution, matrix.ruby, matrix.default_ssl) }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         db_version: ["8.0", "8.4", "9.5"]
         distribution: ["debian:bookworm", "ubuntu:noble", "ubuntu:jammy", "ubuntu:focal"]
+        default_ssl: ["true"]
         ruby: ["4.0"]
         include:
           - distribution: "debian:bookworm"
-            mysql: "8.0"
+            db_version: "8.0"
             ruby: "3.3"
+            default_ssl: "true"
           - distribution: "ubuntu:jammy"
-            mysql: "8.0"
+            db_version: "8.0"
             ruby: "3.3"
+            default_ssl: "true"
+          - distribution: "debian:bookworm"
+            db_version: "8.0"
+            ruby: "3.3"
+            default_ssl: "false"
+
     steps:
     - uses: actions/checkout@v6
     - name: docker login
@@ -40,6 +48,7 @@ jobs:
         DB_VERSION: ${{ matrix.db_version }}
         DISTRIBUTION: ${{ matrix.distribution }}
         RUBY_VERSION: ${{ matrix.ruby }}
+        TRILOGY_DEFAULT_SSL: ${{ matrix.default_ssl }}
       run: script/cibuild
 
   mariadb:
@@ -51,22 +60,33 @@ jobs:
         db_version: ["12.1"]
         distribution: ["debian:bookworm", "ubuntu:noble", "ubuntu:jammy", "ubuntu:focal"]
         ruby: ["4.0"]
+        default_ssl: ["true"]
         include:
           - ruby: "3.3"
             distribution: "debian:bookworm"
             db_version: "12.1"
+            default_ssl: "true"
           - ruby: "4.0"
             distribution: "ubuntu:focal"
             db_version: "10.6"
+            default_ssl: "true"
           - ruby: "4.0"
             distribution: "ubuntu:focal"
             db_version: "10.11"
+            default_ssl: "true"
           - ruby: "4.0"
             distribution: "ubuntu:focal"
             db_version: "11.4"
+            default_ssl: "true"
           - ruby: "4.0"
             distribution: "ubuntu:focal"
             db_version: "11.8"
+            default_ssl: "true"
+          # MariaDB 12.1+ supports caching_sha2_password, so we test with ssl=false
+          - ruby: "4.0"
+            distribution: "ubuntu:focal"
+            db_version: "12.1"
+            default_ssl: "false"
     steps:
     - uses: actions/checkout@v6
     - name: docker login
@@ -79,4 +99,5 @@ jobs:
         DB_VERSION: ${{ matrix.db_version }}
         DISTRIBUTION: ${{ matrix.distribution }}
         RUBY_VERSION: ${{ matrix.ruby }}
+        TRILOGY_DEFAULT_SSL: ${{ matrix.default_ssl }}
       run: script/cibuild

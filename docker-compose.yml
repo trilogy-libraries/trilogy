@@ -34,6 +34,7 @@ services:
     environment:
       MYSQL_HOST: db.local
       TRILOGY_TEST_CERTS: "/mysql-certs"
+      TRILOGY_DEFAULT_SSL: "${TRILOGY_DEFAULT_SSL}"
     depends_on:
       - db
     links:
