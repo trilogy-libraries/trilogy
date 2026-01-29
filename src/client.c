@@ -369,6 +369,16 @@ int trilogy_connect_send_socket(trilogy_conn_t *conn, trilogy_sock_t *sock)
     return TRILOGY_OK;
 }
 
+int trilogy_connect_set_fd(trilogy_conn_t *conn, trilogy_sock_t *sock, int fd)
+{
+    trilogy_sock_set_fd(sock, fd);
+
+    conn->socket = sock;
+    conn->packet_parser.sequence_number = 0;
+
+    return TRILOGY_OK;
+}
+
 int trilogy_connect_recv(trilogy_conn_t *conn, trilogy_handshake_t *handshake_out)
 {
     int rc = read_packet(conn);

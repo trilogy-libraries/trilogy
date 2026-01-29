@@ -25,6 +25,12 @@ struct trilogy_sock {
     SSL *ssl;
 };
 
+void trilogy_sock_set_fd(trilogy_sock_t *_sock, int fd)
+{
+    struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
+    sock->fd = fd;
+}
+
 static int _cb_raw_fd(trilogy_sock_t *_sock)
 {
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;

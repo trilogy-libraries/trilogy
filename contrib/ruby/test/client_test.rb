@@ -27,7 +27,9 @@ class ClientTest < TrilogyTest
     e = assert_raises Trilogy::ConnectionError do
       new_tcp_client port: 13307
     end
-    assert_equal "Connection refused - trilogy_connect - unable to connect to #{DEFAULT_HOST}:13307", e.message
+    assert_includes e.message, "Connection refused - Connection refused - connect"
+    assert_includes e.message, DEFAULT_HOST
+    assert_includes e.message, "13307"
   end
 
   def test_trilogy_connect_unix_socket
@@ -1010,7 +1012,9 @@ class ClientTest < TrilogyTest
     ex = assert_raises Trilogy::ConnectionError do
       new_tcp_client(host: "mysql.invalid", port: 3306)
     end
-    assert_equal "trilogy_connect - unable to connect to mysql.invalid:3306: TRILOGY_DNS_ERROR", ex.message
+    assert_includes ex.message, "unable to connect"
+    assert_includes ex.message, "mysql.invalid:3306"
+    assert_includes ex.message, "getaddrinfo"
   end
 
   def test_memsize
