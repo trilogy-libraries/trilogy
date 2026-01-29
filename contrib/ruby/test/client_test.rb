@@ -710,6 +710,17 @@ class ClientTest < TrilogyTest
     end
   end
 
+  def test_prevent_concurrent_use
+    client = new_tcp_client
+    thread = Thread.new { client.query("SELECT SLEEP(1)") }
+    thread.join(0.2)
+    assert_raises Trilogy::SynchronizationError do
+      client.query("SELECT 1")
+    end
+    thread.join
+    client.close
+  end
+
   USR1 = Class.new(StandardError)
 
   def test_interruptible_when_releasing_gvl

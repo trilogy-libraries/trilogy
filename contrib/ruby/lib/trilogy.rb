@@ -7,7 +7,27 @@ require "trilogy/cext"
 require "trilogy/encoding"
 
 class Trilogy
+  Synchronization = Module.new
+
+  source = public_instance_methods(false).map do |method|
+    <<~RUBY
+      def #{method}(...)
+        raise SynchronizationError unless @mutex.try_lock
+
+        begin
+          super
+        ensure
+          @mutex.unlock
+        end
+      end
+    RUBY
+  end
+  Synchronization.class_eval(source.join(";"))
+
+  prepend(Synchronization)
+
   def initialize(options = {})
+    @mutex = Mutex.new
     options[:port] = options[:port].to_i if options[:port]
     mysql_encoding = options[:encoding] || "utf8mb4"
     encoding = Trilogy::Encoding.find(mysql_encoding)
