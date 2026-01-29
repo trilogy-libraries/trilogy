@@ -1017,6 +1017,29 @@ class ClientTest < TrilogyTest
     assert_includes ex.message, "getaddrinfo"
   end
 
+  def test_session_wait_timeout
+    client = new_tcp_client
+    client.query("SET @@SESSION.WAIT_TIMEOUT=1;")
+    sleep(1.1)
+
+    if is_mariadb?
+      assert_raises Trilogy::SyscallError::ECONNRESET, Trilogy::EOFError do
+        client.query("SELECT 1")
+      end
+    else
+      ex = assert_raises Trilogy::BaseConnectionError do
+        client.query("SELECT 1")
+      end
+
+      assert_includes ex.message, "The client was disconnected by the server because of inactivity"
+      assert_equal 4031, ex.error_code
+    end
+
+    assert_raises Trilogy::EOFError do
+      client.query("SELECT 1")
+    end
+  end
+
   def test_memsize
     require 'objspace'
     client = new_tcp_client

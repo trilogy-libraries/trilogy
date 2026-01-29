@@ -74,7 +74,7 @@ size_t trilogy_packet_parser_execute(trilogy_packet_parser_t *parser, const uint
             break;
         }
         case S_SEQ: {
-            if (cur_byte != parser->sequence_number) {
+            if (cur_byte != parser->sequence_number && cur_byte > 0) {
                 *error = TRILOGY_INVALID_SEQUENCE_ID;
                 return i;
             }

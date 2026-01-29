@@ -43,6 +43,7 @@ jobs:
     name: Test (MariaDB ${{ matrix.mariadb }})
     runs-on: macos-latest
     strategy:
+      fail-fast: false
       matrix:
         mariadb: ["10.6", "10.11", "11.4", "11.8"]
     steps:
@@ -127,6 +128,7 @@ jobs:
     name: Test Ruby (MariaDB ${{ matrix.mariadb }}, Ruby ${{ matrix.ruby }})
     runs-on: macos-latest
     strategy:
+      fail-fast: false
       matrix:
         mariadb: ["10.6", "11.8"]
         ruby: ["4.0"]
