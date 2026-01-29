@@ -12,13 +12,13 @@ on:
   pull_request:
 
 jobs:
-  build:
-    name: ${{ format('Build ({0}, {1}, {2})', matrix.mysql, matrix.distribution, matrix.ruby) }}
+  mysql:
+    name: ${{ format('MySQL {0} ({1}, Ruby {2})', matrix.db_version, matrix.distribution, matrix.ruby) }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        mysql: ["8.0", "8.4", "9.5"]
+        db_version: ["8.0", "8.4", "9.5"]
         distribution: ["debian:bookworm", "ubuntu:noble", "ubuntu:jammy", "ubuntu:focal"]
         ruby: ["4.0"]
         include:
@@ -36,7 +36,47 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Run tests
       env:
-        MYSQL_VERSION: ${{ matrix.mysql }}
+        DB_VENDOR: mysql
+        DB_VERSION: ${{ matrix.db_version }}
+        DISTRIBUTION: ${{ matrix.distribution }}
+        RUBY_VERSION: ${{ matrix.ruby }}
+      run: script/cibuild
+
+  mariadb:
+    name: ${{ format('MariaDB {0} ({1}, Ruby {2})', matrix.db_version, matrix.distribution, matrix.ruby) }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db_version: ["12.1"]
+        distribution: ["debian:bookworm", "ubuntu:noble", "ubuntu:jammy", "ubuntu:focal"]
+        ruby: ["4.0"]
+        include:
+          - ruby: "3.3"
+            distribution: "debian:bookworm"
+            db_version: "12.1"
+          - ruby: "4.0"
+            distribution: "ubuntu:focal"
+            db_version: "10.6"
+          - ruby: "4.0"
+            distribution: "ubuntu:focal"
+            db_version: "10.11"
+          - ruby: "4.0"
+            distribution: "ubuntu:focal"
+            db_version: "11.4"
+          - ruby: "4.0"
+            distribution: "ubuntu:focal"
+            db_version: "11.8"
+    steps:
+    - uses: actions/checkout@v6
+    - name: docker login
+      run: echo $GITHUB_TOKEN | docker login ghcr.io --username trilogy --password-stdin
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Run tests
+      env:
+        DB_VENDOR: mariadb
+        DB_VERSION: ${{ matrix.db_version }}
         DISTRIBUTION: ${{ matrix.distribution }}
         RUBY_VERSION: ${{ matrix.ruby }}
       run: script/cibuild

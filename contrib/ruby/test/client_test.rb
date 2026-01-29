@@ -760,8 +760,8 @@ class ClientTest < TrilogyTest
   def test_connect_by_multiple_names
     return skip unless ["127.0.0.1", "localhost"].include?(DEFAULT_HOST)
 
-    Trilogy.new(host: "127.0.0.1")
-    Trilogy.new(host: "localhost")
+    Trilogy.new(host: "127.0.0.1", username: DEFAULT_USER, password: DEFAULT_PASS)
+    Trilogy.new(host: "localhost", username: DEFAULT_USER, password: DEFAULT_PASS)
   end
 
   PADDED_QUERY_TEMPLATE = "SELECT LENGTH('%s')"
@@ -1091,7 +1091,8 @@ class ClientTest < TrilogyTest
     assert_equal "utf8mb4", client.query("SELECT @@character_set_client").first.first
     assert_equal "utf8mb4", client.query("SELECT @@character_set_results").first.first
     assert_equal "utf8mb4", client.query("SELECT @@character_set_connection").first.first
-    assert_equal "utf8mb4_general_ci", client.query("SELECT @@collation_connection").first.first
+    collation = client.query("SELECT @@collation_connection").first.first
+    assert collation.start_with?("utf8mb4_"), "Expected utf8mb4 collation, got #{collation}"
   end
 
   def test_bad_character_encoding
