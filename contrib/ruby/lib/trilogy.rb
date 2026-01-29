@@ -18,20 +18,19 @@ class Trilogy
 
   Synchronization = Module.new
 
-  source = public_instance_methods(false).map do |method|
-    <<~RUBY
-      def #{method}(...)
-        raise SynchronizationError unless @mutex.try_lock
-
-        begin
-          super
-        ensure
-          @mutex.unlock
-        end
-      end
-    RUBY
+  source = public_instance_methods(false).flat_map do |method|
+    [
+      "def #{method}(...)",
+        "raise SynchronizationError unless @mutex.try_lock",
+        "begin",
+          "super",
+        "ensure",
+          "@mutex.unlock",
+        "end",
+      "end",
+    ]
   end
-  Synchronization.class_eval(source.join(";"))
+  Synchronization.class_eval(source.join(";"), __FILE__, __LINE__)
 
   prepend(Synchronization)
 
