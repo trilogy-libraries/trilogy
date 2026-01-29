@@ -100,6 +100,7 @@ class Trilogy
       1160 => BaseConnectionError, # ER_NET_ERROR_ON_WRITE
       1161 => BaseConnectionError, # ER_NET_WRITE_INTERRUPTED
       1927 => BaseConnectionError, # ER_CONNECTION_KILLED
+      4031 => BaseConnectionError, # Disconnected by server
     }
     class << self
       def from_code(message, code)
