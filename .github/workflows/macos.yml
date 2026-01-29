@@ -160,7 +160,8 @@ jobs:
     - name: Install dependencies
       run: |
         cd contrib/ruby
-        bundle --without benchmark
+        bundle config set without benchmark
+        bundle install
     - name: Run tests
       env:
         MYSQL_HOST: "127.0.0.1"
