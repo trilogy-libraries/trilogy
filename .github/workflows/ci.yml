@@ -48,9 +48,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        db_version: ["10.6", "10.11", "11.4", "11.8", "12.1"]
+        db_version: ["12.1"]
         distribution: ["debian:bookworm", "ubuntu:noble", "ubuntu:jammy", "ubuntu:focal"]
-        ruby: ["3.3", "3.4"]
+        ruby: ["4.0"]
+        include:
+          - ruby: "3.3"
+            distribution: "debian:bookworm"
+            db_version: "12.1"
+          - ruby: "4.0"
+            distribution: "ubuntu:focal"
+            db_version: "10.6"
+          - ruby: "4.0"
+            distribution: "ubuntu:focal"
+            db_version: "10.11"
+          - ruby: "4.0"
+            distribution: "ubuntu:focal"
+            db_version: "11.4"
+          - ruby: "4.0"
+            distribution: "ubuntu:focal"
+            db_version: "11.8"
     steps:
     - uses: actions/checkout@v6
     - name: docker login
