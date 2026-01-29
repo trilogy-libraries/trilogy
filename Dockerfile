@@ -23,7 +23,7 @@ RUN wget https://github.com/postmodern/ruby-install/releases/download/v0.10.1/ru
     make install
 
 ARG RUBY_VERSION=3.4
-RUN ruby-install --system ruby ${RUBY_VERSION}
+RUN ruby-install --system ruby ${RUBY_VERSION} -- --disable-install-doc
 RUN ruby --version
 
 WORKDIR /app
