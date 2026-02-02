@@ -1139,6 +1139,42 @@ static VALUE rb_trilogy_query(VALUE self, VALUE query)
     return execute_read_query_response(ctx);
 }
 
+static VALUE rb_trilogy_pipelined_query(VALUE self, VALUE queries)
+{
+    struct trilogy_ctx *ctx = get_open_ctx(self);
+
+    Check_Type(queries, T_ARRAY);
+
+    rb_encoding * encoding = rb_to_encoding(ctx->encoding);
+
+    long count = RARRAY_LEN(queries);
+    long index;
+    for (index = 0; index < count; index++) {
+        VALUE query = RARRAY_AREF(queries, index);
+        StringValue(query);
+
+        query = rb_str_export_to_enc(query, encoding);
+
+        int rc = trilogy_query_send(&ctx->conn, RSTRING_PTR(query), RSTRING_LEN(query));
+        if (rc == TRILOGY_AGAIN) {
+            rc = flush_writes(ctx);
+        }
+
+        if (rc < 0) {
+            handle_trilogy_error(ctx, rc, "trilogy_query_send");
+        }
+    }
+
+    VALUE results = rb_ary_new2(count);
+    for (index = 0; index < count; index++) {
+        ctx->conn.packet_parser.sequence_number = 1; // HACK
+        VALUE result = execute_read_query_response(ctx);
+        rb_ary_push(results, result);
+    }
+
+    return results;
+}
+
 static VALUE rb_trilogy_ping(VALUE self)
 {
     struct trilogy_ctx *ctx = get_open_ctx(self);
@@ -1361,6 +1397,7 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
     rb_define_method(Trilogy, "change_db", rb_trilogy_change_db, 1);
     rb_define_alias(Trilogy, "select_db", "change_db");
     rb_define_method(Trilogy, "query", rb_trilogy_query, 1);
+    rb_define_method(Trilogy, "pipelined_query", rb_trilogy_pipelined_query, 1);
     rb_define_method(Trilogy, "ping", rb_trilogy_ping, 0);
     rb_define_method(Trilogy, "escape", rb_trilogy_escape, 1);
     rb_define_method(Trilogy, "close", rb_trilogy_close, 0);
