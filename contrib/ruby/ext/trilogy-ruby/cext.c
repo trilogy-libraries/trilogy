@@ -1092,6 +1092,31 @@ static VALUE rb_trilogy_more_results_exist(VALUE self)
     }
 }
 
+static VALUE rb_trilogy_abandon_results(VALUE self)
+{
+    struct trilogy_ctx *ctx = get_open_ctx(self);
+
+    long count = 0;
+    while (ctx->conn.server_status & TRILOGY_SERVER_STATUS_MORE_RESULTS_EXISTS) {
+        count++;
+        int rc = trilogy_drain_results(&ctx->conn);
+        while (rc == TRILOGY_AGAIN) {
+            rc = trilogy_sock_wait_read(ctx->conn.socket);
+            if (rc != TRILOGY_OK) {
+                handle_trilogy_error(ctx, rc, "trilogy_sock_wait_read");
+            }
+
+            rc = trilogy_drain_results(&ctx->conn);
+        }
+
+        if (rc != TRILOGY_OK) {
+            handle_trilogy_error(ctx, rc, "trilogy_drain_results");
+        }
+    }
+
+    return LONG2NUM(count);
+}
+
 static VALUE rb_trilogy_query(VALUE self, VALUE query)
 {
     struct trilogy_ctx *ctx = get_open_ctx(self);
@@ -1356,6 +1381,7 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
     rb_define_method(Trilogy, "server_version", rb_trilogy_server_version, 0);
     rb_define_method(Trilogy, "more_results_exist?", rb_trilogy_more_results_exist, 0);
     rb_define_method(Trilogy, "next_result", rb_trilogy_next_result, 0);
+    rb_define_method(Trilogy, "abandon_results!", rb_trilogy_abandon_results, 0);
     rb_define_method(Trilogy, "set_server_option", rb_trilogy_set_server_option, 1);
     rb_define_const(Trilogy, "TLS_VERSION_10", INT2NUM(TRILOGY_TLS_VERSION_10));
     rb_define_const(Trilogy, "TLS_VERSION_11", INT2NUM(TRILOGY_TLS_VERSION_11));

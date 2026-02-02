@@ -210,6 +210,21 @@ class ClientTest < TrilogyTest
     refute client.more_results_exist?
   end
 
+  def test_trilogy_abandon_results
+    client = new_tcp_client(multi_statement: true)
+    create_test_table(client)
+
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('3')")
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('1')")
+
+    results = []
+
+    assert_equal [[1, 4]], client.query("SELECT id, int_test FROM trilogy_test WHERE id = 1; SELECT id, int_test FROM trilogy_test WHERE id IN (2, 3); SELECT id, int_test FROM trilogy_test").to_a
+    assert_equal 2, client.abandon_results!
+    assert_equal [[2]], client.query("SELECT 2").to_a
+  end
+
   def test_trilogy_multiple_results_doesnt_allow_multi_statement_queries
     client = new_tcp_client
     create_test_table(client)

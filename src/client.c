@@ -1018,6 +1018,7 @@ int trilogy_drain_results(trilogy_conn_t *conn)
         }
 
         if (current_packet_type(conn) == TRILOGY_PACKET_EOF && conn->packet_buffer.len < 9) {
+            read_eof_packet(conn);
             return TRILOGY_OK;
         }
     }
