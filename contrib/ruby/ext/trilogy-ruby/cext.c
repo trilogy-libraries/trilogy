@@ -124,7 +124,7 @@ static void buffer_checkout(trilogy_buffer_t *buffer, size_t initial_capacity)
         buffer->buff = pool->entries[pool->len].buff;
         buffer->cap = pool->entries[pool->len].cap;
     } else {
-        buffer->buff = RB_ALLOC_N(uint8_t, initial_capacity);
+        buffer->buff = malloc(initial_capacity);
         buffer->cap = initial_capacity;
     }
 }
