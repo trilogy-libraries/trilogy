@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 
+- Handle server disconnects (Error 4031) correctly by raising `Trilogy::BaseConnectionError` instead of raising a QueryError / TRILOGY_INVALID_SEQUENCE_ID. #257.
 - Column names in results are now encoded using the connection encoding. #210.
 
 ## 2.10.0
