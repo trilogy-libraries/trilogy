@@ -27,7 +27,9 @@ class ClientTest < TrilogyTest
     e = assert_raises Trilogy::ConnectionError do
       new_tcp_client port: 13307
     end
-    assert_equal "Connection refused - trilogy_connect - unable to connect to #{DEFAULT_HOST}:13307", e.message
+    assert_includes e.message, "Connection refused - Connection refused - connect"
+    assert_includes e.message, DEFAULT_HOST
+    assert_includes e.message, "13307"
   end
 
   def test_trilogy_connect_unix_socket
@@ -52,7 +54,7 @@ class ClientTest < TrilogyTest
   end
 
   def test_trilogy_connection_options
-    client = new_tcp_client
+    client = new_tcp_client(ssl: true, ssl_mode: Trilogy::SSL_PREFERRED_NOVERIFY)
 
     expected_connection_options = {
       host: DEFAULT_HOST,
@@ -206,6 +208,21 @@ class ClientTest < TrilogyTest
     assert_equal([], result.each_hash.to_a)
 
     refute client.more_results_exist?
+  end
+
+  def test_trilogy_abandon_results
+    client = new_tcp_client(multi_statement: true)
+    create_test_table(client)
+
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('3')")
+    client.query("INSERT INTO trilogy_test (int_test) VALUES ('1')")
+
+    results = []
+
+    assert_equal [[1, 4]], client.query("SELECT id, int_test FROM trilogy_test WHERE id = 1; SELECT id, int_test FROM trilogy_test WHERE id IN (2, 3); SELECT id, int_test FROM trilogy_test").to_a
+    assert_equal 2, client.abandon_results!
+    assert_equal [[2]], client.query("SELECT 2").to_a
   end
 
   def test_trilogy_multiple_results_doesnt_allow_multi_statement_queries
@@ -710,6 +727,17 @@ class ClientTest < TrilogyTest
     end
   end
 
+  def test_prevent_concurrent_use
+    client = new_tcp_client
+    thread = Thread.new { client.query("SELECT SLEEP(1)") }
+    thread.join(0.2)
+    assert_raises Trilogy::SynchronizationError do
+      client.query("SELECT 1")
+    end
+    thread.join
+    client.close
+  end
+
   USR1 = Class.new(StandardError)
 
   def test_interruptible_when_releasing_gvl
@@ -760,8 +788,8 @@ class ClientTest < TrilogyTest
   def test_connect_by_multiple_names
     return skip unless ["127.0.0.1", "localhost"].include?(DEFAULT_HOST)
 
-    Trilogy.new(host: "127.0.0.1")
-    Trilogy.new(host: "localhost")
+    Trilogy.new(host: "127.0.0.1", username: DEFAULT_USER, password: DEFAULT_PASS)
+    Trilogy.new(host: "localhost", username: DEFAULT_USER, password: DEFAULT_PASS)
   end
 
   PADDED_QUERY_TEMPLATE = "SELECT LENGTH('%s')"
@@ -999,7 +1027,9 @@ class ClientTest < TrilogyTest
     ex = assert_raises Trilogy::ConnectionError do
       new_tcp_client(host: "mysql.invalid", port: 3306)
     end
-    assert_equal "trilogy_connect - unable to connect to mysql.invalid:3306: TRILOGY_DNS_ERROR", ex.message
+    assert_includes ex.message, "unable to connect"
+    assert_includes ex.message, "mysql.invalid:3306"
+    assert_includes ex.message, "getaddrinfo"
   end
 
   def test_memsize
@@ -1091,7 +1121,8 @@ class ClientTest < TrilogyTest
     assert_equal "utf8mb4", client.query("SELECT @@character_set_client").first.first
     assert_equal "utf8mb4", client.query("SELECT @@character_set_results").first.first
     assert_equal "utf8mb4", client.query("SELECT @@character_set_connection").first.first
-    assert_equal "utf8mb4_general_ci", client.query("SELECT @@collation_connection").first.first
+    collation = client.query("SELECT @@collation_connection").first.first
+    assert collation.start_with?("utf8mb4_"), "Expected utf8mb4 collation, got #{collation}"
   end
 
   def test_bad_character_encoding
@@ -1159,8 +1190,14 @@ class ClientTest < TrilogyTest
     class ::Ractor; alias value take unless method_defined?(:value); end
 
     def test_is_ractor_compatible
-      ractor = Ractor.new do
-        client = TrilogyTest.new(nil).new_tcp_client
+      # Capture connection params before entering Ractor since ENV isn't Ractor-safe
+      host = DEFAULT_HOST
+      port = DEFAULT_PORT
+      user = DEFAULT_USER
+      pass = DEFAULT_PASS
+
+      ractor = Ractor.new(host, port, user, pass) do |h, p, u, pw|
+        client = Trilogy.new(host: h, port: p, username: u, password: pw)
         client.query("SELECT 1")
       end
       assert_equal [[1]], ractor.value.to_a

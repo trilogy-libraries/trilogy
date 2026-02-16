@@ -1,0 +1,5 @@
+# macOS-specific MySQL configuration (used by brew)
+# Docker uses build.cnf which has additional SSL paths
+
+[mysqld]
+mysql_native_password=ON

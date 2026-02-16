@@ -159,6 +159,8 @@ int trilogy_connect_send(trilogy_conn_t *conn, const trilogy_sockopt_t *opts);
  */
 int trilogy_connect_send_socket(trilogy_conn_t *conn, trilogy_sock_t *sock);
 
+int trilogy_connect_set_fd(trilogy_conn_t *conn, trilogy_sock_t *sock, int fd);
+
 /* trilogy_connect_recv - Read the initial handshake from the server.
  *
  * This should be called after trilogy_connect_send returns TRILOGY_OK. Calling

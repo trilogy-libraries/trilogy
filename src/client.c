@@ -1,4 +1,10 @@
 #include <fcntl.h>
+#include <limits.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <openssl/rsa.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "trilogy/client.h"
@@ -116,6 +122,38 @@ static int begin_write(trilogy_conn_t *conn)
     // packet buffer, then we'll end up returning TRILOGY_AGAIN here and it'll be
     // up to the caller to pump trilogy_flush_writes() until it returns TRILOGY_OK
     return trilogy_flush_writes(conn);
+}
+
+static int flush_current_packet(trilogy_conn_t *conn)
+{
+    int rc = begin_write(conn);
+
+    while (rc == TRILOGY_AGAIN) {
+        rc = trilogy_sock_wait_write(conn->socket);
+
+        if (rc != TRILOGY_OK) {
+            return rc;
+        }
+
+        rc = trilogy_flush_writes(conn);
+    }
+
+    return rc;
+}
+
+static int read_packet_blocking(trilogy_conn_t *conn)
+{
+    int rc;
+
+    while ((rc = read_packet(conn)) == TRILOGY_AGAIN) {
+        rc = trilogy_sock_wait_read(conn->socket);
+
+        if (rc != TRILOGY_OK) {
+            return rc;
+        }
+    }
+
+    return rc;
 }
 
 int trilogy_init_no_buffer(trilogy_conn_t *conn)
@@ -279,7 +317,8 @@ static int read_auth_switch_packet(trilogy_conn_t *conn, trilogy_handshake_t *ha
     return TRILOGY_AUTH_SWITCH;
 }
 
-static int handle_generic_response(trilogy_conn_t *conn) {
+static int handle_generic_response(trilogy_conn_t *conn)
+{
     switch (current_packet_type(conn)) {
     case TRILOGY_PACKET_OK:
         return read_ok_packet(conn);
@@ -323,6 +362,16 @@ int trilogy_connect_send_socket(trilogy_conn_t *conn, trilogy_sock_t *sock)
     int rc = trilogy_sock_connect(sock);
     if (rc < 0)
         return rc;
+
+    conn->socket = sock;
+    conn->packet_parser.sequence_number = 0;
+
+    return TRILOGY_OK;
+}
+
+int trilogy_connect_set_fd(trilogy_conn_t *conn, trilogy_sock_t *sock, int fd)
+{
+    trilogy_sock_set_fd(sock, fd);
 
     conn->socket = sock;
     conn->packet_parser.sequence_number = 0;
@@ -427,8 +476,293 @@ void trilogy_auth_clear_password(trilogy_conn_t *conn)
     }
 }
 
+#define CACHING_SHA2_REQUEST_PUBLIC_KEY 2
+#define CACHING_SHA2_SCRAMBLE_LEN 20
 #define FAST_AUTH_OK 3
 #define FAST_AUTH_FAIL 4
+
+static int read_auth_result(trilogy_conn_t *conn)
+{
+    int rc = read_packet_blocking(conn);
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    trilogy_auth_clear_password(conn);
+    return handle_generic_response(conn);
+}
+
+static int send_cleartext_password(trilogy_conn_t *conn)
+{
+    trilogy_builder_t builder;
+
+    int rc = begin_command_phase(&builder, conn, conn->packet_parser.sequence_number);
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    if (conn->socket->opts.password_len == 0) {
+        rc = trilogy_builder_write_uint8(&builder, 0);
+
+        if (rc < 0) {
+            return rc;
+        }
+
+        trilogy_builder_finalize(&builder);
+        return flush_current_packet(conn);
+    }
+
+    rc = trilogy_build_auth_clear_password(&builder, conn->socket->opts.password, conn->socket->opts.password_len);
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    return flush_current_packet(conn);
+}
+
+static int send_auth_buffer(trilogy_conn_t *conn, const void *buff, size_t buff_len)
+{
+    trilogy_builder_t builder;
+    int rc = begin_command_phase(&builder, conn, conn->packet_parser.sequence_number);
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    rc = trilogy_builder_write_buffer(&builder, buff, buff_len);
+    if (rc < 0) {
+        return rc;
+    }
+
+    trilogy_builder_finalize(&builder);
+
+    return flush_current_packet(conn);
+}
+
+static int send_public_key_request(trilogy_conn_t *conn)
+{
+    uint8_t request = CACHING_SHA2_REQUEST_PUBLIC_KEY;
+
+    return send_auth_buffer(conn, &request, sizeof(request));
+}
+
+static int encrypt_password_with_public_key(const uint8_t *scramble, size_t scramble_len, trilogy_conn_t *conn,
+                                            const uint8_t *key_data, size_t key_data_len, uint8_t **encrypted_out,
+                                            size_t *encrypted_len)
+{
+    int rc = TRILOGY_OK;
+    uint8_t *ciphertext = NULL;
+    size_t ciphertext_len = 0;
+
+    if (key_data_len == 0 || key_data_len > INT_MAX) {
+        return TRILOGY_AUTH_PLUGIN_ERROR;
+    }
+
+    size_t password_len = conn->socket->opts.password_len;
+    if (password_len == SIZE_MAX) {
+        return TRILOGY_MEM_ERROR;
+    }
+    size_t plaintext_len = password_len + 1;
+    uint8_t *plaintext = malloc(plaintext_len);
+
+    if (plaintext == NULL) {
+        return TRILOGY_MEM_ERROR;
+    }
+
+    if (password_len > 0) {
+        memcpy(plaintext, conn->socket->opts.password, password_len);
+    }
+    plaintext[plaintext_len - 1] = '\0';
+
+    if (scramble_len > 0) {
+        for (size_t i = 0; i < plaintext_len; i++) {
+            plaintext[i] ^= scramble[i % scramble_len];
+        }
+    }
+
+    BIO *bio = BIO_new_mem_buf((void *)key_data, (int)key_data_len);
+    if (bio == NULL) {
+        free(plaintext);
+        return TRILOGY_OPENSSL_ERR;
+    }
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    EVP_PKEY *public_key = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
+#else
+    RSA *public_key = PEM_read_bio_RSA_PUBKEY(bio, NULL, NULL, NULL);
+#endif
+
+    BIO_free(bio);
+
+    if (public_key == NULL) {
+        ERR_clear_error();
+        memset(plaintext, 0, plaintext_len);
+        free(plaintext);
+        return TRILOGY_AUTH_PLUGIN_ERROR;
+    }
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    int key_size = EVP_PKEY_get_size(public_key);
+    if (key_size <= 0) {
+        EVP_PKEY_free(public_key);
+        memset(plaintext, 0, plaintext_len);
+        free(plaintext);
+        return TRILOGY_AUTH_PLUGIN_ERROR;
+    }
+    ciphertext_len = (size_t)key_size;
+#else
+    ciphertext_len = (size_t)RSA_size(public_key);
+#endif
+
+    /*
+       When using RSA_PKCS1_OAEP_PADDING the password length must be less
+       than RSA_size(rsa) - 41.
+     */
+    if (ciphertext_len == 0 || plaintext_len + 41 >= ciphertext_len) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        EVP_PKEY_free(public_key);
+#else
+        RSA_free(public_key);
+#endif
+        memset(plaintext, 0, plaintext_len);
+        free(plaintext);
+        return TRILOGY_AUTH_PLUGIN_ERROR;
+    }
+
+    ciphertext = malloc(ciphertext_len);
+
+    if (ciphertext == NULL) {
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+        EVP_PKEY_free(public_key);
+#else
+        RSA_free(public_key);
+#endif
+        memset(plaintext, 0, plaintext_len);
+        free(plaintext);
+        return TRILOGY_MEM_ERROR;
+    }
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(public_key, NULL);
+    if (ctx == NULL || EVP_PKEY_encrypt_init(ctx) <= 0 ||
+        EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) {
+        rc = TRILOGY_OPENSSL_ERR;
+    } else {
+        size_t out_len = ciphertext_len;
+
+        if (EVP_PKEY_encrypt(ctx, ciphertext, &out_len, plaintext, plaintext_len) <= 0) {
+            rc = TRILOGY_OPENSSL_ERR;
+        } else {
+            *encrypted_len = out_len;
+        }
+    }
+
+    if (ctx) {
+        EVP_PKEY_CTX_free(ctx);
+    }
+    EVP_PKEY_free(public_key);
+#else
+    int out_len = RSA_public_encrypt((int)plaintext_len, plaintext, ciphertext, public_key, RSA_PKCS1_OAEP_PADDING);
+    RSA_free(public_key);
+
+    if (out_len < 0) {
+        rc = TRILOGY_OPENSSL_ERR;
+    } else {
+        *encrypted_len = (size_t)out_len;
+    }
+#endif
+
+    memset(plaintext, 0, plaintext_len);
+    free(plaintext);
+
+    if (rc == TRILOGY_OK) {
+        *encrypted_out = ciphertext;
+    } else {
+        memset(ciphertext, 0, ciphertext_len);
+        free(ciphertext);
+    }
+
+    return rc;
+}
+
+static int handle_fast_auth_fail(trilogy_conn_t *conn, trilogy_handshake_t *handshake, const uint8_t *auth_data,
+                                 size_t auth_data_len)
+{
+    int rc;
+    bool use_ssl = (conn->socket->opts.flags & TRILOGY_CAPABILITIES_SSL) != 0;
+    bool has_unix_socket = (conn->socket->opts.path != NULL);
+
+    // No password to send, so we can safely respond even without TLS.
+    if (conn->socket->opts.password_len == 0) {
+        rc = send_cleartext_password(conn);
+        if (rc < 0) {
+            return rc;
+        }
+
+        return read_auth_result(conn);
+    }
+
+    if (use_ssl || has_unix_socket) {
+        rc = send_cleartext_password(conn);
+        if (rc < 0) {
+            return rc;
+        }
+
+        return read_auth_result(conn);
+    }
+
+    const uint8_t *public_key_data = NULL;
+    size_t public_key_len = 0;
+
+    if (auth_data_len > 1) {
+        public_key_data = auth_data + 1;
+        public_key_len = auth_data_len - 1;
+    } else {
+        rc = send_public_key_request(conn);
+        if (rc < 0) {
+            return rc;
+        }
+
+        rc = read_packet_blocking(conn);
+        if (rc < 0) {
+            return rc;
+        }
+
+        if (current_packet_type(conn) == TRILOGY_PACKET_ERR) {
+            return read_err_packet(conn);
+        }
+
+        if (current_packet_type(conn) != TRILOGY_PACKET_AUTH_MORE_DATA || conn->packet_buffer.len < 2) {
+            return TRILOGY_PROTOCOL_VIOLATION;
+        }
+
+        public_key_data = conn->packet_buffer.buff + 1;
+        public_key_len = conn->packet_buffer.len - 1;
+    }
+
+    uint8_t *encrypted = NULL;
+    size_t encrypted_len = 0;
+
+    rc = encrypt_password_with_public_key((const uint8_t *)handshake->scramble, CACHING_SHA2_SCRAMBLE_LEN, conn,
+                                          public_key_data, public_key_len, &encrypted, &encrypted_len);
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    rc = send_auth_buffer(conn, encrypted, encrypted_len);
+    memset(encrypted, 0, encrypted_len);
+    free(encrypted);
+
+    if (rc < 0) {
+        return rc;
+    }
+
+    return read_auth_result(conn);
+}
 
 int trilogy_auth_recv(trilogy_conn_t *conn, trilogy_handshake_t *handshake)
 {
@@ -440,67 +774,24 @@ int trilogy_auth_recv(trilogy_conn_t *conn, trilogy_handshake_t *handshake)
 
     switch (current_packet_type(conn)) {
     case TRILOGY_PACKET_AUTH_MORE_DATA: {
-        bool use_ssl = (conn->socket->opts.flags & TRILOGY_CAPABILITIES_SSL) != 0;
-        bool has_unix_socket = (conn->socket->opts.path != NULL);
+        const uint8_t *auth_data = conn->packet_buffer.buff + 1;
+        size_t auth_data_len = conn->packet_buffer.len - 1;
 
-        if (!use_ssl && !has_unix_socket) {
-            return TRILOGY_UNSUPPORTED;
+        if (auth_data_len < 1) {
+            return TRILOGY_PROTOCOL_VIOLATION;
         }
 
-        uint8_t byte = conn->packet_buffer.buff[1];
+        uint8_t byte = auth_data[0];
         switch (byte) {
-            case FAST_AUTH_OK:
-                break;
-            case FAST_AUTH_FAIL:
-                {
-                    trilogy_builder_t builder;
-                    int err = begin_command_phase(&builder, conn, conn->packet_parser.sequence_number);
+        case FAST_AUTH_OK:
+            return read_auth_result(conn);
 
-                    if (err < 0) {
-                        return err;
-                    }
+        case FAST_AUTH_FAIL:
+            return handle_fast_auth_fail(conn, handshake, auth_data, auth_data_len);
 
-                    err = trilogy_build_auth_clear_password(&builder, conn->socket->opts.password, conn->socket->opts.password_len);
-
-                    if (err < 0) {
-                        return err;
-                    }
-
-                    int rc = begin_write(conn);
-
-                    while (rc == TRILOGY_AGAIN) {
-                        rc = trilogy_sock_wait_write(conn->socket);
-                        if (rc != TRILOGY_OK) {
-                            return rc;
-                        }
-
-                        rc = trilogy_flush_writes(conn);
-                    }
-                    if (rc != TRILOGY_OK) {
-                        return rc;
-                    }
-
-                    break;
-                }
-            default:
-                return TRILOGY_UNEXPECTED_PACKET;
+        default:
+            return TRILOGY_UNEXPECTED_PACKET;
         }
-        while (1) {
-            rc = read_packet(conn);
-
-            if (rc == TRILOGY_OK) {
-                break;
-            }
-            else if (rc == TRILOGY_AGAIN) {
-                rc = trilogy_sock_wait_read(conn->socket);
-            }
-
-            if (rc != TRILOGY_OK) {
-                return rc;
-            }
-        }
-        trilogy_auth_clear_password(conn);
-        return handle_generic_response(conn);
     }
 
     case TRILOGY_PACKET_EOF:
@@ -555,7 +846,8 @@ int trilogy_set_option_send(trilogy_conn_t *conn, const uint16_t option)
     return begin_write(conn);
 }
 
-int trilogy_set_option_recv(trilogy_conn_t *conn) {
+int trilogy_set_option_recv(trilogy_conn_t *conn)
+{
     int rc = read_packet(conn);
 
     if (rc < 0) {
@@ -574,7 +866,6 @@ int trilogy_set_option_recv(trilogy_conn_t *conn) {
         return TRILOGY_UNEXPECTED_PACKET;
     }
 }
-
 
 int trilogy_ping_send(trilogy_conn_t *conn)
 {
@@ -767,6 +1058,7 @@ int trilogy_drain_results(trilogy_conn_t *conn)
         }
 
         if (current_packet_type(conn) == TRILOGY_PACKET_EOF && conn->packet_buffer.len < 9) {
+            read_eof_packet(conn);
             return TRILOGY_OK;
         }
     }
@@ -1038,9 +1330,7 @@ int trilogy_stmt_reset_send(trilogy_conn_t *conn, trilogy_stmt_t *stmt)
     return begin_write(conn);
 }
 
-int trilogy_stmt_reset_recv(trilogy_conn_t *conn) {
-    return read_generic_response(conn);
-}
+int trilogy_stmt_reset_recv(trilogy_conn_t *conn) { return read_generic_response(conn); }
 
 int trilogy_stmt_close_send(trilogy_conn_t *conn, trilogy_stmt_t *stmt)
 {
