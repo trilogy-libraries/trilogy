@@ -239,6 +239,7 @@ int main(int argc, char *argv[])
     const uint32_t binlogpos = 4;
     const size_t command_buffer_size = strlen(binlogf) + 4 + 2 + 4 + 1;
     uint8_t* command_buffer = (uint8_t*)malloc(command_buffer_size);
+    memset(command_buffer, 0, command_buffer_size);
     uint8_t* ptr = command_buffer;
     uint32_t val32 = binlogpos;
     uint16_t val16 = 0;
