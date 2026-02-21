@@ -134,7 +134,7 @@ static bool buffer_checkin(trilogy_buffer_t *buffer)
     buffer_pool * pool = get_buffer_pool();
 
     if (pool->len >= BUFFER_POOL_MAX_SIZE) {
-        xfree(buffer->buff);
+        free(buffer->buff);
         buffer->buff = NULL;
         buffer->cap = 0;
         return false;
