@@ -176,6 +176,8 @@ int trilogy_init_no_buffer(trilogy_conn_t *conn)
     conn->recv_buff_pos = 0;
     conn->recv_buff_len = 0;
 
+    conn->prepared_statements = NULL;
+
     trilogy_packet_parser_init(&conn->packet_parser, &packet_parser_callbacks);
     conn->packet_parser.user_data = &conn->packet_buffer;
 
@@ -1126,6 +1128,12 @@ void trilogy_free(trilogy_conn_t *conn)
         conn->socket = NULL;
     }
 
+    trilogy_stmt_t *stmt = conn->prepared_statements;
+    while (stmt) {
+        stmt->connection = NULL;
+        stmt = stmt->next;
+    }
+
     trilogy_buffer_free(&conn->packet_buffer);
 }
 
@@ -1164,13 +1172,19 @@ int trilogy_stmt_prepare_recv(trilogy_conn_t *conn, trilogy_stmt_t *stmt_out)
 
     switch (current_packet_type(conn)) {
     case TRILOGY_PACKET_OK: {
-        err = trilogy_parse_stmt_ok_packet(conn->packet_buffer.buff, conn->packet_buffer.len, stmt_out);
+        trilogy_stmt_ok_packet_t out_packet;
+        err = trilogy_parse_stmt_ok_packet(conn->packet_buffer.buff, conn->packet_buffer.len, &out_packet);
 
         if (err < 0) {
             return err;
         }
 
         conn->warning_count = stmt_out->warning_count;
+        stmt_out->connection = conn;
+        stmt_out->id = out_packet.id;
+        stmt_out->column_count = out_packet.column_count;
+        stmt_out->parameter_count = out_packet.parameter_count;
+        stmt_out->warning_count = out_packet.warning_count;
 
         return TRILOGY_OK;
     }
