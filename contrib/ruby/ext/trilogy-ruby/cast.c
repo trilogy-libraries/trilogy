@@ -78,6 +78,55 @@ static void cstr_from_value(char *buf, const trilogy_value_t *value, const char 
     buf[value->data_len] = 0;
 }
 
+// Byte-arithmetic datetime parsing helpers (inspired by Go's go-sql-driver/mysql)
+// These avoid sscanf overhead by parsing ASCII digits directly.
+
+static inline int byte_to_digit(const char b)
+{
+    if (b < '0' || b > '9')
+        return -1;
+    return b - '0';
+}
+
+static inline int parse_2digits(const char *p)
+{
+    int d1 = byte_to_digit(p[0]);
+    int d2 = byte_to_digit(p[1]);
+    if (d1 < 0 || d2 < 0)
+        return -1;
+    return d1 * 10 + d2;
+}
+
+static inline int parse_4digits(const char *p)
+{
+    int d0 = byte_to_digit(p[0]);
+    int d1 = byte_to_digit(p[1]);
+    int d2 = byte_to_digit(p[2]);
+    int d3 = byte_to_digit(p[3]);
+    if (d0 < 0 || d1 < 0 || d2 < 0 || d3 < 0)
+        return -1;
+    return d0 * 1000 + d1 * 100 + d2 * 10 + d3;
+}
+
+// Parse 1-6 fractional digits into microseconds (6-digit value).
+// "1"       => 100000
+// "12"      => 120000
+// "123"     => 123000
+// "123456"  => 123456
+static inline int parse_microseconds(const char *p, size_t len)
+{
+    int usec = 0;
+    int multiplier = 100000;
+    for (size_t i = 0; i < len && i < 6; i++) {
+        int d = byte_to_digit(p[i]);
+        if (d < 0)
+            return -1;
+        usec += d * multiplier;
+        multiplier /= 10;
+    }
+    return usec;
+}
+
 static unsigned long long ull_from_buf(const char *digits, size_t len)
 {
     if (!len)
@@ -166,16 +215,54 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
         }
         case TRILOGY_TYPE_TIMESTAMP:
         case TRILOGY_TYPE_DATETIME: {
-            int year, month, day, hour, min, sec;
-            char msec_char[7] = {0};
+            const char *p = (const char *)value->data;
+            size_t len = value->data_len;
+            int year, month, day, hour = 0, min = 0, sec = 0, usec = 0;
 
-            char cstr[CAST_STACK_SIZE];
-            cstr_from_value(cstr, value, "Invalid date: %.*s");
+            // Length-based dispatch like Go's parseDateTime:
+            // 10 = "YYYY-MM-DD"
+            // 19 = "YYYY-MM-DD HH:MM:SS"
+            // 21-26 = "YYYY-MM-DD HH:MM:SS.F" through "YYYY-MM-DD HH:MM:SS.FFFFFF"
+            if (len < 10)
+                return Qnil;
 
-            int tokens = sscanf(cstr, "%4u-%2u-%2u %2u:%2u:%2u.%6s", &year, &month, &day, &hour, &min, &sec, msec_char);
+            year = parse_4digits(p);
+            if (year < 0 || p[4] != '-')
+                return Qnil;
 
-            // msec might not be present, so check for 6 tokens rather than 7
-            if (tokens < 6) {
+            month = parse_2digits(p + 5);
+            if (month < 0 || p[7] != '-')
+                return Qnil;
+
+            day = parse_2digits(p + 8);
+            if (day < 0)
+                return Qnil;
+
+            if (len >= 19) {
+                if (p[10] != ' ')
+                    return Qnil;
+
+                hour = parse_2digits(p + 11);
+                if (hour < 0 || p[13] != ':')
+                    return Qnil;
+
+                min = parse_2digits(p + 14);
+                if (min < 0 || p[16] != ':')
+                    return Qnil;
+
+                sec = parse_2digits(p + 17);
+                if (sec < 0)
+                    return Qnil;
+
+                if (len > 19) {
+                    if (p[19] != '.' || len < 21 || len > 26)
+                        return Qnil;
+
+                    usec = parse_microseconds(p + 20, len - 20);
+                    if (usec < 0)
+                        return Qnil;
+                }
+            } else if (len != 10) {
                 return Qnil;
             }
 
@@ -187,28 +274,30 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
                 rb_raise(Trilogy_CastError, "Invalid date: %.*s", (int)value->data_len, (char *)value->data);
             }
 
-            // pad out msec_char with zeroes at the end as it could be at any
-            // level of precision
-            for (size_t i = strlen(msec_char); i < sizeof(msec_char) - 1; i++) {
-                msec_char[i] = '0';
-            }
-
             return rb_funcall(rb_cTime, options->database_local_time ? id_local : id_utc, 7, INT2NUM(year),
                               INT2NUM(month), INT2NUM(day), INT2NUM(hour), INT2NUM(min), INT2NUM(sec),
-                              INT2NUM(atoi(msec_char)));
+                              INT2NUM(usec));
         }
         case TRILOGY_TYPE_DATE: {
-            int year, month, day;
+            const char *p = (const char *)value->data;
+            size_t len = value->data_len;
 
-            char cstr[CAST_STACK_SIZE];
-            cstr_from_value(cstr, value, "Invalid date: %.*s");
-
-            int tokens = sscanf(cstr, "%4u-%2u-%2u", &year, &month, &day);
-            VALUE Date = rb_const_get(rb_cObject, rb_intern("Date"));
-
-            if (tokens < 3) {
+            if (len != 10)
                 return Qnil;
-            }
+
+            int year = parse_4digits(p);
+            if (year < 0 || p[4] != '-')
+                return Qnil;
+
+            int month = parse_2digits(p + 5);
+            if (month < 0 || p[7] != '-')
+                return Qnil;
+
+            int day = parse_2digits(p + 8);
+            if (day < 0)
+                return Qnil;
+
+            VALUE Date = rb_const_get(rb_cObject, rb_intern("Date"));
 
             if (year == 0 && month == 0 && day == 0) {
                 return Qnil;
@@ -221,26 +310,37 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
             return rb_funcall(Date, id_new, 3, INT2NUM(year), INT2NUM(month), INT2NUM(day));
         }
         case TRILOGY_TYPE_TIME: {
-            int hour, min, sec;
-            char msec_char[7] = {0};
+            const char *p = (const char *)value->data;
+            size_t len = value->data_len;
 
-            char cstr[CAST_STACK_SIZE];
-            cstr_from_value(cstr, value, "Invalid time: %.*s");
-
-            int tokens = sscanf(cstr, "%2u:%2u:%2u.%6s", &hour, &min, &sec, msec_char);
-
-            if (tokens < 3) {
+            // Expected: "HH:MM:SS" (8) or "HH:MM:SS.F" through "HH:MM:SS.FFFFFF" (10-15)
+            if (len < 8)
                 return Qnil;
-            }
 
-            // pad out msec_char with zeroes at the end as it could be at any
-            // level of precision
-            for (size_t i = strlen(msec_char); i < sizeof(msec_char) - 1; i++) {
-                msec_char[i] = '0';
+            int hour = parse_2digits(p);
+            if (hour < 0 || p[2] != ':')
+                return Qnil;
+
+            int min = parse_2digits(p + 3);
+            if (min < 0 || p[5] != ':')
+                return Qnil;
+
+            int sec = parse_2digits(p + 6);
+            if (sec < 0)
+                return Qnil;
+
+            int usec = 0;
+            if (len > 8) {
+                if (p[8] != '.' || len < 10 || len > 15)
+                    return Qnil;
+
+                usec = parse_microseconds(p + 9, len - 9);
+                if (usec < 0)
+                    return Qnil;
             }
 
             return rb_funcall(rb_cTime, options->database_local_time ? id_local : id_utc, 7, INT2NUM(2000), INT2NUM(1),
-                              INT2NUM(1), INT2NUM(hour), INT2NUM(min), INT2NUM(sec), INT2NUM(atoi(msec_char)));
+                              INT2NUM(1), INT2NUM(hour), INT2NUM(min), INT2NUM(sec), INT2NUM(usec));
         }
         default:
             break;
