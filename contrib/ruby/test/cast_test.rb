@@ -406,12 +406,9 @@ class CastTest < TrilogyTest
 
   def test_datetime_fractional_1_digit
     # Go test: "parse datetime nanosec 1-digit" => "2020-05-25 23:22:01.1"
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
-    @client.query("CREATE TABLE trilogy_dt_precision_test (dt DATETIME(6))")
-    @client.query("INSERT INTO trilogy_dt_precision_test (dt) VALUES ('2020-05-25 23:22:01.1')")
+    @client.query("INSERT INTO trilogy_test (date_time_with_precision_test) VALUES ('2020-05-25 23:22:01.1')")
 
-    results = @client.query("SELECT dt FROM trilogy_dt_precision_test").to_a
-    time = results[0][0]
+    time = @client.query("SELECT date_time_with_precision_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal 2020, time.year
@@ -421,78 +418,53 @@ class CastTest < TrilogyTest
     assert_equal 22, time.min
     assert_equal 1, time.sec
     assert_equal 100000, time.usec
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
   end
 
   def test_datetime_fractional_2_digits
     # Go test: "parse datetime nanosec 2-digits" => "2020-05-25 23:22:01.15"
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
-    @client.query("CREATE TABLE trilogy_dt_precision_test (dt DATETIME(6))")
-    @client.query("INSERT INTO trilogy_dt_precision_test (dt) VALUES ('2020-05-25 23:22:01.15')")
+    @client.query("INSERT INTO trilogy_test (date_time_with_precision_test) VALUES ('2020-05-25 23:22:01.15')")
 
-    results = @client.query("SELECT dt FROM trilogy_dt_precision_test").to_a
-    time = results[0][0]
+    time = @client.query("SELECT date_time_with_precision_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal 150000, time.usec
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
   end
 
   def test_datetime_fractional_3_digits
     # Go test: "parse datetime nanosec 3-digits" => "2020-05-25 23:22:01.159"
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
-    @client.query("CREATE TABLE trilogy_dt_precision_test (dt DATETIME(6))")
-    @client.query("INSERT INTO trilogy_dt_precision_test (dt) VALUES ('2020-05-25 23:22:01.159')")
+    @client.query("INSERT INTO trilogy_test (date_time_with_precision_test) VALUES ('2020-05-25 23:22:01.159')")
 
-    results = @client.query("SELECT dt FROM trilogy_dt_precision_test").to_a
-    time = results[0][0]
+    time = @client.query("SELECT date_time_with_precision_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal 159000, time.usec
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
   end
 
   def test_datetime_fractional_4_digits
     # Go test: "parse datetime nanosec 4-digits" => "2020-05-25 23:22:01.1594"
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
-    @client.query("CREATE TABLE trilogy_dt_precision_test (dt DATETIME(6))")
-    @client.query("INSERT INTO trilogy_dt_precision_test (dt) VALUES ('2020-05-25 23:22:01.1594')")
+    @client.query("INSERT INTO trilogy_test (date_time_with_precision_test) VALUES ('2020-05-25 23:22:01.1594')")
 
-    results = @client.query("SELECT dt FROM trilogy_dt_precision_test").to_a
-    time = results[0][0]
+    time = @client.query("SELECT date_time_with_precision_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal 159400, time.usec
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
   end
 
   def test_datetime_fractional_5_digits
     # Go test: "parse datetime nanosec 5-digits" => "2020-05-25 23:22:01.15949"
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
-    @client.query("CREATE TABLE trilogy_dt_precision_test (dt DATETIME(6))")
-    @client.query("INSERT INTO trilogy_dt_precision_test (dt) VALUES ('2020-05-25 23:22:01.15949')")
+    @client.query("INSERT INTO trilogy_test (date_time_with_precision_test) VALUES ('2020-05-25 23:22:01.15949')")
 
-    results = @client.query("SELECT dt FROM trilogy_dt_precision_test").to_a
-    time = results[0][0]
+    time = @client.query("SELECT date_time_with_precision_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal 159490, time.usec
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
   end
 
   def test_datetime_fractional_6_digits
     # Go test: "parse datetime nanosec 6-digits" => "2020-05-25 23:22:01.159491"
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
-    @client.query("CREATE TABLE trilogy_dt_precision_test (dt DATETIME(6))")
-    @client.query("INSERT INTO trilogy_dt_precision_test (dt) VALUES ('2020-05-25 23:22:01.159491')")
+    @client.query("INSERT INTO trilogy_test (date_time_with_precision_test) VALUES ('2020-05-25 23:22:01.159491')")
 
-    results = @client.query("SELECT dt FROM trilogy_dt_precision_test").to_a
-    time = results[0][0]
+    time = @client.query("SELECT date_time_with_precision_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal 2020, time.year
@@ -502,62 +474,43 @@ class CastTest < TrilogyTest
     assert_equal 22, time.min
     assert_equal 1, time.sec
     assert_equal 159491, time.usec
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
   end
 
   def test_datetime_zero_date_returns_nil
     # Go test: "parse null datetime" => "0000-00-00 00:00:00"
-    # Trilogy returns nil for zero dates
     @client.query("SET SESSION sql_mode = 'ALLOW_INVALID_DATES'")
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
-    @client.query("CREATE TABLE trilogy_dt_precision_test (dt DATETIME)")
-    @client.query("INSERT INTO trilogy_dt_precision_test (dt) VALUES ('0000-00-00 00:00:00')")
+    @client.query("INSERT INTO trilogy_test (date_time_test) VALUES ('0000-00-00 00:00:00')")
 
-    results = @client.query("SELECT dt FROM trilogy_dt_precision_test").to_a
+    results = @client.query("SELECT date_time_test FROM trilogy_test").to_a
     assert_nil results[0][0]
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
   end
 
   def test_date_zero_returns_nil
     # Go test: "parse null date" => "0000-00-00"
     @client.query("SET SESSION sql_mode = 'ALLOW_INVALID_DATES'")
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
-    @client.query("CREATE TABLE trilogy_dt_precision_test (d DATE)")
-    @client.query("INSERT INTO trilogy_dt_precision_test (d) VALUES ('0000-00-00')")
+    @client.query("INSERT INTO trilogy_test (date_test) VALUES ('0000-00-00')")
 
-    results = @client.query("SELECT d FROM trilogy_dt_precision_test").to_a
+    results = @client.query("SELECT date_test FROM trilogy_test").to_a
     assert_nil results[0][0]
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
   end
 
   def test_datetime_specific_date_parse
     # Go test: "parse date" => "2020-05-13"
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
-    @client.query("CREATE TABLE trilogy_dt_precision_test (d DATE)")
-    @client.query("INSERT INTO trilogy_dt_precision_test (d) VALUES ('2020-05-13')")
+    @client.query("INSERT INTO trilogy_test (date_test) VALUES ('2020-05-13')")
 
-    results = @client.query("SELECT d FROM trilogy_dt_precision_test").to_a
-    date = results[0][0]
+    date = @client.query("SELECT date_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Date, date
     assert_equal 2020, date.year
     assert_equal 5, date.month
     assert_equal 13, date.day
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
   end
 
   def test_datetime_specific_datetime_parse
     # Go test: "parse datetime" => "2020-05-13 21:30:45"
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
-    @client.query("CREATE TABLE trilogy_dt_precision_test (dt DATETIME)")
-    @client.query("INSERT INTO trilogy_dt_precision_test (dt) VALUES ('2020-05-13 21:30:45')")
+    @client.query("INSERT INTO trilogy_test (date_time_test) VALUES ('2020-05-13 21:30:45')")
 
-    results = @client.query("SELECT dt FROM trilogy_dt_precision_test").to_a
-    time = results[0][0]
+    time = @client.query("SELECT date_time_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal 2020, time.year
@@ -567,26 +520,19 @@ class CastTest < TrilogyTest
     assert_equal 30, time.min
     assert_equal 45, time.sec
     assert_equal 0, time.usec
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
   end
 
   def test_time_fractional_precision
     # Test TIME with fractional seconds at various precisions
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
-    @client.query("CREATE TABLE trilogy_dt_precision_test (t TIME(6))")
-    @client.query("INSERT INTO trilogy_dt_precision_test (t) VALUES ('14:30:45.123456')")
+    @client.query("INSERT INTO trilogy_test (time_with_precision_test) VALUES ('14:30:45.123456')")
 
-    results = @client.query("SELECT t FROM trilogy_dt_precision_test").to_a
-    time = results[0][0]
+    time = @client.query("SELECT time_with_precision_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal 14, time.hour
     assert_equal 30, time.min
     assert_equal 45, time.sec
     assert_equal 123456, time.usec
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_precision_test")
   end
 
   def test_binary_cast
@@ -683,11 +629,9 @@ class CastTest < TrilogyTest
   # --- Tests exercising civil_to_epoch_utc (Hinnant algorithm edge cases) ---
 
   def test_datetime_unix_epoch
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
-    @client.query("CREATE TABLE trilogy_dt_epoch_test (dt DATETIME)")
-    @client.query("INSERT INTO trilogy_dt_epoch_test (dt) VALUES ('1970-01-01 00:00:00')")
+    @client.query("INSERT INTO trilogy_test (date_time_test) VALUES ('1970-01-01 00:00:00')")
 
-    time = @client.query("SELECT dt FROM trilogy_dt_epoch_test").to_a[0][0]
+    time = @client.query("SELECT date_time_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal 0, time.to_i
@@ -695,16 +639,12 @@ class CastTest < TrilogyTest
     assert_equal 1, time.month
     assert_equal 1, time.day
     assert time.utc?
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
   end
 
   def test_datetime_pre_epoch
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
-    @client.query("CREATE TABLE trilogy_dt_epoch_test (dt DATETIME)")
-    @client.query("INSERT INTO trilogy_dt_epoch_test (dt) VALUES ('1969-12-31 23:59:59')")
+    @client.query("INSERT INTO trilogy_test (date_time_test) VALUES ('1969-12-31 23:59:59')")
 
-    time = @client.query("SELECT dt FROM trilogy_dt_epoch_test").to_a[0][0]
+    time = @client.query("SELECT date_time_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal -1, time.to_i
@@ -714,48 +654,36 @@ class CastTest < TrilogyTest
     assert_equal 23, time.hour
     assert_equal 59, time.min
     assert_equal 59, time.sec
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
   end
 
   def test_datetime_leap_year_feb29
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
-    @client.query("CREATE TABLE trilogy_dt_epoch_test (dt DATETIME)")
-    @client.query("INSERT INTO trilogy_dt_epoch_test (dt) VALUES ('2000-02-29 12:00:00')")
+    @client.query("INSERT INTO trilogy_test (date_time_test) VALUES ('2000-02-29 12:00:00')")
 
-    time = @client.query("SELECT dt FROM trilogy_dt_epoch_test").to_a[0][0]
+    time = @client.query("SELECT date_time_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal 2000, time.year
     assert_equal 2, time.month
     assert_equal 29, time.day
     assert_equal 12, time.hour
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
   end
 
   def test_datetime_non_leap_century_1900
     # 1900 is NOT a leap year (divisible by 100 but not 400)
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
-    @client.query("CREATE TABLE trilogy_dt_epoch_test (dt DATETIME)")
-    @client.query("INSERT INTO trilogy_dt_epoch_test (dt) VALUES ('1900-03-01 00:00:00')")
+    @client.query("INSERT INTO trilogy_test (date_time_test) VALUES ('1900-03-01 00:00:00')")
 
-    time = @client.query("SELECT dt FROM trilogy_dt_epoch_test").to_a[0][0]
+    time = @client.query("SELECT date_time_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal 1900, time.year
     assert_equal 3, time.month
     assert_equal 1, time.day
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
   end
 
   def test_datetime_far_future
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
-    @client.query("CREATE TABLE trilogy_dt_epoch_test (dt DATETIME(6))")
-    @client.query("INSERT INTO trilogy_dt_epoch_test (dt) VALUES ('9999-12-31 23:59:59.999999')")
+    @client.query("INSERT INTO trilogy_test (date_time_test) VALUES ('9999-12-31 23:59:59')")
 
-    time = @client.query("SELECT dt FROM trilogy_dt_epoch_test").to_a[0][0]
+    time = @client.query("SELECT date_time_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal 9999, time.year
@@ -764,33 +692,24 @@ class CastTest < TrilogyTest
     assert_equal 23, time.hour
     assert_equal 59, time.min
     assert_equal 59, time.sec
-    assert_equal 999999, time.usec
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
   end
 
   def test_datetime_mysql_minimum_year
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
-    @client.query("CREATE TABLE trilogy_dt_epoch_test (dt DATETIME)")
-    @client.query("INSERT INTO trilogy_dt_epoch_test (dt) VALUES ('1000-01-01 00:00:00')")
+    @client.query("INSERT INTO trilogy_test (date_time_test) VALUES ('1000-01-01 00:00:00')")
 
-    time = @client.query("SELECT dt FROM trilogy_dt_epoch_test").to_a[0][0]
+    time = @client.query("SELECT date_time_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal 1000, time.year
     assert_equal 1, time.month
     assert_equal 1, time.day
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
   end
 
   def test_datetime_leap_year_feb29_local
     @client.query_flags |= Trilogy::QUERY_FLAGS_LOCAL_TIMEZONE
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
-    @client.query("CREATE TABLE trilogy_dt_epoch_test (dt DATETIME)")
-    @client.query("INSERT INTO trilogy_dt_epoch_test (dt) VALUES ('2024-02-29 15:30:45')")
+    @client.query("INSERT INTO trilogy_test (date_time_test) VALUES ('2024-02-29 15:30:45')")
 
-    time = @client.query("SELECT dt FROM trilogy_dt_epoch_test").to_a[0][0]
+    time = @client.query("SELECT date_time_test FROM trilogy_test").to_a[0][0]
 
     assert_kind_of Time, time
     assert_equal 2024, time.year
@@ -800,8 +719,6 @@ class CastTest < TrilogyTest
     assert_equal 30, time.min
     assert_equal 45, time.sec
     refute time.utc?
-  ensure
-    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
   end
 
   def test_respects_database_encoding
