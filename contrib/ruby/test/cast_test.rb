@@ -680,6 +680,130 @@ class CastTest < TrilogyTest
     end
   end
 
+  # --- Tests exercising civil_to_epoch_utc (Hinnant algorithm edge cases) ---
+
+  def test_datetime_unix_epoch
+    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
+    @client.query("CREATE TABLE trilogy_dt_epoch_test (dt DATETIME)")
+    @client.query("INSERT INTO trilogy_dt_epoch_test (dt) VALUES ('1970-01-01 00:00:00')")
+
+    time = @client.query("SELECT dt FROM trilogy_dt_epoch_test").to_a[0][0]
+
+    assert_kind_of Time, time
+    assert_equal 0, time.to_i
+    assert_equal 1970, time.year
+    assert_equal 1, time.month
+    assert_equal 1, time.day
+    assert time.utc?
+  ensure
+    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
+  end
+
+  def test_datetime_pre_epoch
+    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
+    @client.query("CREATE TABLE trilogy_dt_epoch_test (dt DATETIME)")
+    @client.query("INSERT INTO trilogy_dt_epoch_test (dt) VALUES ('1969-12-31 23:59:59')")
+
+    time = @client.query("SELECT dt FROM trilogy_dt_epoch_test").to_a[0][0]
+
+    assert_kind_of Time, time
+    assert_equal -1, time.to_i
+    assert_equal 1969, time.year
+    assert_equal 12, time.month
+    assert_equal 31, time.day
+    assert_equal 23, time.hour
+    assert_equal 59, time.min
+    assert_equal 59, time.sec
+  ensure
+    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
+  end
+
+  def test_datetime_leap_year_feb29
+    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
+    @client.query("CREATE TABLE trilogy_dt_epoch_test (dt DATETIME)")
+    @client.query("INSERT INTO trilogy_dt_epoch_test (dt) VALUES ('2000-02-29 12:00:00')")
+
+    time = @client.query("SELECT dt FROM trilogy_dt_epoch_test").to_a[0][0]
+
+    assert_kind_of Time, time
+    assert_equal 2000, time.year
+    assert_equal 2, time.month
+    assert_equal 29, time.day
+    assert_equal 12, time.hour
+  ensure
+    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
+  end
+
+  def test_datetime_non_leap_century_1900
+    # 1900 is NOT a leap year (divisible by 100 but not 400)
+    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
+    @client.query("CREATE TABLE trilogy_dt_epoch_test (dt DATETIME)")
+    @client.query("INSERT INTO trilogy_dt_epoch_test (dt) VALUES ('1900-03-01 00:00:00')")
+
+    time = @client.query("SELECT dt FROM trilogy_dt_epoch_test").to_a[0][0]
+
+    assert_kind_of Time, time
+    assert_equal 1900, time.year
+    assert_equal 3, time.month
+    assert_equal 1, time.day
+  ensure
+    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
+  end
+
+  def test_datetime_far_future
+    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
+    @client.query("CREATE TABLE trilogy_dt_epoch_test (dt DATETIME(6))")
+    @client.query("INSERT INTO trilogy_dt_epoch_test (dt) VALUES ('9999-12-31 23:59:59.999999')")
+
+    time = @client.query("SELECT dt FROM trilogy_dt_epoch_test").to_a[0][0]
+
+    assert_kind_of Time, time
+    assert_equal 9999, time.year
+    assert_equal 12, time.month
+    assert_equal 31, time.day
+    assert_equal 23, time.hour
+    assert_equal 59, time.min
+    assert_equal 59, time.sec
+    assert_equal 999999, time.usec
+  ensure
+    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
+  end
+
+  def test_datetime_mysql_minimum_year
+    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
+    @client.query("CREATE TABLE trilogy_dt_epoch_test (dt DATETIME)")
+    @client.query("INSERT INTO trilogy_dt_epoch_test (dt) VALUES ('1000-01-01 00:00:00')")
+
+    time = @client.query("SELECT dt FROM trilogy_dt_epoch_test").to_a[0][0]
+
+    assert_kind_of Time, time
+    assert_equal 1000, time.year
+    assert_equal 1, time.month
+    assert_equal 1, time.day
+  ensure
+    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
+  end
+
+  def test_datetime_leap_year_feb29_local
+    @client.query_flags |= Trilogy::QUERY_FLAGS_LOCAL_TIMEZONE
+    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
+    @client.query("CREATE TABLE trilogy_dt_epoch_test (dt DATETIME)")
+    @client.query("INSERT INTO trilogy_dt_epoch_test (dt) VALUES ('2024-02-29 15:30:45')")
+
+    time = @client.query("SELECT dt FROM trilogy_dt_epoch_test").to_a[0][0]
+
+    assert_kind_of Time, time
+    assert_equal 2024, time.year
+    assert_equal 2, time.month
+    assert_equal 29, time.day
+    assert_equal 15, time.hour
+    assert_equal 30, time.min
+    assert_equal 45, time.sec
+    refute time.utc?
+  ensure
+    @client.query("DROP TABLE IF EXISTS trilogy_dt_epoch_test")
+  end
+
   def test_respects_database_encoding
     @client.query(<<-SQL)
       SET NAMES "SJIS"

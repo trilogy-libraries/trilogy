@@ -1,11 +1,13 @@
 #include <ruby.h>
 #include <ruby/encoding.h>
+#include <time.h>
+#include <limits.h>
 
 #include "trilogy-ruby.h"
 
 #define CAST_STACK_SIZE 64
 
-static ID id_BigDecimal, id_Integer, id_new, id_local, id_localtime, id_utc;
+static ID id_BigDecimal, id_Integer, id_new;
 
 static const char *ruby_encoding_name_map[] = {
     [TRILOGY_ENCODING_ARMSCII8] = NULL,
@@ -74,6 +76,47 @@ static void cstr_from_value(char *buf, const trilogy_value_t *value, const char 
 
     memcpy(buf, value->data, value->data_len);
     buf[value->data_len] = 0;
+}
+
+// Build a Ruby Time object via rb_time_timespec_new (C API) instead of
+// rb_funcall(rb_cTime, :utc/:local, 7, ...) to skip method dispatch,
+// 7x INT2NUM, and Ruby's internal time_arg() + timegmw() conversion.
+//
+// For UTC: uses the Hinnant civil_to_days algorithm (C++20 std::chrono
+// foundation, handles the full MySQL 1000-9999 year range without timegm).
+// For local: uses mktime (standard C) which consults the system timezone.
+// http://howardhinnant.github.io/date_algorithms.html
+static time_t civil_to_epoch_utc(int year, int month, int day, int hour, int min, int sec)
+{
+    year -= (month <= 2);
+    int era = (year >= 0 ? year : year - 399) / 400;
+    unsigned yoe = (unsigned)(year - era * 400);
+    unsigned doy = (153 * (month > 2 ? month - 3 : month + 9) + 2) / 5 + (unsigned)day - 1;
+    unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    long days = (long)era * 146097 + (long)doe - 719468;
+    return (time_t)(days * 86400 + hour * 3600 + min * 60 + sec);
+}
+
+static VALUE trilogy_make_time(int year, int month, int day, int hour, int min, int sec,
+                               int usec, int local)
+{
+    struct timespec ts;
+    if (local) {
+        struct tm tm = {
+            .tm_year = year - 1900,
+            .tm_mon  = month - 1,
+            .tm_mday = day,
+            .tm_hour = hour,
+            .tm_min  = min,
+            .tm_sec  = sec,
+            .tm_isdst = -1,
+        };
+        ts.tv_sec = mktime(&tm);
+    } else {
+        ts.tv_sec = civil_to_epoch_utc(year, month, day, hour, min, sec);
+    }
+    ts.tv_nsec = (long)usec * 1000;
+    return rb_time_timespec_new(&ts, local ? INT_MAX : INT_MAX - 1);
 }
 
 // Byte-arithmetic datetime parsing helpers (inspired by Go's go-sql-driver/mysql)
@@ -272,9 +315,8 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
                 rb_raise(Trilogy_CastError, "Invalid date: %.*s", (int)value->data_len, (char *)value->data);
             }
 
-            return rb_funcall(rb_cTime, options->database_local_time ? id_local : id_utc, 7, INT2NUM(year),
-                              INT2NUM(month), INT2NUM(day), INT2NUM(hour), INT2NUM(min), INT2NUM(sec),
-                              INT2NUM(usec));
+            return trilogy_make_time(year, month, day, hour, min, sec, usec,
+                                    options->database_local_time);
         }
         case TRILOGY_TYPE_DATE: {
             const char *p = (const char *)value->data;
@@ -337,8 +379,8 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
                     return Qnil;
             }
 
-            return rb_funcall(rb_cTime, options->database_local_time ? id_local : id_utc, 7, INT2NUM(2000), INT2NUM(1),
-                              INT2NUM(1), INT2NUM(hour), INT2NUM(min), INT2NUM(sec), INT2NUM(usec));
+            return trilogy_make_time(2000, 1, 1, hour, min, sec, usec,
+                                    options->database_local_time);
         }
         default:
             break;
@@ -365,7 +407,4 @@ void rb_trilogy_cast_init(void)
     id_BigDecimal = rb_intern("BigDecimal");
     id_Integer = rb_intern("Integer");
     id_new = rb_intern("new");
-    id_local = rb_intern("local");
-    id_localtime = rb_intern("localtime");
-    id_utc = rb_intern("utc");
 }
