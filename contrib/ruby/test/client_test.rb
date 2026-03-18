@@ -218,8 +218,6 @@ class ClientTest < TrilogyTest
     client.query("INSERT INTO trilogy_test (int_test) VALUES ('3')")
     client.query("INSERT INTO trilogy_test (int_test) VALUES ('1')")
 
-    results = []
-
     assert_equal [[1, 4]], client.query("SELECT id, int_test FROM trilogy_test WHERE id = 1; SELECT id, int_test FROM trilogy_test WHERE id IN (2, 3); SELECT id, int_test FROM trilogy_test").to_a
     assert_equal 2, client.abandon_results!
     assert_equal [[2]], client.query("SELECT 2").to_a
