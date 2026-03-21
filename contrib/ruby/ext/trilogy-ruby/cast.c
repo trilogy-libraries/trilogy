@@ -1,8 +1,6 @@
 #include <ruby.h>
 #include <ruby/encoding.h>
 
-#include <trilogy.h>
-
 #include "trilogy-ruby.h"
 
 #define CAST_STACK_SIZE 64

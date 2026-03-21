@@ -18,7 +18,7 @@ static void read_columns(trilogy_conn_t *conn, uint64_t column_count) {
 			return;
 	}
 
-	trilogy_value_t *values = calloc(column_count, sizeof(trilogy_value_t));
+	trilogy_value_t *values = xcalloc(column_count, sizeof(trilogy_value_t));
 	if (values) {
 		while (trilogy_read_full_row(conn, values) == TRILOGY_OK) {
 		}

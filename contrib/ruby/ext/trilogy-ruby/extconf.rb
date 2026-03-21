@@ -10,7 +10,7 @@ File.binwrite("trilogy.c",
   }.join)
 
 $objs = %w[trilogy.o cast.o cext.o]
-append_cflags(["-I #{__dir__}/inc", "-std=gnu99", "-fvisibility=hidden"])
+append_cflags(["-I #{__dir__}/inc", "-std=gnu99", "-fvisibility=hidden", "-DTRILOGY_XALLOCATOR", "-g"])
 
 dir_config("openssl").any? || pkg_config("openssl")
 

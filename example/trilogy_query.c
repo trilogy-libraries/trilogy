@@ -30,7 +30,7 @@ static int execute_query(trilogy_conn_t *conn, const char *sql)
         return rc;
     }
 
-    bool *binary_columns = calloc(column_count, sizeof(bool));
+    bool *binary_columns = xcalloc(column_count, sizeof(bool));
 
     for (uint64_t i = 0; i < column_count; i++) {
         trilogy_column_packet_t column;
@@ -38,7 +38,7 @@ static int execute_query(trilogy_conn_t *conn, const char *sql)
         rc = trilogy_read_full_column(conn, &column);
 
         if (rc < 0) {
-            free(binary_columns);
+            xfree(binary_columns);
             return rc;
         }
 
@@ -58,11 +58,11 @@ static int execute_query(trilogy_conn_t *conn, const char *sql)
 
     // shut scan-build up
     if (column_count == 0) {
-        free(binary_columns);
+        xfree(binary_columns);
         return TRILOGY_OK;
     }
 
-    trilogy_value_t *values = calloc(column_count, sizeof(trilogy_value_t));
+    trilogy_value_t *values = xcalloc(column_count, sizeof(trilogy_value_t));
 
     while ((rc = trilogy_read_full_row(conn, values)) == TRILOGY_OK) {
         for (uint64_t i = 0; i < column_count; i++) {
@@ -84,8 +84,8 @@ static int execute_query(trilogy_conn_t *conn, const char *sql)
         printf("\n");
     }
 
-    free(binary_columns);
-    free(values);
+    xfree(binary_columns);
+    xfree(values);
 
     if (rc == TRILOGY_EOF) {
         rc = TRILOGY_OK;
@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
     if (!(connopt.hostname = getenv("MYSQL_HOST"))) {
         connopt.hostname = DEFAULT_HOST;
     }
-    connopt.hostname = strdup(connopt.hostname);
+    connopt.hostname = xstrdup(connopt.hostname);
 
     const char *port = getenv("MYSQL_TCP_PORT");
 
@@ -138,15 +138,15 @@ int main(int argc, char *argv[])
     if (!(connopt.username = getenv("USER"))) {
         connopt.username = DEFAULT_USER;
     }
-    connopt.username = strdup(connopt.username);
+    connopt.username = xstrdup(connopt.username);
 
     int opt = 0;
     while ((opt = getopt_long(argc, argv, "h:P:s:d:u:p:", longopts, NULL)) != -1) {
         switch (opt) {
         case 'h':
             if (optarg) {
-                free(connopt.hostname);
-                connopt.hostname = strdup(optarg);
+                xfree(connopt.hostname);
+                connopt.hostname = xstrdup(optarg);
             }
             break;
         case 'P':
@@ -156,26 +156,26 @@ int main(int argc, char *argv[])
             break;
         case 's':
             if (optarg) {
-                free(sql);
-                sql = strdup(optarg);
+                xfree(sql);
+                sql = xstrdup(optarg);
             }
             break;
         case 'd':
             if (optarg) {
-                free(connopt.database);
-                connopt.database = strdup(optarg);
+                xfree(connopt.database);
+                connopt.database = xstrdup(optarg);
             }
             break;
         case 'u':
             if (optarg) {
-                free(connopt.username);
-                connopt.username = strdup(optarg);
+                xfree(connopt.username);
+                connopt.username = xstrdup(optarg);
             }
             break;
         case 'p':
             if (optarg) {
-                free(connopt.password);
-                connopt.password = strdup(optarg);
+                xfree(connopt.password);
+                connopt.password = xstrdup(optarg);
                 connopt.password_len = strlen(optarg);
             }
             break;
@@ -224,11 +224,11 @@ int main(int argc, char *argv[])
     fail_on_error(&conn, err, "closing connection");
     fprintf(stderr, "connection closed\n");
 
-    free(connopt.hostname);
-    free(connopt.username);
-    free(sql);
-    free(connopt.database);
-    free(connopt.password);
+    xfree(connopt.hostname);
+    xfree(connopt.username);
+    xfree(sql);
+    xfree(connopt.database);
+    xfree(connopt.password);
 
     trilogy_free(&conn);
     exit(EXIT_SUCCESS);
