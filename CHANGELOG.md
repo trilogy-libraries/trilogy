@@ -5,16 +5,23 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.11.0
+
+### Changed
+
+- Establish socket connection in Ruby #218
+
 ### Added
 
-- Support `caching_sha2_password` over TCP without TLS by requesting the server RSA public key when needed. #26
+- Support `caching_sha2_password` over TCP without TLS by requesting the server RSA public key when needed. #262
 - Now raise an explicit error when a single connection is being used concurrently by multiple threads or fibers. #226.
-- `Trilogy#abandon_results!` as an optimized alternative to `client.next_result while client.more_results_exist?`.
+- `Trilogy#abandon_results!` as an optimized alternative to `client.next_result while client.more_results_exist?`. #264
 
 ### Fixed
 
 - Handle server disconnects (Error 4031) correctly by raising `Trilogy::BaseConnectionError` instead of raising a QueryError / TRILOGY_INVALID_SEQUENCE_ID. #257.
 - Column names in results are now encoded using the connection encoding. #210.
+- Use correct malloc and free to avoid invalid pointer crashes #266 and #269
 
 ## 2.10.0
 
