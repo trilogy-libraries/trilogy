@@ -41,7 +41,7 @@ TEST test_builder_write_uint8_split_packet()
     ASSERT_OK(err);
 
     size_t len = TRILOGY_MAX_PACKET_LEN - 1;
-    uint8_t *bytes = calloc(len, 1);
+    uint8_t *bytes = xcalloc(len, 1);
 
     err = trilogy_builder_write_buffer(&builder, bytes, len);
     ASSERT_OK(err);
@@ -60,7 +60,7 @@ TEST test_builder_write_uint8_split_packet()
     const uint8_t expected_header2[] = {0x01, 0x00, 0x00, 0x01};
     ASSERT_MEM_EQ(builder.buffer->buff + TRILOGY_MAX_PACKET_LEN + 4, expected_header2, sizeof(expected_header2));
 
-    free(bytes);
+    xfree(bytes);
 
     trilogy_buffer_free(&buff);
     PASS();
@@ -109,7 +109,7 @@ TEST test_builder_write_uint8_exceeds_large_max()
     ASSERT_OK(err);
 
     size_t len = max - 3;
-    uint8_t *bytes = calloc(len, 1);
+    uint8_t *bytes = xcalloc(len, 1);
 
     err = trilogy_builder_write_buffer(&builder, bytes, len);
     ASSERT_OK(err);
@@ -123,7 +123,7 @@ TEST test_builder_write_uint8_exceeds_large_max()
     err = trilogy_builder_write_uint8(&builder, 0x03);
     ASSERT_EQ(TRILOGY_MAX_PACKET_EXCEEDED, err);
 
-    free(bytes);
+    xfree(bytes);
 
     trilogy_buffer_free(&buff);
     PASS();
@@ -318,7 +318,7 @@ TEST test_builder_write_large_buffer()
     ASSERT_OK(err);
 
     size_t len = TRILOGY_MAX_PACKET_LEN + 10;
-    uint8_t *bytes = calloc(len, 1);
+    uint8_t *bytes = xcalloc(len, 1);
 
     err = trilogy_builder_write_buffer(&builder, bytes, len);
     ASSERT_OK(err);
@@ -331,7 +331,7 @@ TEST test_builder_write_large_buffer()
     const uint8_t expected_header2[] = {0x0A, 0x00, 0x00, 0x01};
     ASSERT_MEM_EQ(builder.buffer->buff + TRILOGY_MAX_PACKET_LEN + 4, expected_header2, sizeof(expected_header2));
 
-    free(bytes);
+    xfree(bytes);
 
     trilogy_buffer_free(&buff);
     PASS();

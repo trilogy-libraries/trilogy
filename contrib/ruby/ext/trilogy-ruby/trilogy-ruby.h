@@ -1,9 +1,11 @@
 #ifndef TRILOGY_RUBY_H
 #define TRILOGY_RUBY_H
 
-#include <stdbool.h>
-
+#include <ruby.h>
+#include <trilogy_xallocator.h>
 #include <trilogy.h>
+
+#include <stdbool.h>
 
 #define TRILOGY_FLAGS_CAST 1
 #define TRILOGY_FLAGS_CAST_BOOLEANS 2

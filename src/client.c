@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "trilogy/allocator.h"
 #include "trilogy/client.h"
 #include "trilogy/error.h"
 
@@ -566,7 +567,7 @@ static int encrypt_password_with_public_key(const uint8_t *scramble, size_t scra
         return TRILOGY_MEM_ERROR;
     }
     size_t plaintext_len = password_len + 1;
-    uint8_t *plaintext = malloc(plaintext_len);
+    uint8_t *plaintext = xmalloc(plaintext_len);
 
     if (plaintext == NULL) {
         return TRILOGY_MEM_ERROR;
@@ -585,7 +586,7 @@ static int encrypt_password_with_public_key(const uint8_t *scramble, size_t scra
 
     BIO *bio = BIO_new_mem_buf((void *)key_data, (int)key_data_len);
     if (bio == NULL) {
-        free(plaintext);
+        xfree(plaintext);
         return TRILOGY_OPENSSL_ERR;
     }
 
@@ -600,7 +601,7 @@ static int encrypt_password_with_public_key(const uint8_t *scramble, size_t scra
     if (public_key == NULL) {
         ERR_clear_error();
         memset(plaintext, 0, plaintext_len);
-        free(plaintext);
+        xfree(plaintext);
         return TRILOGY_AUTH_PLUGIN_ERROR;
     }
 
@@ -609,7 +610,7 @@ static int encrypt_password_with_public_key(const uint8_t *scramble, size_t scra
     if (key_size <= 0) {
         EVP_PKEY_free(public_key);
         memset(plaintext, 0, plaintext_len);
-        free(plaintext);
+        xfree(plaintext);
         return TRILOGY_AUTH_PLUGIN_ERROR;
     }
     ciphertext_len = (size_t)key_size;
@@ -628,11 +629,11 @@ static int encrypt_password_with_public_key(const uint8_t *scramble, size_t scra
         RSA_free(public_key);
 #endif
         memset(plaintext, 0, plaintext_len);
-        free(plaintext);
+        xfree(plaintext);
         return TRILOGY_AUTH_PLUGIN_ERROR;
     }
 
-    ciphertext = malloc(ciphertext_len);
+    ciphertext = xmalloc(ciphertext_len);
 
     if (ciphertext == NULL) {
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
@@ -641,7 +642,7 @@ static int encrypt_password_with_public_key(const uint8_t *scramble, size_t scra
         RSA_free(public_key);
 #endif
         memset(plaintext, 0, plaintext_len);
-        free(plaintext);
+        xfree(plaintext);
         return TRILOGY_MEM_ERROR;
     }
 
@@ -676,13 +677,13 @@ static int encrypt_password_with_public_key(const uint8_t *scramble, size_t scra
 #endif
 
     memset(plaintext, 0, plaintext_len);
-    free(plaintext);
+    xfree(plaintext);
 
     if (rc == TRILOGY_OK) {
         *encrypted_out = ciphertext;
     } else {
         memset(ciphertext, 0, ciphertext_len);
-        free(ciphertext);
+        xfree(ciphertext);
     }
 
     return rc;
@@ -755,7 +756,7 @@ static int handle_fast_auth_fail(trilogy_conn_t *conn, trilogy_handshake_t *hand
 
     rc = send_auth_buffer(conn, encrypted, encrypted_len);
     memset(encrypted, 0, encrypted_len);
-    free(encrypted);
+    xfree(encrypted);
 
     if (rc < 0) {
         return rc;

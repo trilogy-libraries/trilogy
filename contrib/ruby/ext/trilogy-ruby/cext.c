@@ -11,8 +11,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include <trilogy.h>
-
 #include "trilogy-ruby.h"
 
 typedef struct _buffer_pool_entry_struct {
@@ -41,9 +39,7 @@ static void buffer_pool_free(void *data)
     buffer_pool *pool = (buffer_pool *)data;
     if (pool->capa) {
         for (size_t index = 0; index < pool->len; index++) {
-            // NB: buff was allocated by trilogy/buffer.h using raw `malloc`
-            // hence we must use raw `free`.
-            free(pool->entries[index].buff);
+            xfree(pool->entries[index].buff);
         }
         xfree(pool->entries);
     }
@@ -124,7 +120,7 @@ static void buffer_checkout(trilogy_buffer_t *buffer, size_t initial_capacity)
         buffer->buff = pool->entries[pool->len].buff;
         buffer->cap = pool->entries[pool->len].cap;
     } else {
-        buffer->buff = malloc(initial_capacity);
+        buffer->buff = xmalloc(initial_capacity);
         buffer->cap = initial_capacity;
     }
 }
@@ -134,7 +130,7 @@ static bool buffer_checkin(trilogy_buffer_t *buffer)
     buffer_pool * pool = get_buffer_pool();
 
     if (pool->len >= BUFFER_POOL_MAX_SIZE) {
-        free(buffer->buff);
+        xfree(buffer->buff);
         buffer->buff = NULL;
         buffer->cap = 0;
         return false;
