@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "trilogy/allocator.h"
 #include "trilogy/error.h"
 #include "trilogy/socket.h"
 
@@ -21,8 +22,9 @@
 struct trilogy_sock {
     trilogy_sock_t base;
     struct addrinfo *addr;
-    int fd;
     SSL *ssl;
+    int fd;
+    bool freeaddrinfo;
 };
 
 void trilogy_sock_set_fd(trilogy_sock_t *_sock, int fd)
@@ -109,30 +111,30 @@ static int _cb_raw_close(trilogy_sock_t *_sock)
     }
 
     if (sock->addr) {
-        if (sock->base.opts.hostname == NULL && sock->base.opts.path != NULL) {
-            /* We created these with calloc so must free them instead of calling freeaddrinfo */
-            free(sock->addr->ai_addr);
-            free(sock->addr);
-        } else {
+        if (sock->freeaddrinfo) {
             freeaddrinfo(sock->addr);
+        } else {
+            /* We created these with xcalloc so must free them instead of calling freeaddrinfo */
+            xfree(sock->addr->ai_addr);
+            xfree(sock->addr);
         }
     }
 
-    free(sock->base.opts.hostname);
-    free(sock->base.opts.path);
-    free(sock->base.opts.database);
-    free(sock->base.opts.username);
-    free(sock->base.opts.password);
-    free(sock->base.opts.ssl_ca);
-    free(sock->base.opts.ssl_capath);
-    free(sock->base.opts.ssl_cert);
-    free(sock->base.opts.ssl_cipher);
-    free(sock->base.opts.ssl_crl);
-    free(sock->base.opts.ssl_crlpath);
-    free(sock->base.opts.ssl_key);
-    free(sock->base.opts.tls_ciphersuites);
+    xfree(sock->base.opts.hostname);
+    xfree(sock->base.opts.path);
+    xfree(sock->base.opts.database);
+    xfree(sock->base.opts.username);
+    xfree(sock->base.opts.password);
+    xfree(sock->base.opts.ssl_ca);
+    xfree(sock->base.opts.ssl_capath);
+    xfree(sock->base.opts.ssl_cert);
+    xfree(sock->base.opts.ssl_cipher);
+    xfree(sock->base.opts.ssl_crl);
+    xfree(sock->base.opts.ssl_crlpath);
+    xfree(sock->base.opts.ssl_key);
+    xfree(sock->base.opts.tls_ciphersuites);
 
-    free(sock);
+    xfree(sock);
     return rc;
 }
 
@@ -306,12 +308,12 @@ static char *strdupnullok(const char *str)
     if (str == NULL) {
         return NULL;
     }
-    return strdup(str);
+    return xstrdup(str);
 }
 
 trilogy_sock_t *trilogy_sock_new(const trilogy_sockopt_t *opts)
 {
-    struct trilogy_sock *sock = malloc(sizeof(struct trilogy_sock));
+    struct trilogy_sock *sock = xmalloc(sizeof(struct trilogy_sock));
 
     sock->base.connect_cb = _cb_raw_connect;
     sock->base.read_cb = _cb_raw_read;
@@ -328,7 +330,7 @@ trilogy_sock_t *trilogy_sock_new(const trilogy_sockopt_t *opts)
     sock->base.opts.username = strdupnullok(opts->username);
 
     if (sock->base.opts.password) {
-        sock->base.opts.password = malloc(opts->password_len);
+        sock->base.opts.password = xmalloc(opts->password_len);
         memcpy(sock->base.opts.password, opts->password, opts->password_len);
     }
 
@@ -358,6 +360,7 @@ int trilogy_sock_resolve(trilogy_sock_t *_sock)
         char port[6];
         snprintf(port, sizeof(port), "%hu", sock->base.opts.port);
 
+        sock->freeaddrinfo = true;
         if (getaddrinfo(sock->base.opts.hostname, port, &hint, &sock->addr) != 0) {
             return TRILOGY_DNS_ERR;
         }
@@ -368,15 +371,16 @@ int trilogy_sock_resolve(trilogy_sock_t *_sock)
             goto fail;
         }
 
-        sa = calloc(1, sizeof(struct sockaddr_un));
+        sa = xcalloc(1, sizeof(struct sockaddr_un));
         sa->sun_family = AF_UNIX;
         strcpy(sa->sun_path, sock->base.opts.path);
 
-        sock->addr = calloc(1, sizeof(struct addrinfo));
+        sock->addr = xcalloc(1, sizeof(struct addrinfo));
         sock->addr->ai_family = PF_UNIX;
         sock->addr->ai_socktype = SOCK_STREAM;
         sock->addr->ai_addr = (struct sockaddr *)sa;
         sock->addr->ai_addrlen = sizeof(struct sockaddr_un);
+        sock->freeaddrinfo = false;
     } else {
         goto fail;
     }

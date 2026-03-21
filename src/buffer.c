@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "trilogy/allocator.h"
 #include "trilogy/buffer.h"
 #include "trilogy/error.h"
 
@@ -9,7 +10,7 @@ int trilogy_buffer_init(trilogy_buffer_t *buffer, size_t initial_capacity)
 {
     buffer->len = 0;
     buffer->cap = initial_capacity;
-    buffer->buff = malloc(initial_capacity);
+    buffer->buff = xmalloc(initial_capacity);
 
     if (buffer->buff == NULL) {
         return TRILOGY_SYSERR;
@@ -37,7 +38,7 @@ int trilogy_buffer_expand(trilogy_buffer_t *buffer, size_t needed)
             new_cap *= EXPAND_MULTIPLIER;
         }
 
-        uint8_t *new_buff = realloc(buffer->buff, new_cap);
+        uint8_t *new_buff = xrealloc(buffer->buff, new_cap);
         if (new_buff == NULL)
             return TRILOGY_SYSERR;
 
@@ -77,7 +78,7 @@ int trilogy_buffer_write(trilogy_buffer_t *buffer, const uint8_t *ptr, size_t le
 void trilogy_buffer_free(trilogy_buffer_t *buffer)
 {
     if (buffer->buff) {
-        free(buffer->buff);
+        xfree(buffer->buff);
         buffer->buff = NULL;
         buffer->len = buffer->cap = 0;
     }
