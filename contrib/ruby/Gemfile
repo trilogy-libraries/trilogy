@@ -2,6 +2,10 @@ source "https://rubygems.org"
 
 gemspec
 
+gem "rake-compiler"
+gem "minitest", "~> 5.5", "<= 5.26.1" # 5.26.1 is the latest version supporting Ruby 3.0
+gem "mutex_m" # minitest 5.26.1 has an undeclared dependency on mutex_m
+
 group :benchmark do
   gem "mysql2"
   gem "benchmark-ips"
