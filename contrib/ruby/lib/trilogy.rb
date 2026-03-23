@@ -16,26 +16,31 @@ class Trilogy
     end
   private_constant :IO_TIMEOUT_ERROR
 
-  Synchronization = Module.new
+  module Synchronization
+    def initialize(...)
+      @mutex = Mutex.new
+      super
+    end
 
-  source = public_instance_methods(false).flat_map do |method|
-    [
-      "def #{method}(...)",
-        "raise SynchronizationError unless @mutex.try_lock",
-        "begin",
-          "super",
-        "ensure",
-          "@mutex.unlock",
+    synchronized_methods = Trilogy.public_instance_methods(false) - %i(closed?)
+    source = synchronized_methods.flat_map do |method|
+      [
+        "def #{method}(...)",
+          "raise SynchronizationError unless @mutex.try_lock",
+          "begin",
+            "super",
+          "ensure",
+            "@mutex.unlock",
+          "end",
         "end",
-      "end",
-    ]
+      ]
+    end
+    class_eval(source.join(";"), __FILE__, __LINE__)
   end
-  Synchronization.class_eval(source.join(";"), __FILE__, __LINE__)
 
   prepend(Synchronization)
 
   def initialize(options = {})
-    @mutex = Mutex.new
     options[:port] = options[:port].to_i if options[:port]
     mysql_encoding = options[:encoding] || "utf8mb4"
     encoding = Trilogy::Encoding.find(mysql_encoding)
