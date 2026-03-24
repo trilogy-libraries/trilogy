@@ -78,10 +78,6 @@ static void cstr_from_value(char *buf, const trilogy_value_t *value, const char 
     buf[value->data_len] = 0;
 }
 
-// Build a Ruby Time object via rb_time_timespec_new (C API) instead of
-// rb_funcall(rb_cTime, :utc/:local, 7, ...) to skip method dispatch,
-// 7x INT2NUM, and Ruby's internal time_arg() + timegmw() conversion.
-//
 // For UTC: uses the Hinnant civil_to_days algorithm (C++20 std::chrono
 // foundation, handles the full MySQL 1000-9999 year range without timegm).
 // For local: uses mktime (standard C) which consults the system timezone.
