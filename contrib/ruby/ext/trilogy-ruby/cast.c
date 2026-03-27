@@ -54,17 +54,20 @@ static const char *ruby_encoding_name_map[] = {
     [TRILOGY_ENCODING_MAX] = NULL,
 };
 
-static int encoding_for_charset(TRILOGY_CHARSET_t charset)
+static rb_encoding * encoding_for_charset(TRILOGY_CHARSET_t charset)
 {
-    static int map[TRILOGY_CHARSET_MAX];
+    static rb_encoding * map[TRILOGY_CHARSET_MAX];
 
-    if (map[charset]) {
+    if (RB_LIKELY(map[charset])) {
         return map[charset];
     }
 
     const char *encoding_name = ruby_encoding_name_map[trilogy_encoding_from_charset(charset)];
-
-    return map[charset] = (encoding_name ? rb_enc_find_index(encoding_name) : -1);
+    map[charset] = rb_enc_find(encoding_name);
+    if (!map[charset]) {
+        map[charset] = rb_ascii8bit_encoding();
+    }
+    return map[charset];
 }
 
 static void cstr_from_value(char *buf, const trilogy_value_t *value, const char *errmsg)
@@ -384,15 +387,7 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
     }
 
     // for all other types, just return a string
-
-    VALUE str = rb_str_new(value->data, value->data_len);
-
-    int encoding_index = encoding_for_charset(column->charset);
-    if (encoding_index != -1) {
-        rb_enc_associate_index(str, encoding_index);
-    }
-
-    return str;
+    return rb_enc_str_new(value->data, value->data_len, encoding_for_charset(column->charset));
 }
 
 void rb_trilogy_cast_init(void)
