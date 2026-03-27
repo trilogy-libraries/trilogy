@@ -934,7 +934,7 @@ static VALUE read_query_response(VALUE vargs)
     double query_time = finish.tv_sec - start.tv_sec;
     query_time += (double)(finish.tv_nsec - start.tv_nsec) / 1000000000.0;
 
-    VALUE column_names = rb_ary_new2(column_count);
+    VALUE column_names = 0;
 
     VALUE rows = rb_ary_new();
 
@@ -946,6 +946,8 @@ static VALUE read_query_response(VALUE vargs)
     else {
         VALUE rb_column_info;
         struct column_info *column_info = ALLOCV_N(struct column_info, rb_column_info, column_count);
+        VALUE rb_ruby_values;
+        VALUE *row_ruby_values = ALLOCV_N(VALUE, rb_ruby_values, column_count);
 
         for (uint64_t i = 0; i < column_count; i++) {
             trilogy_column_t column;
@@ -968,13 +970,11 @@ static VALUE read_query_response(VALUE vargs)
             }
 
     #ifdef HAVE_RB_ENC_INTERNED_STR
-            VALUE column_name = rb_enc_interned_str(column.name, column.name_len, ctx->encoding);
+            row_ruby_values[i] = rb_enc_interned_str(column.name, column.name_len, ctx->encoding);
     #else
-            VALUE column_name = rb_enc_str_new(column.name, column.name_len, ctx->encoding);
-            OBJ_FREEZE(column_name);
+            row_ruby_values[i] = rb_enc_str_new(column.name, column.name_len, ctx->encoding);
+            OBJ_FREEZE(row_ruby_values[i]);
     #endif
-
-            rb_ary_push(column_names, column_name);
 
             column_info[i].type = column.type;
             column_info[i].flags = column.flags;
@@ -983,11 +983,13 @@ static VALUE read_query_response(VALUE vargs)
             column_info[i].decimals = column.decimals;
         }
 
-        VALUE rb_row_values;
-        trilogy_value_t *row_values = ALLOCV_N(trilogy_value_t, rb_row_values, column_count);
+        column_names = rb_ary_new_from_values(column_count, row_ruby_values);
+
+        VALUE rb_trilogy_values;
+        trilogy_value_t *row_trilogy_values = ALLOCV_N(trilogy_value_t, rb_trilogy_values, column_count);
 
         while (1) {
-            int rc = trilogy_read_row(&ctx->conn, row_values);
+            int rc = trilogy_read_row(&ctx->conn, row_trilogy_values);
 
             if (rc == TRILOGY_AGAIN) {
                 rc = trilogy_sock_wait_read(ctx->conn.socket);
@@ -1005,18 +1007,20 @@ static VALUE read_query_response(VALUE vargs)
                 return read_query_error(args, rc, "trilogy_read_row");
             }
 
+            for (uint64_t i = 0; i < column_count; i++) {
+                row_ruby_values[i] = rb_trilogy_cast_value(row_trilogy_values + i, column_info + i, args->cast_options);
+            }
+
             if (args->cast_options->flatten_rows) {
-                for (uint64_t i = 0; i < column_count; i++) {
-                    rb_ary_push(rows, rb_trilogy_cast_value(row_values + i, column_info + i, args->cast_options));
-                }
+                rb_ary_cat(rows, row_ruby_values, column_count);
             } else {
-                VALUE row = rb_ary_new2(column_count);
-                for (uint64_t i = 0; i < column_count; i++) {
-                    rb_ary_push(row, rb_trilogy_cast_value(row_values + i, column_info + i, args->cast_options));
-                }
-                rb_ary_push(rows, row);
+                rb_ary_push(rows, rb_ary_new_from_values(column_count, row_ruby_values));
             }
         }
+
+        ALLOCV_END(rb_column_info);
+        ALLOCV_END(rb_trilogy_values);
+        ALLOCV_END(rb_ruby_values);
     }
 
     return rb_class_new_instance(
