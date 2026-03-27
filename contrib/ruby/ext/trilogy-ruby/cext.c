@@ -164,7 +164,7 @@ static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, 
     id_password, id_database, id_enable_cleartext_plugin,
     id_ssl_ca, id_ssl_capath, id_ssl_cert, id_ssl_cipher, id_ssl_crl, id_ssl_crlpath, id_ssl_key,
     id_ssl_mode, id_tls_ciphersuites, id_tls_min_version, id_tls_max_version, id_multi_statement, id_multi_result,
-    id_from_code, id_from_errno, id_connection_options, id_max_allowed_packet;
+    id_from_code, id_from_errno, id_max_allowed_packet;
 
 struct trilogy_ctx {
     trilogy_conn_t conn;
@@ -1463,7 +1463,6 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
     id_multi_result = rb_intern("multi_result");
     id_from_code = rb_intern("from_code");
     id_from_errno = rb_intern("from_errno");
-    id_connection_options = rb_intern("@connection_options");
 
     rb_trilogy_cast_init();
 
