@@ -15,7 +15,8 @@ connect_options = {
   path:     DEFAULT_SOCK, # for trilogy
   socket:   DEFAULT_SOCK, # for mysql2
   username: DEFAULT_USER,
-  password: DEFAULT_PASS
+  password: DEFAULT_PASS,
+  database: "test",
 }
 
 Benchmark.ips do |x|
@@ -70,6 +71,50 @@ Benchmark.ips do |x|
 
   x.report "mysql2 change_db" do
     mysql2_client.select_db TEST_DB
+  end
+
+  x.compare!
+end
+
+values = {
+  null_test: "test",
+  bit_test: "test",
+  single_bit_test: 1,
+  tiny_int_test: 2,
+  bool_cast_test: true,
+  small_int_test: 4,
+  medium_int_test: 23434,
+  int_test: 324234,
+  big_int_test: 234234,
+  unsigned_big_int_test: 23423423,
+  float_test: 234234,
+  float_zero_test: 213.23,
+  double_test: 23123.12323,
+  decimal_test: 123213.12312,
+  decimal_zero_test: 213213.21323,
+  date_test: "2026-01-30",
+  date_time_test: "2026-01-30 14:03:56",
+  date_time_with_precision_test: "2026-01-30 14:03:56.12",
+  time_with_precision_test: "2026-01-30 14:03:56.12",
+  timestamp_test: "2026-01-30 14:03:56.12",
+  varchar_test: "VARCHAR"
+}
+
+insert = "INSERT INTO trilogy_test(#{values.keys.join(", ")}) VALUES (#{values.values.map(&:inspect).join(", ")})"
+1000.times do
+  trilogy_client.query(insert)
+end
+
+LARGE_QUERY = "SELECT * FROM trilogy_test LIMIT 1000"
+
+Benchmark.ips do |x|
+  x.report "trilogy large query" do
+    trilogy_client.query LARGE_QUERY
+  end
+
+  x.report "mysql2 large query" do
+    result = mysql2_client.query LARGE_QUERY
+    result.to_a
   end
 
   x.compare!
