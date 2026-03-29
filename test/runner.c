@@ -49,6 +49,7 @@ const trilogy_sockopt_t *get_connopt(void) { return &connopt; }
     SUITE(client_stmt_execute_test)                                                                                    \
     SUITE(client_stmt_reset_test)                                                                                      \
     SUITE(client_stmt_close_test)                                                                                      \
+    SUITE(client_eof_packet_test)                                                                                      \
 
 #define XX(name) extern int name();
 ALL_SUITES(XX)

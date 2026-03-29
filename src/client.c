@@ -280,6 +280,21 @@ static int read_deprecated_eof_packet(trilogy_conn_t *conn)
     return TRILOGY_EOF;
 }
 
+bool is_eof_packet(trilogy_conn_t *conn)
+{
+    // An EOF packet first byte can mark an EOF/OK packet, a deprecated EOF packet, or a huge data packet.
+    if (current_packet_type(conn) == TRILOGY_PACKET_EOF) {
+        if (conn->capabilities & TRILOGY_CAPABILITIES_DEPRECATE_EOF) {
+            // The EOF/OK packet can contain an info message and/or session state info up to max packet length.
+            return conn->packet_buffer.len <= TRILOGY_MAX_PACKET_LEN;
+        } else {
+            // The deprecated EOF packet must be smaller than 9 bytes (one 8-byte length-encoded integer).
+            return conn->packet_buffer.len < 9;
+        }
+    }
+    return false;
+}
+
 static int read_eof_packet(trilogy_conn_t *conn)
 {
     int rc;
@@ -983,7 +998,7 @@ int trilogy_read_row(trilogy_conn_t *conn, trilogy_value_t *values_out)
         return rc;
     }
 
-    if (current_packet_type(conn) == TRILOGY_PACKET_EOF && conn->packet_buffer.len < 9) {
+    if (is_eof_packet(conn)) {
         if ((rc = read_eof_packet(conn)) != TRILOGY_OK) {
             return rc;
         }
@@ -1018,7 +1033,7 @@ int trilogy_drain_results(trilogy_conn_t *conn)
             return rc;
         }
 
-        if (current_packet_type(conn) == TRILOGY_PACKET_EOF && conn->packet_buffer.len < 9) {
+        if (is_eof_packet(conn)) {
             read_eof_packet(conn);
             return TRILOGY_OK;
         }
@@ -1261,7 +1276,7 @@ int trilogy_stmt_read_row(trilogy_conn_t *conn, trilogy_stmt_t *stmt, trilogy_co
         return rc;
     }
 
-    if (current_packet_type(conn) == TRILOGY_PACKET_EOF && conn->packet_buffer.len < 9) {
+    if (is_eof_packet(conn)) {
         if ((rc = read_eof_packet(conn)) != TRILOGY_OK) {
             return rc;
         }
