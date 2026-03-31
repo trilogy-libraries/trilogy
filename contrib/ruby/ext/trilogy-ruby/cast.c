@@ -7,7 +7,7 @@
 
 #define CAST_STACK_SIZE 64
 
-static ID id_BigDecimal, id_Integer, id_new;
+static ID id_BigDecimal, id_Integer, id_new, id_local;
 
 static const char *ruby_encoding_name_map[] = {
     [TRILOGY_ENCODING_ARMSCII8] = NULL,
@@ -99,23 +99,20 @@ static time_t civil_to_epoch_utc(int year, int month, int day, int hour, int min
 static VALUE trilogy_make_time(int year, int month, int day, int hour, int min, int sec,
                                int usec, int local)
 {
-    struct timespec ts;
     if (local) {
-        struct tm tm = {
-            .tm_year = year - 1900,
-            .tm_mon  = month - 1,
-            .tm_mday = day,
-            .tm_hour = hour,
-            .tm_min  = min,
-            .tm_sec  = sec,
-            .tm_isdst = -1,
-        };
-        ts.tv_sec = mktime(&tm);
-    } else {
-        ts.tv_sec = civil_to_epoch_utc(year, month, day, hour, min, sec);
+        return rb_funcall(
+            rb_cTime, id_local, 7,
+            INT2NUM(year), INT2NUM(month), INT2NUM(day),
+            INT2NUM(hour), INT2NUM(min), INT2NUM(sec),
+            INT2NUM(usec / 1000)
+        );
     }
-    ts.tv_nsec = (long)usec * 1000;
-    return rb_time_timespec_new(&ts, local ? INT_MAX : INT_MAX - 1);
+
+    struct timespec ts = {
+        .tv_sec = civil_to_epoch_utc(year, month, day, hour, min, sec),
+        .tv_nsec = (long)usec * 1000,
+    };
+    return rb_time_timespec_new(&ts, INT_MAX - 1);
 }
 
 // Byte-arithmetic datetime parsing helpers (inspired by Go's go-sql-driver/mysql)
@@ -398,4 +395,5 @@ void rb_trilogy_cast_init(void)
     id_BigDecimal = rb_intern("BigDecimal");
     id_Integer = rb_intern("Integer");
     id_new = rb_intern("new");
+    id_local = rb_intern("local");
 }
