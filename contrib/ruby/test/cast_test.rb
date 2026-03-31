@@ -368,6 +368,29 @@ class CastTest < TrilogyTest
     assert_kind_of Time, results[0][0]
   end
 
+  def test_datetime_cast_local_dst
+    tz_before = ENV['TZ']
+    ENV['TZ'] = 'America/New_York'
+    time = Time.local(2024, 11, 3, 1, 21, 54)
+
+    @client.query_flags |= Trilogy::QUERY_FLAGS_LOCAL_TIMEZONE
+
+    @client.query(<<-SQL)
+      INSERT INTO trilogy_test (date_time_test)
+      VALUES ("#{time.strftime("%Y-%m-%d %H:%M:%S")}")
+    SQL
+
+    results = @client.query(<<-SQL).to_a
+      SELECT date_time_test FROM trilogy_test
+    SQL
+
+    assert_equal_timestamp time, results[0][0]
+
+    assert_kind_of Time, results[0][0]
+  ensure
+    ENV['TZ'] = tz_before
+  end
+
   def test_datetime_cast_with_precision
     @client.query(<<-SQL)
       INSERT INTO trilogy_test (date_time_with_precision_test)
