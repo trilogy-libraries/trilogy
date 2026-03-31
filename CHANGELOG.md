@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+- Fixed compatibility with Manticore.
+- Improved performance of result parsing and type casting in the Ruby extension. Particularly for datetime fields.
+- Added `Trilogy::Result#in_transaction?`
+
 ## 2.11.1
 
 ### Fixed
