@@ -264,7 +264,10 @@ class ClientTest < TrilogyTest
 
     client.query("INSERT INTO trilogy_test (int_test) VALUES ('4')")
     client.query("INSERT INTO trilogy_test (int_test) VALUES ('3')")
-    client.query("INSERT INTO trilogy_test (int_test) VALUES ('1')")
+    result = client.query("INSERT INTO trilogy_test (int_test) VALUES ('1')")
+
+    assert_equal [], result.fields
+    assert_equal [], result.rows
 
     result = client.query_with_flags("SELECT id, int_test FROM trilogy_test", client.query_flags | Trilogy::QUERY_FLAGS_FLATTEN_ROWS)
 
