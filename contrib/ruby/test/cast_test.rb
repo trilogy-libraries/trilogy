@@ -449,7 +449,6 @@ class CastTest < TrilogyTest
   # --- Tests ported from Go's go-sql-driver/mysql TestParseDateTime ---
 
   def test_datetime_fractional_1_digit
-    # Go test: "parse datetime nanosec 1-digit" => "2020-05-25 23:22:01.1"
     @client.query("INSERT INTO trilogy_test (date_time_with_precision_test) VALUES ('2020-05-25 23:22:01.1')")
 
     time = @client.query("SELECT date_time_with_precision_test FROM trilogy_test").to_a[0][0]
@@ -465,7 +464,6 @@ class CastTest < TrilogyTest
   end
 
   def test_datetime_fractional_2_digits
-    # Go test: "parse datetime nanosec 2-digits" => "2020-05-25 23:22:01.15"
     @client.query("INSERT INTO trilogy_test (date_time_with_precision_test) VALUES ('2020-05-25 23:22:01.15')")
 
     time = @client.query("SELECT date_time_with_precision_test FROM trilogy_test").to_a[0][0]
@@ -475,7 +473,6 @@ class CastTest < TrilogyTest
   end
 
   def test_datetime_fractional_3_digits
-    # Go test: "parse datetime nanosec 3-digits" => "2020-05-25 23:22:01.159"
     @client.query("INSERT INTO trilogy_test (date_time_with_precision_test) VALUES ('2020-05-25 23:22:01.159')")
 
     time = @client.query("SELECT date_time_with_precision_test FROM trilogy_test").to_a[0][0]
@@ -485,7 +482,6 @@ class CastTest < TrilogyTest
   end
 
   def test_datetime_fractional_4_digits
-    # Go test: "parse datetime nanosec 4-digits" => "2020-05-25 23:22:01.1594"
     @client.query("INSERT INTO trilogy_test (date_time_with_precision_test) VALUES ('2020-05-25 23:22:01.1594')")
 
     time = @client.query("SELECT date_time_with_precision_test FROM trilogy_test").to_a[0][0]
@@ -495,7 +491,6 @@ class CastTest < TrilogyTest
   end
 
   def test_datetime_fractional_5_digits
-    # Go test: "parse datetime nanosec 5-digits" => "2020-05-25 23:22:01.15949"
     @client.query("INSERT INTO trilogy_test (date_time_with_precision_test) VALUES ('2020-05-25 23:22:01.15949')")
 
     time = @client.query("SELECT date_time_with_precision_test FROM trilogy_test").to_a[0][0]
@@ -505,7 +500,6 @@ class CastTest < TrilogyTest
   end
 
   def test_datetime_fractional_6_digits
-    # Go test: "parse datetime nanosec 6-digits" => "2020-05-25 23:22:01.159491"
     @client.query("INSERT INTO trilogy_test (date_time_with_precision_test) VALUES ('2020-05-25 23:22:01.159491')")
 
     time = @client.query("SELECT date_time_with_precision_test FROM trilogy_test").to_a[0][0]
@@ -520,8 +514,24 @@ class CastTest < TrilogyTest
     assert_equal 159491, time.usec
   end
 
+  def test_datetime_fractional_6_digits_localtime
+    skip unless Time.method_defined?(:iso8601)
+
+    tz_before = ENV['TZ']
+    ENV['TZ'] = 'UTC 0'
+
+    @client.query_flags |= Trilogy::QUERY_FLAGS_LOCAL_TIMEZONE
+    @client.query("INSERT INTO trilogy_test (date_time_with_precision_test) VALUES ('2020-05-25 23:22:01.159491')")
+
+    time = @client.query("SELECT date_time_with_precision_test FROM trilogy_test").to_a[0][0]
+
+    assert_kind_of Time, time
+    assert_equal "2020-05-25T23:22:01.159491+00:00", time.iso8601(6)
+  ensure
+    ENV['TZ'] = tz_before
+  end
+
   def test_datetime_zero_date_returns_nil
-    # Go test: "parse null datetime" => "0000-00-00 00:00:00"
     @client.query("SET SESSION sql_mode = 'ALLOW_INVALID_DATES'")
     @client.query("INSERT INTO trilogy_test (date_time_test) VALUES ('0000-00-00 00:00:00')")
 
@@ -530,7 +540,6 @@ class CastTest < TrilogyTest
   end
 
   def test_date_zero_returns_nil
-    # Go test: "parse null date" => "0000-00-00"
     @client.query("SET SESSION sql_mode = 'ALLOW_INVALID_DATES'")
     @client.query("INSERT INTO trilogy_test (date_test) VALUES ('0000-00-00')")
 
@@ -539,7 +548,6 @@ class CastTest < TrilogyTest
   end
 
   def test_datetime_specific_date_parse
-    # Go test: "parse date" => "2020-05-13"
     @client.query("INSERT INTO trilogy_test (date_test) VALUES ('2020-05-13')")
 
     date = @client.query("SELECT date_test FROM trilogy_test").to_a[0][0]
@@ -551,7 +559,6 @@ class CastTest < TrilogyTest
   end
 
   def test_datetime_specific_datetime_parse
-    # Go test: "parse datetime" => "2020-05-13 21:30:45"
     @client.query("INSERT INTO trilogy_test (date_time_test) VALUES ('2020-05-13 21:30:45')")
 
     time = @client.query("SELECT date_time_test FROM trilogy_test").to_a[0][0]
