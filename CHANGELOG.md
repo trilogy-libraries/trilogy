@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.12.2
+
+- Fixed incorrect usec for local time casting.
+
 ## 2.12.1
 
 - Fixed local time casting sometimes using the wrong offset.
