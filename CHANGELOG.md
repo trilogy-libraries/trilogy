@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.12.1
+
+- Fixed local time casting sometimes using the wrong offset.
+
 ## 2.12.0
 
 - Fixed compatibility with Manticore.
