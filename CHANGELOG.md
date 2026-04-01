@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+### Fixed
+
+- Exclude `Trilogy#server_version` from `Synchronization` mutex. It is a pure memory read (no socket I/O) and causes `SynchronizationError` when called re-entrantly from within another synchronized method.
+
 ## 2.12.2
 
 - Fixed incorrect usec for local time casting.

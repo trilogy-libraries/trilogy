@@ -22,7 +22,7 @@ class Trilogy
       super
     end
 
-    synchronized_methods = Trilogy.public_instance_methods(false) - %i(closed?)
+    synchronized_methods = Trilogy.public_instance_methods(false) - %i(closed? server_version)
     source = synchronized_methods.flat_map do |method|
       [
         "def #{method}(...)",

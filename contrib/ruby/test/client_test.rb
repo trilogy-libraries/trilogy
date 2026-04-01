@@ -797,6 +797,25 @@ class ClientTest < TrilogyTest
     assert_match %r{\A\d+\.\d+\.\d+}, client.server_version
   end
 
+  def test_server_version_is_not_synchronized
+    # server_version is a pure memory read from the handshake greeting packet
+    # (no socket I/O), so it should be safe to call while another method holds
+    # the synchronization mutex. This matters because instrumentation libraries
+    # (e.g. OpenTelemetry) may call server_version inside a query span to
+    # record span attributes. Since query is synchronized, calling
+    # server_version from within it would raise SynchronizationError if
+    # server_version were also synchronized.
+    client = new_tcp_client
+    thread = Thread.new { client.query("SELECT SLEEP(1)") }
+    thread.join(0.2) # wait for query to start and hold the mutex
+
+    # server_version must not raise SynchronizationError
+    assert_match %r{\A\d+\.\d+\.\d+}, client.server_version
+
+    thread.join
+    client.close
+  end
+
   def test_server_info
     client = new_tcp_client
     server_info = client.server_info
