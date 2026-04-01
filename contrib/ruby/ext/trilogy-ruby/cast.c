@@ -104,7 +104,7 @@ static VALUE trilogy_make_time(int year, int month, int day, int hour, int min, 
             rb_cTime, id_local, 7,
             INT2NUM(year), INT2NUM(month), INT2NUM(day),
             INT2NUM(hour), INT2NUM(min), INT2NUM(sec),
-            INT2NUM(usec / 1000)
+            INT2NUM(usec)
         );
     }
 
