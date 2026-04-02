@@ -5,9 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.12.3
+
 ### Fixed
 
-- Exclude `Trilogy#server_version` from `Synchronization` mutex. It is a pure memory read (no socket I/O) and causes `SynchronizationError` when called re-entrantly from within another synchronized method.
+- Exclude `Trilogy#server_version` from `Synchronization` mutex.
 
 ## 2.12.2
 

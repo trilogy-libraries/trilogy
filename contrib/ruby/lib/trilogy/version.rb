@@ -1,3 +1,3 @@
 class Trilogy
-  VERSION = "2.12.2"
+  VERSION = "2.12.3"
 end
