@@ -19,6 +19,9 @@ class Trilogy
   module Synchronization
     def initialize(...)
       @mutex = Mutex.new
+      @lock_owner = nil
+      @lock_method = nil
+      @should_log_lock_failure = true
       super
     end
 
@@ -26,13 +29,20 @@ class Trilogy
     source = synchronized_methods.flat_map do |method|
       [
         "def #{method}(...)",
-          "raise SynchronizationError unless @mutex.try_lock",
-          "begin",
-            "super",
-          "ensure",
-            "@mutex.unlock",
-          "end",
-        "end",
+          'if @mutex.try_lock',
+          "  @lock_method = \"#{method}\"",
+          '  @lock_owner = Thread.current',
+          'elsif @should_log_lock_failure',
+          '  STDERR.puts "Trilogy::SynchronizationError lock owned on #{@lock_method} by #{@lock_owner} (#{@lock_owner.name}) #{@lock_owner.backtrace_locations(0, 10)}"',
+          '  @should_log_lock_failure = false',
+          'end',
+          'begin',
+            'super',
+          'ensure',
+            '@mutex.unlock if @lock_owner',
+            '@lock_owner = nil',
+          'end',
+        'end',
       ]
     end
     class_eval(source.join(";"), __FILE__, __LINE__)
