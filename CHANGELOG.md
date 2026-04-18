@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+### Fixed
+
+- Add workaround to fix compilation on older rubies combined in Xcode 26.4+.
+
 ## 2.12.3
 
 ### Fixed
