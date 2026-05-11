@@ -467,6 +467,17 @@ escape the GVL on each wait operation without going through call_without_gvl */
         return TRILOGY_ERR;
     }
 
+    int flags = fcntl(fd, F_GETFD); /* should not fail except EBADF. */
+    if (flags == -1) {
+        close(newfd);
+        return TRILOGY_ERR;
+    }
+
+    if (fcntl(newfd, F_SETFD, flags) != 0){
+        close(newfd);
+        return TRILOGY_ERR;
+    }
+
     rc = trilogy_connect_set_fd(&ctx->conn, sock, newfd);
     if (rc < 0) {
         trilogy_sock_close(sock);

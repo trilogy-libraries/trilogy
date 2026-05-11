@@ -1247,6 +1247,10 @@ class ClientTest < TrilogyTest
     assert_operator Trilogy::ConnectionError, :===, klass.new
   end
 
+  def test_fd_leak_on_exec
+    assert system(RbConfig.ruby, File.expand_path("../fixtures/self-exec.rb", __FILE__))
+  end
+
   if defined?(::Ractor)
     # Remove this when support for Ruby 3.x is dropped
     class ::Ractor; alias value take unless method_defined?(:value); end

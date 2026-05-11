@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+### Fixed
+
+- Properly set `FD_CLOEXEC` on trilogy sockets created by Ruby to avoid leaking file descriptor on `exec`.
+
 ## 2.12.4
 
 ### Fixed
