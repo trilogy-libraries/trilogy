@@ -20,7 +20,7 @@ jobs:
       matrix:
         mysql: ["8.0", "8.4", "9.6"]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup MySQL
       run: |
         brew install mysql@${{ matrix.mysql }}
@@ -47,7 +47,7 @@ jobs:
       matrix:
         mariadb: ["10.6", "10.11", "11.4", "11.8"]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Setup MariaDB
       run: |
         brew install mariadb@${{ matrix.mariadb }}
@@ -89,7 +89,7 @@ jobs:
           - mysql: "8.4"
             ruby: "4.0"
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - uses: ruby/setup-ruby@v1
       with:
         ruby-version: ${{ matrix.ruby }}
@@ -133,7 +133,7 @@ jobs:
         mariadb: ["10.6", "11.8"]
         ruby: ["4.0"]
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - uses: ruby/setup-ruby@v1
       with:
         ruby-version: ${{ matrix.ruby }}
