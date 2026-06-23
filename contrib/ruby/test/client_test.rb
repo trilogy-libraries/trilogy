@@ -1268,6 +1268,12 @@ class ClientTest < TrilogyTest
       end
       assert_equal [[1]], ractor.value.to_a
     end
+
+    def test_shareable_result
+      client = new_tcp_client(shareable: true)
+      result = client.query("SELECT * FROM test.trilogy_test")
+      assert_predicate result, :frozen?
+    end
   end
 
   if defined?(Process.fork)

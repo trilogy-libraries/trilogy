@@ -164,7 +164,7 @@ static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, 
     id_password, id_database, id_enable_cleartext_plugin,
     id_ssl_ca, id_ssl_capath, id_ssl_cert, id_ssl_cipher, id_ssl_crl, id_ssl_crlpath, id_ssl_key,
     id_ssl_mode, id_tls_ciphersuites, id_tls_min_version, id_tls_max_version, id_multi_statement, id_multi_result,
-    id_from_code, id_from_errno, id_max_allowed_packet;
+    id_from_code, id_from_errno, id_max_allowed_packet, id_shareable;
 
 struct trilogy_ctx {
     trilogy_conn_t conn;
@@ -764,6 +764,10 @@ static VALUE rb_trilogy_connect(VALUE self, VALUE raw_socket, VALUE encoding, VA
         connopt.tls_max_version = NUM2INT(val);
     }
 
+    if (RTEST(rb_hash_aref(opts, ID2SYM(id_shareable)))) {
+        ctx->query_flags |= TRILOGY_FLAGS_CAST_SHAREABLE;
+    }
+
     VALUE io = rb_io_get_io(raw_socket);
 
     rb_io_t *fptr;
@@ -880,6 +884,7 @@ static void load_query_options(unsigned int query_flags, struct rb_trilogy_cast_
     cast_options->cast_decimals_to_bigdecimals = (query_flags & TRILOGY_FLAGS_CAST_ALL_DECIMALS_TO_BIGDECIMALS) != 0;
     cast_options->database_local_time = (query_flags & TRILOGY_FLAGS_LOCAL_TIMEZONE) != 0;
     cast_options->flatten_rows = (query_flags & TRILOGY_FLAGS_FLATTEN_ROWS) != 0;
+    cast_options->shareable = (query_flags & TRILOGY_FLAGS_CAST_SHAREABLE) != 0;
 }
 
 struct read_query_response_state {
@@ -990,6 +995,7 @@ static VALUE read_query_response(VALUE vargs)
             row_ruby_values[i] = rb_enc_str_new(column.name, column.name_len, ctx->encoding);
             OBJ_FREEZE(row_ruby_values[i]);
     #endif
+            rb_trilogy_shareable(row_ruby_values[i], args->cast_options);
 
             column_info[i].type = column.type;
             column_info[i].flags = column.flags;
@@ -999,6 +1005,7 @@ static VALUE read_query_response(VALUE vargs)
         }
 
         column_names = rb_ary_new_from_values(column_count, row_ruby_values);
+        rb_trilogy_shareable(column_names, args->cast_options);
 
         VALUE rb_trilogy_values;
         trilogy_value_t *row_trilogy_values = ALLOCV_N(trilogy_value_t, rb_trilogy_values, column_count);
@@ -1029,16 +1036,19 @@ static VALUE read_query_response(VALUE vargs)
             if (args->cast_options->flatten_rows) {
                 rb_ary_cat(rows, row_ruby_values, column_count);
             } else {
-                rb_ary_push(rows, rb_ary_new_from_values(column_count, row_ruby_values));
+                VALUE row = rb_ary_new_from_values(column_count, row_ruby_values);
+                rb_ary_push(rows, rb_trilogy_shareable(row, args->cast_options));
             }
         }
+
+        rb_trilogy_shareable(rows, args->cast_options);
 
         ALLOCV_END(rb_column_info);
         ALLOCV_END(rb_trilogy_values);
         ALLOCV_END(rb_ruby_values);
     }
 
-    return rb_class_new_instance(
+    VALUE result = rb_class_new_instance(
         6,
         (VALUE []){
             column_names,
@@ -1050,6 +1060,7 @@ static VALUE read_query_response(VALUE vargs)
         },
         Trilogy_Result
     );
+    return rb_trilogy_shareable(result, args->cast_options);
 }
 
 static VALUE execute_read_query_response(struct trilogy_ctx *ctx)
@@ -1415,6 +1426,7 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
     rb_define_const(Trilogy, "QUERY_FLAGS_CAST", INT2NUM(TRILOGY_FLAGS_CAST));
     rb_define_const(Trilogy, "QUERY_FLAGS_CAST_BOOLEANS", INT2NUM(TRILOGY_FLAGS_CAST_BOOLEANS));
     rb_define_const(Trilogy, "QUERY_FLAGS_CAST_ALL_DECIMALS_TO_BIGDECIMALS", INT2NUM(TRILOGY_FLAGS_CAST_ALL_DECIMALS_TO_BIGDECIMALS));
+    rb_define_const(Trilogy, "QUERY_FLAGS_CAST_SHAREABLE", INT2NUM(TRILOGY_FLAGS_CAST_SHAREABLE));
     rb_define_const(Trilogy, "QUERY_FLAGS_LOCAL_TIMEZONE", INT2NUM(TRILOGY_FLAGS_LOCAL_TIMEZONE));
     rb_define_const(Trilogy, "QUERY_FLAGS_FLATTEN_ROWS", INT2NUM(TRILOGY_FLAGS_FLATTEN_ROWS));
     rb_define_const(Trilogy, "QUERY_FLAGS_DEFAULT", INT2NUM(TRILOGY_FLAGS_DEFAULT));
@@ -1483,6 +1495,7 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
     id_multi_result = rb_intern("multi_result");
     id_from_code = rb_intern("from_code");
     id_from_errno = rb_intern("from_errno");
+    id_shareable = rb_intern("shareable");
 
     rb_trilogy_cast_init();
 
