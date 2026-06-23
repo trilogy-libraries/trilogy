@@ -1065,6 +1065,7 @@ static VALUE execute_read_query_response(struct trilogy_ctx *ctx)
 
     // If we have seen an unexpected exception, jump to it so it gets raised.
     if (state) {
+        rb_trilogy_release_buffer(ctx);
         trilogy_sock_shutdown(ctx->conn.socket);
         rb_jump_tag(state);
     }
