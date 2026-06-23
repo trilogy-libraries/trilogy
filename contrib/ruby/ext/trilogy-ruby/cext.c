@@ -431,6 +431,8 @@ static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
     int state = 0;
     rb_protect(rb_trilogy_wait_protected, (VALUE)&args, &state);
     if (state) {
+        struct trilogy_ctx *ctx = sock->opts.privdata;
+        rb_trilogy_release_buffer(ctx);
         trilogy_sock_shutdown(sock);
         rb_jump_tag(state);
     }
@@ -608,7 +610,9 @@ static int rb_io_descriptor(VALUE io)
 static VALUE rb_trilogy_connect(VALUE self, VALUE raw_socket, VALUE encoding, VALUE charset, VALUE opts)
 {
     struct trilogy_ctx *ctx = get_ctx(self);
-    trilogy_sockopt_t connopt = {0};
+    trilogy_sockopt_t connopt = {
+        .privdata = ctx,
+    };
     trilogy_handshake_t handshake;
     VALUE val;
 

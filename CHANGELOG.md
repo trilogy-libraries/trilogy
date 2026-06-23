@@ -9,6 +9,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 - Properly release read buffer on unexpected exception (typically `Timeout.timeout`).
 
+### Added
+
+- `trilogy_sockopt_t` now has a `void *privdata` field to allow passing extra info to the callbacks.
+
 ## 2.12.5
 
 ### Fixed

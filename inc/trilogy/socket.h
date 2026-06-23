@@ -72,6 +72,8 @@ typedef struct {
     TRILOGY_CAPABILITIES_t flags;
 
     size_t max_allowed_packet;
+
+    void *privdata;
 } trilogy_sockopt_t;
 
 typedef struct trilogy_sock_t {
