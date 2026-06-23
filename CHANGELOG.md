@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.12.6
+
 ### Fixed
 
 - Properly release read buffer on unexpected exception (typically `Timeout.timeout`).
