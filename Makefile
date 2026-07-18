@@ -13,8 +13,8 @@ EXAMPLES = example/trilogy_query
 UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S), Darwin)
-	CFLAGS += "-I$(shell brew --prefix openssl@1.1)/include"
-	LDFLAGS += "-L$(shell brew --prefix openssl@1.1)/lib"
+	CFLAGS += "-I$(shell brew --prefix openssl@3)/include"
+	LDFLAGS += "-L$(shell brew --prefix openssl@3)/lib"
 else
   CFLAGS += -fPIC
   LDFLAGS += -pie -Wl,-z,relro,-z,now
