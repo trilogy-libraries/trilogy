@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mysql: ["8.0", "8.4", "9.6"]
+        mysql: ["8.0", "8.4", "9.7"]
     steps:
     - uses: actions/checkout@v7
     - name: Setup MySQL
@@ -80,9 +80,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - mysql: "9.6"
+          - mysql: "9.7"
             ruby: "3.0"
-          - mysql: "9.6"
+          - mysql: "9.7"
             ruby: "4.0"
           - mysql: "8.0"
             ruby: "4.0"
