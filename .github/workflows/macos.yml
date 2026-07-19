@@ -35,7 +35,7 @@ jobs:
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot -e 'CREATE DATABASE test'
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/caching_sha2_password_user.sql
     - name: Build
-      run: CFLAGS="-I$(brew --prefix openssl@1.1)/include" LDFLAGS="-L$(brew --prefix openssl@1.1)/lib" make all test/test
+      run: CFLAGS="-I$(brew --prefix openssl@3)/include" LDFLAGS="-L$(brew --prefix openssl@3)/lib" make all test/test
     - name: test
       run: test/test
 
@@ -64,7 +64,7 @@ jobs:
         sudo $(brew --prefix mariadb@${{ matrix.mariadb }})/bin/mariadb -e "CREATE USER IF NOT EXISTS 'trilogy'@'127.0.0.1' IDENTIFIED BY 'password'; GRANT ALL PRIVILEGES ON test.* TO 'trilogy'@'127.0.0.1';"
         sudo $(brew --prefix mariadb@${{ matrix.mariadb }})/bin/mariadb -e "CREATE USER IF NOT EXISTS 'trilogy'@'localhost' IDENTIFIED BY 'password'; GRANT ALL PRIVILEGES ON test.* TO 'trilogy'@'localhost';"
     - name: Build
-      run: CFLAGS="-I$(brew --prefix openssl@1.1)/include" LDFLAGS="-L$(brew --prefix openssl@1.1)/lib" make all test/test
+      run: CFLAGS="-I$(brew --prefix openssl@3)/include" LDFLAGS="-L$(brew --prefix openssl@3)/lib" make all test/test
     - name: test
       env:
         MYSQL_HOST: "127.0.0.1"
