@@ -234,7 +234,8 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
             if (column->decimals == 0 && !options->cast_decimals_to_bigdecimals) {
                 return rb_funcall(rb_mKernel, id_Integer, 1, str);
             } else {
-                return rb_funcall(rb_mKernel, id_BigDecimal, 1, str);
+                VALUE bigdecimal = rb_funcall(rb_mKernel, id_BigDecimal, 1, str);
+                return rb_trilogy_shareable(bigdecimal, options);
             }
         }
         case TRILOGY_TYPE_FLOAT:
@@ -311,8 +312,9 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
                 rb_raise(Trilogy_CastError, "Invalid date: %.*s", (int)value->data_len, (char *)value->data);
             }
 
-            return trilogy_make_time(year, month, day, hour, min, sec, usec,
+            VALUE time = trilogy_make_time(year, month, day, hour, min, sec, usec,
                                     options->database_local_time);
+            return rb_trilogy_shareable(time, options);
         }
         case TRILOGY_TYPE_DATE: {
             const char *p = (const char *)value->data;
@@ -343,7 +345,8 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
                 rb_raise(Trilogy_CastError, "Invalid date: %.*s", (int)value->data_len, (char *)value->data);
             }
 
-            return rb_funcall(Date, id_new, 3, INT2NUM(year), INT2NUM(month), INT2NUM(day));
+            VALUE date = rb_funcall(Date, id_new, 3, INT2NUM(year), INT2NUM(month), INT2NUM(day));
+            return rb_trilogy_shareable(date, options);
         }
         case TRILOGY_TYPE_TIME: {
             const char *p = (const char *)value->data;
@@ -375,8 +378,9 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
                     return Qnil;
             }
 
-            return trilogy_make_time(2000, 1, 1, hour, min, sec, usec,
+            VALUE time = trilogy_make_time(2000, 1, 1, hour, min, sec, usec,
                                     options->database_local_time);
+            return rb_trilogy_shareable(time, options);
         }
         default:
             break;
@@ -384,7 +388,8 @@ rb_trilogy_cast_value(const trilogy_value_t *value, const struct column_info *co
     }
 
     // for all other types, just return a string
-    return rb_enc_str_new(value->data, value->data_len, encoding_for_charset(column->charset));
+    VALUE string = rb_enc_str_new(value->data, value->data_len, encoding_for_charset(column->charset));
+    return rb_trilogy_shareable(string, options);
 }
 
 void rb_trilogy_cast_init(void)

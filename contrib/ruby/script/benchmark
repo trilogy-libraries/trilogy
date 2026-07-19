@@ -120,6 +120,16 @@ Benchmark.ips do |x|
   x.compare!
 end
 
+baseline = Trilogy.new(connect_options)
+shareable = Trilogy.new(connect_options.merge(shareable: true))
+
+Benchmark.ips do |x|
+  x.report("baseline") { Ractor.make_shareable(baseline.query("SELECT * FROM trilogy_test")) }
+  x.report("shareable") { Ractor.make_shareable(shareable.query("SELECT * FROM trilogy_test")) }
+  x.compare!(order: :baseline)
+end
+
+
 QUERY = "SELECT 1"
 
 Benchmark.ips do |x|
