@@ -298,7 +298,7 @@ TEST test_copy_buffer()
 
     trilogy_reader_init(&reader, buff, sizeof(buff));
 
-    const char data[5];
+    char data[5];
 
     int err = trilogy_reader_copy_buffer(&reader, sizeof(buff), (void *)data);
     ASSERT_OK(err);
@@ -317,7 +317,7 @@ TEST test_copy_buffer_truncated()
 
     trilogy_reader_init(&reader, buff, sizeof(buff));
 
-    const char data[sizeof(buff)];
+    char data[sizeof(buff)];
 
     int err = trilogy_reader_copy_buffer(&reader, 50, (void *)data);
     ASSERT_ERR(TRILOGY_TRUNCATED_PACKET, err);
