@@ -88,11 +88,15 @@ jobs:
             ruby: "4.0"
           - mysql: "8.4"
             ruby: "4.0"
+    env:
+      BUNDLE_GEMFILE: ${{ github.workspace }}/contrib/ruby/Gemfile
+      BUNDLE_WITHOUT: benchmark
     steps:
     - uses: actions/checkout@v6
     - uses: ruby/setup-ruby@v1
       with:
         ruby-version: ${{ matrix.ruby }}
+        bundler-cache: true
     - name: Setup MySQL
       env:
         MYSQL_VERSION: ${{ matrix.mysql }}
@@ -114,11 +118,6 @@ jobs:
         fi
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/x509_user.sql
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/cleartext_user.sql
-    - name: Install dependencies
-      run: |
-        cd contrib/ruby
-        bundle config set without benchmark
-        bundle install
     - name: Run tests
       run: |
         cd contrib/ruby
@@ -132,11 +131,15 @@ jobs:
       matrix:
         mariadb: ["10.6", "11.8"]
         ruby: ["4.0"]
+    env:
+      BUNDLE_GEMFILE: ${{ github.workspace }}/contrib/ruby/Gemfile
+      BUNDLE_WITHOUT: benchmark
     steps:
     - uses: actions/checkout@v6
     - uses: ruby/setup-ruby@v1
       with:
         ruby-version: ${{ matrix.ruby }}
+        bundler-cache: true
     - name: Setup MariaDB
       env:
         MARIADB_VERSION: ${{ matrix.mariadb }}
