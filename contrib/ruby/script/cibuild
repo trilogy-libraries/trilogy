@@ -10,6 +10,7 @@ fi
 ruby -v
 bundle -v
 
+bundle config set --local without benchmark
 script/bootstrap
 
 MYSQL_SOCK=$(mysql_config --socket) script/test
