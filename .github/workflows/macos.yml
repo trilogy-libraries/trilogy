@@ -162,11 +162,6 @@ jobs:
         # Note: x509_user.sql and cleartext_user.sql are not used for MariaDB
         # - x509 tests require custom client certificates (not available without generate_keys.sh)
         # - cleartext_plugin_server requires auth_test_plugin.so (MySQL-specific)
-    - name: Install dependencies
-      run: |
-        cd contrib/ruby
-        bundle config set without benchmark
-        bundle install
     - name: Run tests
       env:
         MYSQL_HOST: "127.0.0.1"
