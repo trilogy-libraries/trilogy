@@ -64,6 +64,7 @@ class ClientTest < TrilogyTest
       ssl: true,
       ssl_mode: 4,
       tls_min_version: 3,
+      connect_timeout: 120,
     }
     assert_equal expected_connection_options, client.connection_options
   end
@@ -611,8 +612,24 @@ class ClientTest < TrilogyTest
   def test_connect_timeout_with_only_write_timeout
     assert_raises Trilogy::TimeoutError do
       # 192.0.2.0/24 is TEST-NET-1 which should only be for docs/examples
-      new_tcp_client(host: "192.0.2.1", write_timeout: 0.1)
+      new_tcp_client(host: "192.0.2.1", write_timeout: 0.1, connect_timeout: nil)
     end
+  end
+
+  def test_default_connect_timeout
+    client = new_tcp_client
+
+    assert_equal 120, client.connection_options[:connect_timeout]
+  ensure
+    ensure_closed client
+  end
+
+  def test_default_connect_timeout_not_applied_when_explicitly_nil
+    client = new_tcp_client(connect_timeout: nil)
+
+    assert_nil client.connection_options[:connect_timeout]
+  ensure
+    ensure_closed client
   end
 
   def test_large_query

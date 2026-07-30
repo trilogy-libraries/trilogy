@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+### Changed
+
+- The Ruby client now defaults `connect_timeout` to 120 seconds, matching `mysql2`. Pass `connect_timeout: nil` to disable the timeout.
+
 ## 2.12.6
 
 ### Fixed
