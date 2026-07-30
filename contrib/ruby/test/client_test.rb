@@ -64,7 +64,7 @@ class ClientTest < TrilogyTest
       ssl: true,
       ssl_mode: 4,
       tls_min_version: 3,
-      connect_timeout: 120,
+      connect_timeout: 5,
     }
     assert_equal expected_connection_options, client.connection_options
   end
@@ -619,7 +619,7 @@ class ClientTest < TrilogyTest
   def test_default_connect_timeout
     client = new_tcp_client
 
-    assert_equal 120, client.connection_options[:connect_timeout]
+    assert_equal 5, client.connection_options[:connect_timeout]
   ensure
     ensure_closed client
   end

@@ -42,8 +42,8 @@ class Trilogy
 
   def initialize(options = {})
     options[:port] = options[:port].to_i if options[:port]
-    # Set default connect_timeout, matching mysql2, to avoid hanging indefinitely on connect
-    options[:connect_timeout] = 120 unless options.key?(:connect_timeout)
+    # Set default connect_timeout to avoid hanging indefinitely on connect
+    options[:connect_timeout] = 5 unless options.key?(:connect_timeout)
     mysql_encoding = options[:encoding] || "utf8mb4"
     encoding = Trilogy::Encoding.find(mysql_encoding)
     charset = Trilogy::Encoding.charset(mysql_encoding)
