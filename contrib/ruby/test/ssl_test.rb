@@ -46,7 +46,7 @@ class SslTest < TrilogyTest
 
   def test_trilogy_connect_ssl_config_tls12
     client = new_tcp_client(database: "test", ssl: true, tls_min_version: Trilogy::TLS_VERSION_12, tls_max_version: Trilogy::TLS_VERSION_12)
-    result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_version'"
+    result = client.query "SHOW SESSION STATUS LIKE 'Ssl_version'"
     assert_equal [["Ssl_version", "TLSv1.2"]], result.to_a
   ensure
     ensure_closed client
@@ -56,7 +56,7 @@ class SslTest < TrilogyTest
     return skip unless tls_1_3_support?
 
     client = new_tcp_client(database: "test", ssl: true, tls_min_version: Trilogy::TLS_VERSION_13, tls_max_version: Trilogy::TLS_VERSION_13)
-    result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_version'"
+    result = client.query "SHOW SESSION STATUS LIKE 'Ssl_version'"
     assert_equal [["Ssl_version", "TLSv1.3"]], result.to_a
   ensure
     ensure_closed client
@@ -66,7 +66,7 @@ class SslTest < TrilogyTest
     return skip unless tls_1_3_support?
 
     client = new_tcp_client(database: "test", ssl: true, tls_min_version: Trilogy::TLS_VERSION_13, tls_max_version: Trilogy::TLS_VERSION_13, tls_ciphersuites: "TLS_AES_128_GCM_SHA256")
-    result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_cipher'"
+    result = client.query "SHOW SESSION STATUS LIKE 'Ssl_cipher'"
     assert_equal [["Ssl_cipher", "TLS_AES_128_GCM_SHA256"]], result.to_a
   ensure
     ensure_closed client
@@ -76,7 +76,7 @@ class SslTest < TrilogyTest
     return skip unless tls_1_3_support?
 
     client = new_tcp_client(database: "test", ssl: true, tls_min_version: Trilogy::TLS_VERSION_13, tls_max_version: Trilogy::TLS_VERSION_13, tls_ciphersuites: "TLS_AES_256_GCM_SHA384")
-    result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_cipher'"
+    result = client.query "SHOW SESSION STATUS LIKE 'Ssl_cipher'"
     assert_equal [["Ssl_cipher", "TLS_AES_256_GCM_SHA384"]], result.to_a
   ensure
     ensure_closed client
@@ -94,7 +94,7 @@ class SslTest < TrilogyTest
 
   def test_trilogy_connect_ssl_config_cipher_aesgcm128
     client = new_tcp_client(database: "test", ssl: true, tls_max_version: Trilogy::TLS_VERSION_12, ssl_cipher: "ECDHE-RSA-AES128-GCM-SHA256")
-    result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_cipher'"
+    result = client.query "SHOW SESSION STATUS LIKE 'Ssl_cipher'"
     assert_equal [["Ssl_cipher", "ECDHE-RSA-AES128-GCM-SHA256"]], result.to_a
   ensure
     ensure_closed client
@@ -102,7 +102,7 @@ class SslTest < TrilogyTest
 
   def test_trilogy_connect_ssl_config_cipher_aesgcm256
     client = new_tcp_client(database: "test", ssl: true, tls_max_version: Trilogy::TLS_VERSION_12, ssl_cipher: "ECDHE-RSA-AES256-GCM-SHA384")
-    result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_cipher'"
+    result = client.query "SHOW SESSION STATUS LIKE 'Ssl_cipher'"
     assert_equal [["Ssl_cipher", "ECDHE-RSA-AES256-GCM-SHA384"]], result.to_a
   ensure
     ensure_closed client
@@ -158,7 +158,7 @@ class SslTest < TrilogyTest
     return skip unless ca_cert_path
 
     client = new_tcp_client(database: "test", ssl_mode: Trilogy::SSL_VERIFY_CA, ssl_ca: "#{ca_cert_path}/ca.pem", tls_max_version: Trilogy::TLS_VERSION_12)
-    result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_version'"
+    result = client.query "SHOW SESSION STATUS LIKE 'Ssl_version'"
     assert_equal [["Ssl_version", "TLSv1.2"]], result.to_a
   ensure
     ensure_closed client
@@ -179,7 +179,7 @@ class SslTest < TrilogyTest
     return skip unless ca_cert_path
 
     client = new_tcp_client(database: "test", ssl_mode: Trilogy::SSL_VERIFY_IDENTITY, ssl_ca: "#{ca_cert_path}/ca.pem", tls_max_version: Trilogy::TLS_VERSION_12)
-    result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_version'"
+    result = client.query "SHOW SESSION STATUS LIKE 'Ssl_version'"
     assert_equal [["Ssl_version", "TLSv1.2"]], result.to_a
   ensure
     ensure_closed client
@@ -189,7 +189,7 @@ class SslTest < TrilogyTest
     return skip unless ca_cert_path
 
     client = new_tcp_client(host: "wildcard.#{DEFAULT_HOST}", database: "test", ssl_mode: Trilogy::SSL_VERIFY_IDENTITY, ssl_ca: "#{ca_cert_path}/ca.pem", tls_max_version: Trilogy::TLS_VERSION_12)
-    result = client.query "SELECT * FROM performance_schema.session_status WHERE VARIABLE_NAME = 'Ssl_version'"
+    result = client.query "SHOW SESSION STATUS LIKE 'Ssl_version'"
     assert_equal [["Ssl_version", "TLSv1.2"]], result.to_a
   ensure
     ensure_closed client
