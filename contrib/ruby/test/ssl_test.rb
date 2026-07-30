@@ -238,3 +238,79 @@ class SslTest < TrilogyTest
     ensure_closed client
   end
 end
+
+# Separate from SslTest because its setup skips everything on non-SSL servers,
+# while the fallback test here must run exactly then.
+class DefaultSslModeTest < TrilogyTest
+  # Not new_tcp_client, which passes ssl_mode explicitly and would mask the default.
+  def direct_client(opts = {})
+    Trilogy.new({
+      host: DEFAULT_HOST,
+      port: DEFAULT_PORT,
+      username: DEFAULT_USER,
+      password: DEFAULT_PASS,
+    }.merge(opts))
+  end
+
+  # SHOW SESSION STATUS rather than performance_schema.session_status: the
+  # latter is empty on servers running with performance_schema = OFF (e.g.
+  # MariaDB < 11.4 defaults), where the fallback test below still needs to run.
+  def ssl_cipher(client)
+    result = client.query "SHOW SESSION STATUS LIKE 'Ssl_cipher'"
+    result.to_a[0][1]
+  end
+
+  def server_supports_ssl?
+    have_ssl = server_global_variable("have_ssl")
+    return have_ssl == "YES" unless have_ssl.nil?
+
+    # have_ssl was removed in MySQL 8.4+; check whether a server certificate is loaded instead
+    client = direct_client(ssl_mode: Trilogy::SSL_DISABLED)
+    status = client.query("SHOW GLOBAL STATUS LIKE 'Ssl_server_not_after'").to_a
+    !status.empty? && !status[0][1].to_s.empty?
+  ensure
+    ensure_closed client
+  end
+
+  def test_default_ssl_mode_uses_tls_when_server_supports_it
+    skip "SSL is disabled on the server" unless server_supports_ssl?
+
+    client = direct_client
+    refute_equal "", ssl_cipher(client)
+  ensure
+    ensure_closed client
+  end
+
+  def test_explicit_ssl_disabled_connects_without_tls
+    skip "SSL is disabled on the server" unless server_supports_ssl?
+
+    client = direct_client(ssl_mode: Trilogy::SSL_DISABLED)
+    assert_equal "", ssl_cipher(client)
+  ensure
+    ensure_closed client
+  end
+
+  def test_default_ssl_mode_falls_back_to_plaintext_without_server_ssl
+    skip "SSL is enabled on the server" if server_supports_ssl?
+
+    client = direct_client
+    assert_equal "", ssl_cipher(client)
+  ensure
+    ensure_closed client
+  end
+
+  def test_default_ssl_mode_does_not_apply_to_unix_socket
+    return skip unless ["127.0.0.1", "localhost"].include?(DEFAULT_HOST)
+
+    socket = new_tcp_client.query("SHOW VARIABLES LIKE 'socket'").to_a[0][1]
+
+    if !File.exist?(socket)
+      skip "could not find socket at #{socket}"
+    end
+
+    client = Trilogy.new(username: DEFAULT_USER, password: DEFAULT_PASS, socket: socket)
+    assert_equal "", ssl_cipher(client)
+  ensure
+    ensure_closed client
+  end
+end

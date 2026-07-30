@@ -36,6 +36,20 @@ if client.ping
 end
 ```
 
+### SSL/TLS
+
+When `ssl_mode` is omitted, TCP connections attempt a TLS connection and fall
+back to plaintext when the server doesn't support TLS (equivalent to
+`Trilogy::SSL_PREFERRED_NOVERIFY`). The server certificate is not verified in
+this mode. Unix socket connections default to plaintext.
+
+If you need TLS to be required, or the server certificate to be verified, pass
+an explicit `ssl_mode`:
+
+``` ruby
+client = Trilogy.new(host: "127.0.0.1", username: "root", ssl_mode: Trilogy::SSL_VERIFY_IDENTITY, ssl_ca: "/path/to/ca.pem")
+```
+
 ### Processing multiple result sets
 
 In order to send and receive multiple result sets, pass the `multi_statement` option when connecting.
