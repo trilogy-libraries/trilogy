@@ -42,8 +42,6 @@ class Trilogy
 
   def initialize(options = {})
     options[:port] = options[:port].to_i if options[:port]
-    # Set default connect_timeout to avoid hanging indefinitely on connect
-    options[:connect_timeout] = 5 unless options.key?(:connect_timeout)
     mysql_encoding = options[:encoding] || "utf8mb4"
     encoding = Trilogy::Encoding.find(mysql_encoding)
     charset = Trilogy::Encoding.charset(mysql_encoding)
@@ -54,7 +52,7 @@ class Trilogy
     begin
       if host = options[:host]
         port = options[:port] || 3306
-        connect_timeout = options[:connect_timeout] || options[:write_timeout]
+        connect_timeout = options.fetch(:connect_timeout, 5) || options[:write_timeout]
 
         socket = TCPSocket.new(host, port, connect_timeout: connect_timeout)
 
