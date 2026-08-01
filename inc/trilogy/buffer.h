@@ -68,7 +68,7 @@ int trilogy_buffer_write(trilogy_buffer_t *buffer, const uint8_t *ptr, size_t le
 
 /* trilogy_buffer_free - Free an trilogy_buffer_t's underlying storage. The buffer
  * must be re-initialized with trilogy_buffer_init if it is to be reused. Any
- * operations performed on an unintialized or freed buffer are undefined.
+ * operations performed on an uninitialized or freed buffer are undefined.
  *
  * buffer - An initialized trilogy_buffer_t.
  */
