@@ -607,7 +607,7 @@ void trilogy_free(trilogy_conn_t *conn);
  * conn - A pre-initialized trilogy_conn_t pointer.
  *
  * Return values:
- *   TRILOGY_OK                 - The connection was successfuly discarded and freed.
+ *   TRILOGY_OK                 - The connection was successfully discarded and freed.
  *   TRILOGY_SYSERR             - A system error occurred, check errno. The connection wasn't freed.
  */
 int trilogy_discard(trilogy_conn_t *conn);
@@ -665,7 +665,7 @@ int trilogy_stmt_prepare_recv(trilogy_conn_t *conn, trilogy_stmt_t *stmt_out);
 
 /* trilogy_stmt_bind_data_send - Send a prepared statement bind long data command to the server.
  *
- * There is no pairing `trilogy_stmt_bind_data_recv` fucntion to this one because the server
+ * There is no pairing `trilogy_stmt_bind_data_recv` function to this one because the server
  * doesn't send a response to this command.
  *
  * conn      - A connected trilogy_conn_t pointer. Using a disconnected trilogy_conn_t is
@@ -734,7 +734,7 @@ int trilogy_stmt_execute_recv(trilogy_conn_t *conn, uint64_t *column_count_out);
 
 /* trilogy_stmt_read_row - Read a row from the prepared statement execute response.
  *
- * This should only be called after a sucessful call to trilogy_stmt_execute_recv.
+ * This should only be called after a successful call to trilogy_stmt_execute_recv.
  * You should continue calling this until TRILOGY_EOF is returned. Denoting the end
  * of the result set.
  *
@@ -809,7 +809,7 @@ int trilogy_stmt_reset_recv(trilogy_conn_t *conn);
 
 /* trilogy_stmt_close_send - Send a prepared statement close command to the server.
  *
- * There is no pairing `trilogy_stmt_close_recv` fucntion to this one because the server
+ * There is no pairing `trilogy_stmt_close_recv` function to this one because the server
  * doesn't send a response to this command.
  *
  * conn  - A connected trilogy_conn_t pointer. Using a disconnected trilogy_conn_t is

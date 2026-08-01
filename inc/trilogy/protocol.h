@@ -317,7 +317,7 @@ typedef enum {
     /* The column is part of a primary key.                                                                            \
      */                                                                                                                \
     XX(TRILOGY_COLUMN_FLAG_PRI_KEY, 0x2)                                                                               \
-    /* The column has the `UNIQUE` flag set. Requring all values to be unique.                                         \
+    /* The column has the `UNIQUE` flag set. Requiring all values to be unique.                                        \
      */                                                                                                                \
     XX(TRILOGY_COLUMN_FLAG_UNIQUE_KEY, 0x4)                                                                            \
     /* The column is part of a key.                                                                                    \
@@ -889,7 +889,7 @@ int trilogy_parse_ok_packet(const uint8_t *buff, size_t len, uint32_t capabiliti
 /* trilogy_parse_eof_packet - Parse an EOF packet.
  *
  * buff         - A pointer to the buffer containing the EOF packet data.
- * len          - The lenght of buff in bytes.
+ * len          - The length of buff in bytes.
  * capabilities - A bitmask of TRILOGY_CAPABILITIES_t flags.
  * out_packet   - Out parameter; A pointer to a pre-allocated
  * trilogy_eof_packet_t.
