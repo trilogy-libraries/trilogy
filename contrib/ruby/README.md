@@ -86,3 +86,5 @@ differences:
   the transcoding step up to the caller.
 * There is no `as` query option. Calling `Trilogy::Result#each` will yield an array
   of row values. If you want a hash you should use `Trilogy::Result#each_hash`.
+* The default `connect_timeout` is 5 seconds, while mysql2 defaults to 120 seconds.
+  Pass `connect_timeout: nil` to disable the timeout.

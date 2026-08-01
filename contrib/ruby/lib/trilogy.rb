@@ -52,7 +52,7 @@ class Trilogy
     begin
       if host = options[:host]
         port = options[:port] || 3306
-        connect_timeout = options[:connect_timeout] || options[:write_timeout]
+        connect_timeout = options.fetch(:connect_timeout, 5) || options[:write_timeout]
 
         socket = TCPSocket.new(host, port, connect_timeout: connect_timeout)
 
