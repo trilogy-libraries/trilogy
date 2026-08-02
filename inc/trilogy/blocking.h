@@ -237,7 +237,7 @@ int trilogy_stmt_bind_data(trilogy_conn_t *conn, trilogy_stmt_t *stmt, uint16_t 
 
 /* trilogy_stmt_read_full_row - Read a row from the prepared statement execute response.
  *
- * This should only be called after a sucessful call to trilogy_stmt_execute.
+ * This should only be called after a successful call to trilogy_stmt_execute.
  * You should continue calling this until TRILOGY_EOF is returned. Denoting the end
  * of the result set.
  *

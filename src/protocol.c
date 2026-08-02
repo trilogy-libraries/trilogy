@@ -567,7 +567,7 @@ int trilogy_build_auth_packet(trilogy_builder_t *builder, const char *user, cons
     }
 
     if (pass_len > 0) {
-        // Fallback to te default unless we have SHA2 requested
+        // Fallback to the default unless we have SHA2 requested
         if (!strcmp("caching_sha2_password", auth_plugin)) {
             trilogy_pack_scramble_sha2_hash(scramble, pass, pass_len, auth_response, &auth_response_len);
         } else {

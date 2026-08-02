@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 ### Changed
 
 - Ruby: when `ssl_mode` is omitted, TCP connections now default to `Trilogy::SSL_PREFERRED_NOVERIFY` — TLS is attempted and the connection falls back to plaintext when the server doesn't support it. Pass `ssl_mode: Trilogy::SSL_DISABLED` to restore the previous behavior. Unix socket connections still default to plaintext.
+- The Ruby client now defaults `connect_timeout` to 5 seconds. Pass `connect_timeout: nil` to disable the timeout.
 
 ## 2.12.6
 

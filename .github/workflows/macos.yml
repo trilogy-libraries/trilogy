@@ -112,8 +112,8 @@ jobs:
         sleep 5
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot -e 'CREATE DATABASE test'
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/caching_sha2_password_user.sql
-        # mysql_native_password plugin was removed in MySQL 9.x
-        if [[ ! "${{ matrix.mysql }}" =~ ^9 ]]; then
+        # mysql_native_password plugin was removed in MySQL 9.0, so skip creating the user there
+        if [[ "${MYSQL_VERSION%%.*}" -lt 9 ]]; then
           $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot -e "CREATE USER 'native'@'%'; GRANT ALL PRIVILEGES ON test.* TO 'native'@'%'; ALTER USER 'native'@'%' IDENTIFIED WITH mysql_native_password BY 'password';"
         fi
         $(brew --prefix mysql@${{ matrix.mysql }})/bin/mysql -uroot < test/mysql/docker-entrypoint-initdb.d/x509_user.sql

@@ -38,7 +38,7 @@ class ClientTest < TrilogyTest
     socket = new_tcp_client.query("SHOW VARIABLES LIKE 'socket'").to_a[0][1]
 
     if !File.exist?(socket)
-      skip "cound not find socket at #{socket}"
+      skip "could not find socket at #{socket}"
     end
 
     client = new_unix_client(socket)
@@ -611,8 +611,21 @@ class ClientTest < TrilogyTest
   def test_connect_timeout_with_only_write_timeout
     assert_raises Trilogy::TimeoutError do
       # 192.0.2.0/24 is TEST-NET-1 which should only be for docs/examples
-      new_tcp_client(host: "192.0.2.1", write_timeout: 0.1)
+      new_tcp_client(host: "192.0.2.1", write_timeout: 0.1, connect_timeout: nil)
     end
+  end
+
+  def test_default_connect_timeout
+    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+    assert_raises Trilogy::TimeoutError do
+      # 192.0.2.0/24 is TEST-NET-1 which should only be for docs/examples
+      new_tcp_client(host: "192.0.2.1")
+    end
+
+    # The default is 5s; anything much longer means we hit the OS-level
+    # timeout instead of the default connect_timeout.
+    assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - start, :<, 30
   end
 
   def test_large_query
