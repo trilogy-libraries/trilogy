@@ -607,6 +607,18 @@ static int rb_io_descriptor(VALUE io)
 }
 #endif
 
+static inline VALUE config_set_str(VALUE opts, ID key, char **member)
+{
+    VALUE val = rb_hash_aref(opts, ID2SYM(key));
+    if (NIL_P(val)) {
+        return Qfalse;
+    }
+
+    Check_Type(val, T_STRING);
+    *member = StringValueCStr(val);
+    return val;
+}
+
 static VALUE rb_trilogy_connect(VALUE self, VALUE raw_socket, VALUE encoding, VALUE charset, VALUE opts)
 {
     struct trilogy_ctx *ctx = get_ctx(self);
@@ -662,10 +674,10 @@ static VALUE rb_trilogy_connect(VALUE self, VALUE raw_socket, VALUE encoding, VA
         connopt.max_allowed_packet = NUM2SIZET(val);
     }
 
-    if ((val = rb_hash_lookup(opts, ID2SYM(id_host))) != Qnil) {
-        Check_Type(val, T_STRING);
+    VALUE host = config_set_str(opts, id_host, &connopt.hostname);
+    VALUE path;
 
-        connopt.hostname = StringValueCStr(val);
+    if (host) {
         connopt.port = 3306;
 
         if ((val = rb_hash_lookup(opts, ID2SYM(id_port))) != Qnil) {
@@ -675,26 +687,17 @@ static VALUE rb_trilogy_connect(VALUE self, VALUE raw_socket, VALUE encoding, VA
     } else {
         connopt.path = (char *)"/tmp/mysql.sock";
 
-        if ((val = rb_hash_lookup(opts, ID2SYM(id_socket))) != Qnil) {
-            Check_Type(val, T_STRING);
-            connopt.path = StringValueCStr(val);
-        }
+        path = config_set_str(opts, id_socket, &connopt.path);
     }
 
-    if ((val = rb_hash_aref(opts, ID2SYM(id_username))) != Qnil) {
-        Check_Type(val, T_STRING);
-        connopt.username = StringValueCStr(val);
+    VALUE username = config_set_str(opts, id_username, &connopt.username);
+    VALUE password = config_set_str(opts, id_password, &connopt.password);
+    if (password) {
+        connopt.password_len = RSTRING_LEN(password);
     }
 
-    if ((val = rb_hash_aref(opts, ID2SYM(id_password))) != Qnil) {
-        Check_Type(val, T_STRING);
-        connopt.password = RSTRING_PTR(val);
-        connopt.password_len = RSTRING_LEN(val);
-    }
-
-    if ((val = rb_hash_aref(opts, ID2SYM(id_database))) != Qnil) {
-        Check_Type(val, T_STRING);
-        connopt.database = StringValueCStr(val);
+    VALUE database = config_set_str(opts, id_database, &connopt.database);
+    if (database) {
         connopt.flags |= TRILOGY_CAPABILITIES_CONNECT_WITH_DB;
     }
 
@@ -714,45 +717,14 @@ static VALUE rb_trilogy_connect(VALUE self, VALUE raw_socket, VALUE encoding, VA
         connopt.flags |= TRILOGY_CAPABILITIES_MULTI_STATEMENTS;
     }
 
-    if ((val = rb_hash_aref(opts, ID2SYM(id_ssl_ca))) != Qnil) {
-        Check_Type(val, T_STRING);
-        connopt.ssl_ca = StringValueCStr(val);
-    }
-
-    if ((val = rb_hash_aref(opts, ID2SYM(id_ssl_capath))) != Qnil) {
-        Check_Type(val, T_STRING);
-        connopt.ssl_capath = StringValueCStr(val);
-    }
-
-    if ((val = rb_hash_aref(opts, ID2SYM(id_ssl_cert))) != Qnil) {
-        Check_Type(val, T_STRING);
-        connopt.ssl_cert = StringValueCStr(val);
-    }
-
-    if ((val = rb_hash_aref(opts, ID2SYM(id_ssl_cipher))) != Qnil) {
-        Check_Type(val, T_STRING);
-        connopt.ssl_cipher = StringValueCStr(val);
-    }
-
-    if ((val = rb_hash_aref(opts, ID2SYM(id_ssl_crl))) != Qnil) {
-        Check_Type(val, T_STRING);
-        connopt.ssl_crl = StringValueCStr(val);
-    }
-
-    if ((val = rb_hash_aref(opts, ID2SYM(id_ssl_crlpath))) != Qnil) {
-        Check_Type(val, T_STRING);
-        connopt.ssl_crlpath = StringValueCStr(val);
-    }
-
-    if ((val = rb_hash_aref(opts, ID2SYM(id_ssl_key))) != Qnil) {
-        Check_Type(val, T_STRING);
-        connopt.ssl_key = StringValueCStr(val);
-    }
-
-    if ((val = rb_hash_aref(opts, ID2SYM(id_tls_ciphersuites))) != Qnil) {
-        Check_Type(val, T_STRING);
-        connopt.tls_ciphersuites = StringValueCStr(val);
-    }
+    VALUE ssl_ca = config_set_str(opts, id_ssl_ca, &connopt.ssl_ca);
+    VALUE ssl_capath = config_set_str(opts, id_ssl_capath, &connopt.ssl_capath);
+    VALUE ssl_cert = config_set_str(opts, id_ssl_cert, &connopt.ssl_cert);
+    VALUE ssl_cipher = config_set_str(opts, id_ssl_cipher, &connopt.ssl_cipher);
+    VALUE ssl_crl = config_set_str(opts, id_ssl_crl, &connopt.ssl_crl);
+    VALUE ssl_crlpath = config_set_str(opts, id_ssl_crlpath, &connopt.ssl_crlpath);
+    VALUE ssl_key = config_set_str(opts, id_ssl_key, &connopt.ssl_key);
+    VALUE tls_ciphersuites = config_set_str(opts, id_tls_ciphersuites, &connopt.tls_ciphersuites);
 
     if ((val = rb_hash_aref(opts, ID2SYM(id_tls_min_version))) != Qnil) {
         Check_Type(val, T_FIXNUM);
@@ -790,6 +762,21 @@ static VALUE rb_trilogy_connect(VALUE self, VALUE raw_socket, VALUE encoding, VA
     authenticate(ctx, &handshake, connopt.ssl_mode);
 
     rb_trilogy_release_buffer(ctx);
+
+    // Ensure all our strings are pinned.
+    RB_GC_GUARD(host);
+    RB_GC_GUARD(username);
+    RB_GC_GUARD(password);
+    RB_GC_GUARD(path);
+    RB_GC_GUARD(database);
+    RB_GC_GUARD(ssl_ca);
+    RB_GC_GUARD(ssl_capath);
+    RB_GC_GUARD(ssl_cert);
+    RB_GC_GUARD(ssl_cipher);
+    RB_GC_GUARD(ssl_crl);
+    RB_GC_GUARD(ssl_crlpath);
+    RB_GC_GUARD(ssl_key);
+    RB_GC_GUARD(tls_ciphersuites);
 
     return Qnil;
 }
