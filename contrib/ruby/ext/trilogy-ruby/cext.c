@@ -786,6 +786,7 @@ static VALUE rb_trilogy_change_db(VALUE self, VALUE database)
     struct trilogy_ctx *ctx = get_open_ctx(self);
 
     StringValue(database);
+    database = rb_str_new_frozen(database);
 
     rb_trilogy_acquire_buffer(ctx);
 
@@ -817,6 +818,7 @@ static VALUE rb_trilogy_change_db(VALUE self, VALUE database)
     }
 
     rb_trilogy_release_buffer(ctx);
+    RB_GC_GUARD(database);
 
     return Qtrue;
 }
@@ -1127,6 +1129,7 @@ static VALUE rb_trilogy_query(VALUE self, VALUE query)
 
     StringValue(query);
     query = rb_str_export_to_enc(query, ctx->encoding);
+    query = rb_str_new_frozen(query);
 
     rb_trilogy_acquire_buffer(ctx);
 
@@ -1140,6 +1143,7 @@ static VALUE rb_trilogy_query(VALUE self, VALUE query)
         handle_trilogy_error(ctx, rc, "trilogy_query_send");
     }
 
+    RB_GC_GUARD(query);
     return execute_read_query_response(ctx);
 }
 
@@ -1186,6 +1190,7 @@ static VALUE rb_trilogy_escape(VALUE self, VALUE str)
     rb_encoding *str_enc = rb_enc_get(str);
 
     StringValue(str);
+    str = rb_str_new_frozen(str);
 
     if (!rb_enc_asciicompat(str_enc)) {
         rb_raise(rb_eEncCompatError, "input string must be ASCII-compatible");
@@ -1206,6 +1211,7 @@ static VALUE rb_trilogy_escape(VALUE self, VALUE str)
 
     rb_trilogy_release_buffer(ctx);
 
+    RB_GC_GUARD(str);
     return escaped_string;
 }
 
