@@ -1187,10 +1187,11 @@ static VALUE rb_trilogy_ping(VALUE self)
 static VALUE rb_trilogy_escape(VALUE self, VALUE str)
 {
     struct trilogy_ctx *ctx = get_open_ctx(self);
-    rb_encoding *str_enc = rb_enc_get(str);
 
     StringValue(str);
     str = rb_str_new_frozen(str);
+
+    rb_encoding *str_enc = rb_enc_get(str);
 
     if (!rb_enc_asciicompat(str_enc)) {
         rb_raise(rb_eEncCompatError, "input string must be ASCII-compatible");
