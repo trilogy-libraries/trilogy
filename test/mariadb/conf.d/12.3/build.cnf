@@ -1,4 +1,4 @@
-# MariaDB 12.1 configuration file
+# MariaDB 12.3 configuration file
 # Mounted into the container at /etc/mysql/conf.d
 
 [mysqld]
