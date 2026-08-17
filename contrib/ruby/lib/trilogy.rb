@@ -19,6 +19,7 @@ class Trilogy
   module Synchronization
     def initialize(...)
       @mutex = Mutex.new
+      @lock_state_mutex = Mutex.new
       @lock_owner = nil
       @lock_method = nil
       @should_log_lock_failure = true
@@ -29,22 +30,26 @@ class Trilogy
     source = synchronized_methods.flat_map do |method|
       [
         "def #{method}(...)",
-          'if @mutex.try_lock',
-          "  @lock_method = \"#{method}\"",
-          '  @lock_owner = Thread.current',
-          'else',
-          '  if @should_log_lock_failure',
-          '    STDERR.puts "Trilogy::SynchronizationError lock owned on #{@lock_method} by #{@lock_owner} (#{@lock_owner.name}) #{@lock_owner.backtrace_locations(0, 10)}"',
-          '    @should_log_lock_failure = false',
-          '  end',
-          '  raise SynchronizationError',
+          '@lock_state_mutex.synchronize do',
+            'if @mutex.try_lock',
+            "  @lock_method = \"#{method}\"",
+            '  @lock_owner = Thread.current',
+            'else',
+            '  if @should_log_lock_failure',
+            '    STDERR.puts "Trilogy::SynchronizationError lock owned on #{@lock_method} by #{@lock_owner} (#{@lock_owner&.name}) #{@lock_owner&.backtrace_locations(0, 10)}"',
+            '    @should_log_lock_failure = false',
+            '  end',
+            '  raise SynchronizationError',
+            'end',
           'end',
           'begin',
             'super',
           'ensure',
-            '@mutex.unlock',
-            '@lock_method = nil',
-            '@lock_owner = nil',
+            '@lock_state_mutex.synchronize do',
+              '@mutex.unlock',
+              '@lock_method = nil',
+              '@lock_owner = nil',
+            'end',
           'end',
         'end',
       ]
