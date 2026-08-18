@@ -5,9 +5,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.13.0
+
+### Fixed
+
+- Add GC guard for all string configs. #313
+- Convert argument before reading encoding in Trilogy#escape. #314
+- Prevent synchronization mutex leak. #316
+
 ### Changed
 
-- The Ruby client now defaults `connect_timeout` to 5 seconds. Pass `connect_timeout: nil` to disable the timeout.
+- The Ruby client now defaults `connect_timeout` to 5 seconds. Pass `connect_timeout: nil` to disable the timeout. #309
 
 ## 2.12.6
 
