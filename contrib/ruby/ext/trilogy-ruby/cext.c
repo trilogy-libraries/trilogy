@@ -633,9 +633,11 @@ static VALUE rb_trilogy_connect(VALUE self, VALUE raw_socket, VALUE encoding, VA
 
     Check_Type(opts, T_HASH);
 
+    bool ssl_mode_explicit = false;
     if ((val = rb_hash_lookup(opts, ID2SYM(id_ssl_mode))) != Qnil) {
         Check_Type(val, T_FIXNUM);
         connopt.ssl_mode = (trilogy_ssl_mode_t)NUM2INT(val);
+        ssl_mode_explicit = true;
     }
 
     if ((val = rb_hash_aref(opts, ID2SYM(id_connect_timeout))) != Qnil) {
@@ -679,6 +681,11 @@ static VALUE rb_trilogy_connect(VALUE self, VALUE raw_socket, VALUE encoding, VA
 
     if (host) {
         connopt.port = 3306;
+
+        // Match the MySQL client library's default of preferring TLS over TCP
+        if (!ssl_mode_explicit) {
+            connopt.ssl_mode = TRILOGY_SSL_PREFERRED_NOVERIFY;
+        }
 
         if ((val = rb_hash_lookup(opts, ID2SYM(id_port))) != Qnil) {
             Check_Type(val, T_FIXNUM);
