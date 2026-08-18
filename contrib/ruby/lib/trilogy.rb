@@ -22,15 +22,22 @@ class Trilogy
       super
     end
 
+    NEVER = { Object => :never }.freeze
+    IMMEDIATE = { Object => :immediate }.freeze
+
     synchronized_methods = Trilogy.public_instance_methods(false) - %i(closed? server_version)
     source = synchronized_methods.flat_map do |method|
       [
         "def #{method}(...)",
-          "raise SynchronizationError unless @mutex.try_lock",
-          "begin",
-            "super",
-          "ensure",
-            "@mutex.unlock",
+          "Thread.handle_interrupt(NEVER) do",
+            "raise SynchronizationError unless @mutex.try_lock",
+            "begin",
+              "Thread.handle_interrupt(IMMEDIATE) do",
+                "super",
+              "end",
+            "ensure",
+              "@mutex.unlock",
+            "end",
           "end",
         "end",
       ]
