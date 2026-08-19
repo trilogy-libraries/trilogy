@@ -627,6 +627,18 @@ typedef struct {
     size_t data_len;
 } trilogy_value_t;
 
+typedef struct {
+    uint8_t response_code;
+    uint32_t timestamp;
+    uint8_t event_type;
+    uint32_t server_id;
+    uint32_t event_size;
+    uint32_t position;
+    uint16_t event_flags;
+    uint8_t *data;
+    size_t data_len;
+} trilogy_binlog_event_t;
+
 /* trilogy_binary_value_t - MySQL binary protocol value type
  *
  */
@@ -1040,5 +1052,7 @@ int trilogy_parse_stmt_row_packet(const uint8_t *buff, size_t len, trilogy_colum
                                   uint64_t column_count, trilogy_binary_value_t *out_values);
 
 int trilogy_build_auth_clear_password(trilogy_builder_t *builder, const char *pass, size_t pass_len);
+
+int trilogy_parse_binlog_event_packet(const uint8_t *buff, size_t len, trilogy_binlog_event_t *binlog_event);
 
 #endif
