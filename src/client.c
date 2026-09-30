@@ -214,6 +214,7 @@ int trilogy_flush_writes(trilogy_conn_t *conn)
 
 static void set_error(trilogy_conn_t *conn, const trilogy_err_packet_t *packet)
 {
+    conn->server_status &= ((uint16_t)~TRILOGY_SERVER_STATUS_MORE_RESULTS_EXISTS);
     conn->error_code = packet->error_code;
     conn->error_message = packet->error_message;
     conn->error_message_len = packet->error_message_len;
