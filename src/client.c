@@ -313,7 +313,7 @@ static int read_eof_packet(trilogy_conn_t *conn)
 
 static int read_auth_switch_packet(trilogy_conn_t *conn, trilogy_handshake_t *handshake)
 {
-    trilogy_auth_switch_request_packet_t auth_switch_packet;
+    trilogy_auth_switch_request_packet_t auth_switch_packet = {0};
 
     int rc = trilogy_parse_auth_switch_request_packet(conn->packet_buffer.buff, conn->packet_buffer.len,
                                                       conn->capabilities, &auth_switch_packet);
