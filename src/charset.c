@@ -209,4 +209,9 @@ static TRILOGY_ENCODING_t charset_to_encoding_map[] = {
     [TRILOGY_CHARSET_EUCJPMS_BIN] = TRILOGY_ENCODING_EUCJPMS,
 };
 
-TRILOGY_ENCODING_t trilogy_encoding_from_charset(TRILOGY_CHARSET_t charset) { return charset_to_encoding_map[charset]; }
+TRILOGY_ENCODING_t trilogy_encoding_from_charset(TRILOGY_CHARSET_t charset) {
+    if ((unsigned)charset >= TRILOGY_CHARSET_MAX) {
+        return TRILOGY_ENCODING_BINARY;
+    }
+    return charset_to_encoding_map[charset];
+}
