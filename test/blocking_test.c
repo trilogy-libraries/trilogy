@@ -176,6 +176,7 @@ TEST test_blocking_stmt_prepare()
 
     int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
     ASSERT_OK(err);
+    ASSERT(stmt.connection);
 
     ASSERT_EQ(1, stmt.parameter_count);
 
@@ -204,6 +205,7 @@ TEST test_blocking_stmt_execute_str()
 
     int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
     ASSERT_OK(err);
+    ASSERT(stmt.connection);
 
     ASSERT_EQ(1, stmt.parameter_count);
 
@@ -258,6 +260,7 @@ TEST test_blocking_stmt_execute_integer()
 
     int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
     ASSERT_OK(err);
+    ASSERT(stmt.connection);
 
     ASSERT_EQ(1, stmt.parameter_count);
 
@@ -332,6 +335,7 @@ TEST test_blocking_stmt_execute_double()
 
     int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
     ASSERT_OK(err);
+    ASSERT(stmt.connection);
 
     ASSERT_EQ(1, stmt.parameter_count);
 
@@ -384,6 +388,7 @@ TEST test_blocking_stmt_execute_float() {
 
     int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
     ASSERT_OK(err);
+    ASSERT(stmt.connection);
 
     ASSERT_EQ(1, stmt.parameter_count);
 
@@ -443,6 +448,7 @@ TEST test_blocking_stmt_execute_long()
 
     int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
     ASSERT_OK(err);
+    ASSERT(stmt.connection);
 
     ASSERT_EQ(1, stmt.parameter_count);
 
@@ -516,6 +522,7 @@ TEST test_blocking_stmt_execute_short() {
 
     int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
     ASSERT_OK(err);
+    ASSERT(stmt.connection);
 
     ASSERT_EQ(1, stmt.parameter_count);
 
@@ -589,6 +596,7 @@ TEST test_blocking_stmt_execute_tiny() {
 
     int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
     ASSERT_OK(err);
+    ASSERT(stmt.connection);
 
     ASSERT_EQ(1, stmt.parameter_count);
 
@@ -663,6 +671,7 @@ TEST test_blocking_stmt_execute_datetime()
 
     int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
     ASSERT_OK(err);
+    ASSERT(stmt.connection);
 
     ASSERT_EQ(0, stmt.parameter_count);
 
@@ -714,6 +723,7 @@ TEST test_blocking_stmt_execute_time()
 
     int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
     ASSERT_OK(err);
+    ASSERT(stmt.connection);
 
     ASSERT_EQ(0, stmt.parameter_count);
 
@@ -762,6 +772,7 @@ TEST test_blocking_stmt_execute_year()
 
     int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
     ASSERT_OK(err);
+    ASSERT(stmt.connection);
 
     ASSERT_EQ(0, stmt.parameter_count);
 
@@ -808,6 +819,7 @@ TEST test_blocking_stmt_reset()
 
     int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
     ASSERT_OK(err);
+    ASSERT(stmt.connection);
 
     ASSERT_EQ(1, stmt.parameter_count);
 
@@ -839,6 +851,62 @@ TEST test_blocking_stmt_close()
 
     int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
     ASSERT_OK(err);
+    ASSERT(stmt.connection);
+
+    ASSERT_EQ(1, stmt.parameter_count);
+
+    trilogy_column_packet_t param;
+    err = trilogy_read_full_column(&conn, &param);
+    ASSERT_OK(err);
+
+    ASSERT_EQ(1, stmt.column_count);
+
+    trilogy_column_packet_t column_def;
+    err = trilogy_read_full_column(&conn, &column_def);
+    ASSERT_OK(err);
+    ASSERT_EQ(conn.prepared_statements, &stmt);
+
+    const char *query2 = "SELECT YEAR('2022-01-31')";
+    trilogy_stmt_t stmt2;
+
+    err = trilogy_stmt_prepare(&conn, query2, strlen(query2), &stmt2);
+    ASSERT_OK(err);
+    ASSERT(stmt2.connection);
+
+    ASSERT_EQ(0, stmt2.parameter_count);
+
+    trilogy_column_packet_t param2;
+    err = trilogy_read_full_column(&conn, &param2);
+    ASSERT_OK(err);
+
+    ASSERT_EQ(1, stmt2.column_count);
+
+    ASSERT_EQ(conn.prepared_statements, &stmt2);
+
+    err = trilogy_stmt_close(&conn, &stmt2);
+    ASSERT_OK(err);
+    ASSERT_EQ(conn.prepared_statements, &stmt);
+
+    err = trilogy_stmt_close(&conn, &stmt);
+    ASSERT_OK(err);
+    ASSERT_EQ(conn.prepared_statements, NULL);
+
+    trilogy_free(&conn);
+    PASS();
+}
+
+TEST test_blocking_stmt_conn_close()
+{
+    trilogy_conn_t conn;
+
+    connect_conn(&conn);
+
+    const char *query = "SELECT ?";
+    trilogy_stmt_t stmt;
+
+    int err = trilogy_stmt_prepare(&conn, query, strlen(query), &stmt);
+    ASSERT_OK(err);
+    ASSERT(stmt.connection);
 
     ASSERT_EQ(1, stmt.parameter_count);
 
@@ -852,10 +920,26 @@ TEST test_blocking_stmt_close()
     err = trilogy_read_full_column(&conn, &column_def);
     ASSERT_OK(err);
 
-    err = trilogy_stmt_close(&conn, &stmt);
+    const char *query2 = "SELECT YEAR('2022-01-31')";
+    trilogy_stmt_t stmt2;
+
+    err = trilogy_stmt_prepare(&conn, query2, strlen(query2), &stmt2);
+    ASSERT_OK(err);
+    ASSERT(stmt2.connection);
+
+    ASSERT_EQ(0, stmt2.parameter_count);
+
+    trilogy_column_packet_t param2;
+    err = trilogy_read_full_column(&conn, &param2);
     ASSERT_OK(err);
 
+    ASSERT_EQ(1, stmt2.column_count);
+
     trilogy_free(&conn);
+
+    ASSERT(stmt.connection == NULL);
+    ASSERT(stmt2.connection == NULL);
+
     PASS();
 }
 
@@ -881,6 +965,7 @@ int blocking_test()
     RUN_TEST(test_blocking_stmt_execute_year);
     RUN_TEST(test_blocking_stmt_reset);
     RUN_TEST(test_blocking_stmt_close);
+    RUN_TEST(test_blocking_stmt_conn_close);
 
     return 0;
 }

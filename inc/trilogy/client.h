@@ -63,6 +63,8 @@
  */
 typedef trilogy_column_packet_t trilogy_column_t;
 
+typedef struct trilogy_stmt trilogy_stmt_t;
+
 /* trilogy_conn_t - The Trilogy client's instance type.
  *
  * This type is shared for the non-blocking and blocking versions of the API.
@@ -82,6 +84,7 @@ typedef struct {
     uint16_t server_status;
 
     trilogy_sock_t *socket;
+    trilogy_stmt_t *prepared_statements;
 
     // private:
     uint8_t recv_buff[TRILOGY_DEFAULT_BUF_SIZE];
@@ -630,7 +633,16 @@ int trilogy_stmt_prepare_send(trilogy_conn_t *conn, const char *stmt, size_t stm
 
 /* trilogy_stmt_t - The trilogy client's prepared statement type.
  */
-typedef trilogy_stmt_ok_packet_t trilogy_stmt_t;
+
+struct trilogy_stmt {
+    trilogy_stmt_t *prev;
+    trilogy_stmt_t *next;
+    uint32_t id;
+    uint16_t column_count;
+    uint16_t parameter_count;
+    uint16_t warning_count;
+    trilogy_conn_t *connection;
+};
 
 /* trilogy_stmt_prepare_recv - Read the prepared statement prepare command response
  * from the MySQL-compatible server.
