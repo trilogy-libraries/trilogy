@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+## 2.13.1
+
+### Fixed
+
+- Clear MORE\_RESULTS flag on error. #319
+- Gracefully handle invalid charset. #320
+- Zero initialize auth switch packet. #321
+
 ## 2.13.0
 
 ### Fixed
