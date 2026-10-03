@@ -347,6 +347,30 @@ int trilogy_parse_row_packet(const uint8_t *buff, size_t len, uint64_t column_co
     return trilogy_reader_finish(&reader);
 }
 
+int trilogy_parse_binlog_event_packet(const uint8_t *buff, size_t len, trilogy_binlog_event_t *binlog_event)
+{
+    if (!binlog_event || (len <= 20)) {
+        return(TRILOGY_ERR);
+    }
+    trilogy_reader_t reader = TRILOGY_READER(buff, len);
+
+    trilogy_reader_get_uint8(&reader, &binlog_event->response_code);
+    trilogy_reader_get_uint32(&reader, &binlog_event->timestamp);
+    trilogy_reader_get_uint8(&reader, &binlog_event->event_type);
+    trilogy_reader_get_uint32(&reader, &binlog_event->server_id);
+    trilogy_reader_get_uint32(&reader, &binlog_event->event_size);
+    trilogy_reader_get_uint32(&reader, &binlog_event->position);
+    trilogy_reader_get_uint16(&reader, &binlog_event->event_flags);
+
+    if (binlog_event->data_len > (len - 20)) {
+        for(size_t n = 0; n < (len - 20); n++) {
+            trilogy_reader_get_uint8(&reader, ((uint8_t*)(binlog_event->data)) + n);
+        }
+    }
+    return trilogy_reader_finish(&reader);
+}
+
+
 int trilogy_parse_column_packet(const uint8_t *buff, size_t len, bool field_list, trilogy_column_packet_t *out_packet)
 {
     int rc;
