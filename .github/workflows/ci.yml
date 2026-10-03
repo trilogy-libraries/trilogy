@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        db_version: ["8.0", "8.4", "9.7"]
+        db_version: ["8.0", "8.4", "9.7", "26.7"]
         distribution: ["debian:bookworm", "ubuntu:noble", "ubuntu:jammy", "ubuntu:focal"]
         default_ssl: ["true"]
         ruby: ["4.0.2"]

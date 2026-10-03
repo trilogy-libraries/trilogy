@@ -150,6 +150,28 @@ class ClientTest < TrilogyTest
     assert_predicate client, :more_results_exist?
   end
 
+  def test_trilogy_more_results_exist_after_error
+    client = new_tcp_client(multi_statement: true)
+
+    refute_predicate client, :more_results_exist?
+    result = client.query("SELECT 1; SELECT missing FROM dual; SELECT 3")
+    assert_equal [[1]], result.to_a
+
+    assert_predicate client, :more_results_exist?
+    assert_raises Trilogy::ProtocolError do
+      client.next_result
+    end
+    refute_predicate client, :more_results_exist?
+
+    # Ensure the connection is still usable
+    result = client.query("SELECT 4; SELECT 5")
+    assert_equal [[4]], result.to_a
+
+    assert_predicate client, :more_results_exist?
+    assert_equal [[5]], client.next_result.to_a
+    refute_predicate client, :more_results_exist?
+  end
+
   def test_trilogy_next_result
     client = new_tcp_client(multi_statement: true)
     create_test_table(client)
