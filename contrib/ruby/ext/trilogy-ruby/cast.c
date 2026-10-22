@@ -56,8 +56,11 @@ static const char *ruby_encoding_name_map[] = {
 
 static rb_encoding * encoding_for_charset(TRILOGY_CHARSET_t charset)
 {
-    static rb_encoding * map[TRILOGY_CHARSET_MAX];
+    if (RB_UNLIKELY(charset >= TRILOGY_CHARSET_MAX)) {
+        return rb_enc_find(ruby_encoding_name_map[trilogy_encoding_from_charset(charset)]);
+    }
 
+    static rb_encoding * map[TRILOGY_CHARSET_MAX];
     if (RB_LIKELY(map[charset])) {
         return map[charset];
     }
