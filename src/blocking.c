@@ -263,6 +263,8 @@ int trilogy_close(trilogy_conn_t *conn)
 
 int trilogy_stmt_prepare(trilogy_conn_t *conn, const char *stmt, size_t stmt_len, trilogy_stmt_t *stmt_out)
 {
+    memset(stmt_out, 0, sizeof(trilogy_stmt_t));
+
     int rc = trilogy_stmt_prepare_send(conn, stmt, stmt_len);
 
     if (rc == TRILOGY_AGAIN) {
@@ -275,6 +277,16 @@ int trilogy_stmt_prepare(trilogy_conn_t *conn, const char *stmt, size_t stmt_len
 
     while (1) {
         rc = trilogy_stmt_prepare_recv(conn, stmt_out);
+
+        if (rc == TRILOGY_OK) {
+            stmt_out->connection = conn;
+            if (conn->prepared_statements) {
+                stmt_out->next = conn->prepared_statements;
+                stmt_out->next->prev = stmt_out;
+            }
+            conn->prepared_statements = stmt_out;
+            return rc;
+        }
 
         if (rc != TRILOGY_AGAIN) {
             return rc;
@@ -365,6 +377,10 @@ int trilogy_stmt_reset(trilogy_conn_t *conn, trilogy_stmt_t *stmt)
 
 int trilogy_stmt_close(trilogy_conn_t *conn, trilogy_stmt_t *stmt)
 {
+    if (!stmt->connection || conn != stmt->connection) {
+        // User BUG!!! Return an error or crash?
+    }
+
     int rc = trilogy_stmt_close_send(conn, stmt);
 
     if (rc == TRILOGY_AGAIN) {
@@ -375,6 +391,20 @@ int trilogy_stmt_close(trilogy_conn_t *conn, trilogy_stmt_t *stmt)
         return rc;
     }
 
+    if (stmt->prev == NULL) {
+        // assert stmt->connection->prepared_statements == stmt
+        stmt->connection->prepared_statements = stmt->next;
+        if (stmt->next) {
+            stmt->next->prev = NULL;
+        }
+    } else {
+        stmt->prev->next = stmt->next;
+        if (stmt->next) {
+            stmt->next->prev = stmt->prev;
+        }
+    }
+
+    stmt->connection = NULL;
     return TRILOGY_OK;
 }
 
