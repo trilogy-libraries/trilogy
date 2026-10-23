@@ -501,18 +501,34 @@ class ClientTest < TrilogyTest
     assert_equal "\xff", client.escape("\xff")
 
     str = "binary string".encode(Encoding::Windows_1252)
-    assert_equal Encoding::Windows_1252, client.escape(str).encoding
+    assert_equal Encoding::UTF_8, client.escape(str).encoding
+
+    ensure_closed client
+
+    client = new_tcp_client(encoding: "cp1251")
+    str = "binary string".encode(Encoding::Windows_1251)
+    assert_equal Encoding::Windows_1251, client.escape(str).encoding
+  ensure
+    ensure_closed client
+  end
+
+  def test_trilogy_query_and_escape_require_string
+    client = new_tcp_client
+
+    assert_raises(TypeError) { client.query(nil) }
+    assert_raises(TypeError) { client.query(1) }
+    assert_raises(TypeError) { client.escape(nil) }
+    assert_raises(TypeError) { client.escape(1) }
   ensure
     ensure_closed client
   end
 
   def test_trilogy_escape_ascii_compat
-    client = new_tcp_client
+    client = new_tcp_client(encoding: "ascii")
 
-    assert_raises Encoding::CompatibilityError do
-      client.escape("'\"\\".encode("UTF-16LE"))
+    assert_raises Encoding::UndefinedConversionError do
+      client.escape("h€llo".encode(Encoding::UTF_16LE))
     end
-
   ensure
     ensure_closed client
   end
@@ -523,6 +539,15 @@ class ClientTest < TrilogyTest
     client.query("SET SQL_MODE=NO_BACKSLASH_ESCAPES")
 
     assert_equal "hello '' world", client.escape("hello ' world")
+  ensure
+    ensure_closed client
+  end
+
+  def test_trilogy_escape_encoding
+    client = new_tcp_client
+    string = "hello\x8F\xC5world".dup.force_encoding(Encoding::SHIFT_JIS)
+    assert_equal "hello焦world", client.escape(string)
+    assert_equal Encoding::UTF_8, client.escape(string).encoding
   ensure
     ensure_closed client
   end
@@ -1238,7 +1263,11 @@ class ClientTest < TrilogyTest
     assert_equal "cp932_japanese_ci", client.query("SELECT @@collation_connection").first.first
 
     expected = "こんにちは".encode(Encoding::CP932)
-    assert_equal expected, client.query("SELECT 'こんにちは'").to_a.first.first
+    assert_equal expected, client.query("SELECT 'こんにちは'".encode(Encoding::CP932)).to_a.first.first
+
+    assert_raises ::Encoding::CompatibilityError do
+      client.query("SELECT 'こんにちは'")
+    end
   end
 
   def test_character_encoding_handles_binary_queries

@@ -1128,7 +1128,6 @@ static VALUE rb_trilogy_query(VALUE self, VALUE query)
     struct trilogy_ctx *ctx = get_open_ctx(self);
 
     StringValue(query);
-    query = rb_str_export_to_enc(query, ctx->encoding);
     query = rb_str_new_frozen(query);
 
     rb_trilogy_acquire_buffer(ctx);
@@ -1189,13 +1188,6 @@ static VALUE rb_trilogy_escape(VALUE self, VALUE str)
     struct trilogy_ctx *ctx = get_open_ctx(self);
 
     StringValue(str);
-    str = rb_str_new_frozen(str);
-
-    rb_encoding *str_enc = rb_enc_get(str);
-
-    if (!rb_enc_asciicompat(str_enc)) {
-        rb_raise(rb_eEncCompatError, "input string must be ASCII-compatible");
-    }
 
     const char *escaped_str;
     size_t escaped_len;
@@ -1208,7 +1200,7 @@ static VALUE rb_trilogy_escape(VALUE self, VALUE str)
         handle_trilogy_error(ctx, rc, "trilogy_escape");
     }
 
-    VALUE escaped_string = rb_enc_str_new(escaped_str, escaped_len, str_enc);
+    VALUE escaped_string = rb_enc_str_new(escaped_str, escaped_len, ctx->encoding);
 
     rb_trilogy_release_buffer(ctx);
 
@@ -1371,9 +1363,9 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
     rb_define_private_method(Trilogy, "_connect", rb_trilogy_connect, 4);
     rb_define_method(Trilogy, "change_db", rb_trilogy_change_db, 1);
     rb_define_alias(Trilogy, "select_db", "change_db");
-    rb_define_method(Trilogy, "query", rb_trilogy_query, 1);
+    rb_define_private_method(Trilogy, "_query", rb_trilogy_query, 1);
     rb_define_method(Trilogy, "ping", rb_trilogy_ping, 0);
-    rb_define_method(Trilogy, "escape", rb_trilogy_escape, 1);
+    rb_define_private_method(Trilogy, "_escape", rb_trilogy_escape, 1);
     rb_define_method(Trilogy, "close", rb_trilogy_close, 0);
     rb_define_method(Trilogy, "closed?", rb_trilogy_closed, 0);
     rb_define_method(Trilogy, "check", rb_trilogy_check, 0);

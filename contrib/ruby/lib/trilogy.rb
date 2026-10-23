@@ -16,6 +16,27 @@ class Trilogy
     end
   private_constant :IO_TIMEOUT_ERROR
 
+  def query(arg)
+    str = String.try_convert(arg) or raise TypeError, "no implicit conversion of #{arg.class} into String"
+    str = str.dup if str.equal?(arg)
+    str.freeze
+
+    str_encoding = str.encoding
+    if @encoding != str_encoding && ::Encoding::BINARY != str_encoding && !(str.ascii_only? && @encoding.ascii_compatible?)
+      raise ::Encoding::CompatibilityError, "Trilogy connection uses #{@encoding} but the query was provided in #{str_encoding}"
+    end
+
+    _query(str)
+  end
+
+  def escape(arg)
+    str = String.try_convert(arg) or raise TypeError, "no implicit conversion of #{arg.class} into String"
+    if @encoding != str.encoding && !(str.ascii_only? && @encoding.ascii_compatible?) && str.encoding != ::Encoding::ASCII_8BIT
+      str = str.encode(@encoding)
+    end
+    _escape(str)
+  end
+
   module Synchronization
     def initialize(...)
       @mutex = Mutex.new
@@ -47,10 +68,12 @@ class Trilogy
 
   prepend(Synchronization)
 
+  attr_reader :encoding
+
   def initialize(options = {})
     options[:port] = options[:port].to_i if options[:port]
     mysql_encoding = options[:encoding] || "utf8mb4"
-    encoding = Trilogy::Encoding.find(mysql_encoding)
+    @encoding = Trilogy::Encoding.find(mysql_encoding)
     charset = Trilogy::Encoding.charset(mysql_encoding)
     @connection_options = options
     @connected_host = nil
@@ -99,7 +122,7 @@ class Trilogy
       end
     end
 
-    _connect(socket, encoding, charset, options)
+    _connect(socket, @encoding, charset, options)
   ensure
     # Socket's fd will be dup'd in C
     socket&.close
