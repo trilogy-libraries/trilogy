@@ -3,12 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
-## Unreleased
+## 2.13.2
 
 ### Fixed
 
 - Further harden charset handling when casting results.
-- `Trilogy#escape` now converts its argument to the connection encoding, and returns a string in the connection encoding.
+- `Trilogy#escape` now converts its argument to the connection encoding, and returns a string in the connection encoding. GHSA-744p-w4gc-m3gh
 
 ### Changed
 

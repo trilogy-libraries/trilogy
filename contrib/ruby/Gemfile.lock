@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    trilogy (2.13.1)
+    trilogy (2.13.2)
       bigdecimal
 
 GEM
