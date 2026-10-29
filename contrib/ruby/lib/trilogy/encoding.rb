@@ -84,7 +84,13 @@ class Trilogy
       "binary"   => CHARSET_BINARY,
     }.freeze
 
+    UNSUPPORTED_ENCODINGS = %w[big5 sjis gbk cp932 gb18030 ucs2 utf16 utf16le utf32].freeze
+
     def self.find(mysql_encoding)
+      if UNSUPPORTED_ENCODINGS.include?(mysql_encoding)
+        raise ArgumentError, "Unsupported encoding: #{mysql_encoding}"
+      end
+
       unless rb_encoding = RUBY_ENCODINGS[mysql_encoding]
         raise ArgumentError, "Unknown or unsupported encoding: #{mysql_encoding}"
       end

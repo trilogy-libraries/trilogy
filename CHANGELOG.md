@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Unreleased
 
+### Fixed
+
+- Further harden charset handling when casting results.
+- `Trilogy#escape` now converts its argument to the connection encoding, and returns a string in the connection encoding.
+
+### Changed
+
+- (BREAKING CHANGE) `Trilogy#query` no longer transcodes queries, and raises `Encoding::CompatibilityError` if the query is not in the connection encoding. Binary and ASCII-only queries are still accepted.
+- (BREAKING CHANGE) The `big5`, `sjis`, `gbk`, `cp932`, `gb18030`, `ucs2`, `utf16`, `utf16le` and `utf32` connection encodings are no longer supported, and raise `ArgumentError`.
+
 ## 2.13.1
 
 ### Fixed

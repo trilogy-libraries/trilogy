@@ -1254,16 +1254,25 @@ class ClientTest < TrilogyTest
     assert_equal "Unknown or unsupported encoding: invalid", err.message
   end
 
+  def test_unsupported_character_encodings
+    %w[big5 sjis gbk cp932 gb18030 ucs2 utf16 utf16le utf32].each do |encoding|
+      err = assert_raises ArgumentError do
+        new_tcp_client(encoding: encoding)
+      end
+      assert_equal "Unsupported encoding: #{encoding}", err.message
+    end
+  end
+
   def test_character_encoding
-    client = new_tcp_client(encoding: "cp932")
+    client = new_tcp_client(encoding: "ujis")
 
-    assert_equal "cp932", client.query("SELECT @@character_set_client").first.first
-    assert_equal "cp932", client.query("SELECT @@character_set_results").first.first
-    assert_equal "cp932", client.query("SELECT @@character_set_connection").first.first
-    assert_equal "cp932_japanese_ci", client.query("SELECT @@collation_connection").first.first
+    assert_equal "ujis", client.query("SELECT @@character_set_client").first.first
+    assert_equal "ujis", client.query("SELECT @@character_set_results").first.first
+    assert_equal "ujis", client.query("SELECT @@character_set_connection").first.first
+    assert_equal "ujis_japanese_ci", client.query("SELECT @@collation_connection").first.first
 
-    expected = "こんにちは".encode(Encoding::CP932)
-    assert_equal expected, client.query("SELECT 'こんにちは'".encode(Encoding::CP932)).to_a.first.first
+    expected = "こんにちは".encode(Encoding::EUCJP_MS)
+    assert_equal expected, client.query("SELECT 'こんにちは'".encode(Encoding::EUCJP_MS)).to_a.first.first
 
     assert_raises ::Encoding::CompatibilityError do
       client.query("SELECT 'こんにちは'")
@@ -1282,10 +1291,10 @@ class ClientTest < TrilogyTest
     assert_equal expected.dup.force_encoding(Encoding::UTF_8), result
     assert_equal Encoding::UTF_8, result.encoding
 
-    client = new_tcp_client(encoding: "cp932")
+    client = new_tcp_client(encoding: "ujis")
     result = client.query("SELECT '#{expected}'").to_a.first.first
-    assert_equal expected.dup.force_encoding(Encoding::Windows_31J), result
-    assert_equal Encoding::Windows_31J, result.encoding
+    assert_equal expected.dup.force_encoding(Encoding::EUCJP_MS), result
+    assert_equal Encoding::EUCJP_MS, result.encoding
   end
 
   def test_connection_options_casting
