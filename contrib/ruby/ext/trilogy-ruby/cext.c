@@ -233,16 +233,20 @@ static struct trilogy_ctx *get_open_ctx(VALUE obj)
     return ctx;
 }
 
-NORETURN(static void trilogy_syserr_fail_str(int, VALUE));
-static void trilogy_syserr_fail_str(int e, VALUE msg)
+static VALUE trilogy_new_syserr_fail(int e, VALUE msg)
 {
     if (e == EPIPE) {
         // Backwards compatibility: This error message is a bit odd, but includes "TRILOGY_CLOSED_CONNECTION" to match legacy string matching
-        rb_raise(Trilogy_EOFError, "%" PRIsVALUE ": TRILOGY_CLOSED_CONNECTION: EPIPE", msg);
+        return rb_exc_new_str(Trilogy_EOFError, rb_sprintf("%" PRIsVALUE ": TRILOGY_CLOSED_CONNECTION: EPIPE", msg));
     } else {
-        VALUE exc = rb_funcall(Trilogy_SyscallError, id_from_errno, 2, INT2NUM(e), msg);
-        rb_exc_raise(exc);
+        return rb_funcall(Trilogy_SyscallError, id_from_errno, 2, INT2NUM(e), msg);
     }
+}
+
+NORETURN(static void trilogy_syserr_fail_str(int, VALUE));
+static void trilogy_syserr_fail_str(int e, VALUE msg)
+{
+    rb_exc_raise(trilogy_new_syserr_fail(e, msg));
 }
 
 static int trilogy_error_recoverable_p(int rc)
@@ -263,8 +267,7 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
     va_start(args, msg);
     VALUE rbmsg = rb_vsprintf(msg, args);
     va_end(args);
-
-    rb_trilogy_release_buffer(ctx);
+    VALUE exc;
 
     if (!trilogy_error_recoverable_p(rc)) {
         if (ctx->conn.socket != NULL) {
@@ -275,18 +278,23 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
         }
     }
 
-    switch (rc) {
-    case TRILOGY_SYSERR:
-        trilogy_syserr_fail_str(errno, rbmsg);
 
-    case TRILOGY_TIMEOUT:
-        rb_raise(Trilogy_TimeoutError, "%" PRIsVALUE, rbmsg);
+    switch (rc) {
+    case TRILOGY_SYSERR: {
+        exc = trilogy_new_syserr_fail(errno, rbmsg);
+        break;
+    }
+
+    case TRILOGY_TIMEOUT: {
+        exc = rb_exc_new_str(Trilogy_TimeoutError, rbmsg);
+        break;
+    }
 
     case TRILOGY_ERR: {
         VALUE conn_message = rb_str_new(ctx->conn.error_message, ctx->conn.error_message_len);
         VALUE message = rb_sprintf("%" PRIsVALUE " (%" PRIsVALUE ")", conn_message, rbmsg);
-        VALUE exc = rb_funcall(Trilogy_ProtocolError, id_from_code, 2, message, INT2NUM(ctx->conn.error_code));
-        rb_exc_raise(exc);
+        exc = rb_funcall(Trilogy_ProtocolError, id_from_code, 2, message, INT2NUM(ctx->conn.error_code));
+        break;
     }
 
     case TRILOGY_OPENSSL_ERR: {
@@ -294,30 +302,48 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
         ERR_clear_error();
         if (ERR_GET_LIB(ossl_error) == ERR_LIB_SYS) {
             int err_reason = ERR_GET_REASON(ossl_error);
-            trilogy_syserr_fail_str(err_reason, rbmsg);
+            exc = trilogy_new_syserr_fail(err_reason, rbmsg);
         }
-        rb_raise(Trilogy_SSLError, "%" PRIsVALUE ": SSL Error: %s", rbmsg, ERR_reason_error_string(ossl_error));
+        else {
+            rbmsg = rb_sprintf("%" PRIsVALUE ": SSL Error: %s", rbmsg, ERR_reason_error_string(ossl_error));
+            exc = rb_exc_new_str(Trilogy_SSLError, rbmsg);
+        }
+        break;
     }
 
     case TRILOGY_DNS_ERR: {
-        rb_raise(Trilogy_BaseConnectionError, "%" PRIsVALUE ": TRILOGY_DNS_ERROR", rbmsg);
+        rbmsg = rb_sprintf("%" PRIsVALUE ": TRILOGY_DNS_ERROR", rbmsg);
+        exc = rb_exc_new_str(Trilogy_BaseConnectionError, rbmsg);
+        break;
     }
 
     case TRILOGY_CLOSED_CONNECTION: {
-        rb_raise(Trilogy_EOFError, "%" PRIsVALUE ": TRILOGY_CLOSED_CONNECTION", rbmsg);
+        rbmsg = rb_sprintf("%" PRIsVALUE ": TRILOGY_CLOSED_CONNECTION", rbmsg);
+        exc = rb_exc_new_str(Trilogy_EOFError, rbmsg);
+        break;
     }
 
     case TRILOGY_AUTH_PLUGIN_ERROR: {
-        rb_raise(Trilogy_AuthPluginError, "%" PRIsVALUE ": TRILOGY_AUTH_PLUGIN_ERROR", rbmsg);
+        rbmsg = rb_sprintf("%" PRIsVALUE ": TRILOGY_AUTH_PLUGIN_ERROR", rbmsg);
+        exc = rb_exc_new_str(Trilogy_AuthPluginError, rbmsg);
+        break;
     }
 
     case TRILOGY_UNSUPPORTED: {
-        rb_raise(Trilogy_BaseConnectionError, "%" PRIsVALUE ": TRILOGY_UNSUPPORTED", rbmsg);
+        rbmsg = rb_sprintf("%" PRIsVALUE ": TRILOGY_UNSUPPORTED", rbmsg);
+        exc = rb_exc_new_str(Trilogy_BaseConnectionError, rbmsg);
+        break;
     }
 
     default:
-        rb_raise(Trilogy_QueryError, "%" PRIsVALUE ": %s", rbmsg, trilogy_error(rc));
+        rbmsg = rb_sprintf("%" PRIsVALUE ": %s", rbmsg, trilogy_error(rc));
+        exc = rb_exc_new_str(Trilogy_QueryError, rbmsg);
+        break;
     }
+
+    // Some error messages depend on the buffer.
+    rb_trilogy_release_buffer(ctx);
+    rb_exc_raise(exc);
 }
 
 static VALUE allocate_trilogy(VALUE klass)
