@@ -8,7 +8,7 @@ CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 -fstack-protector
 CFLAGS += -Wall -Werror -Wextra -pedantic -Wsign-conversion -Wno-missing-field-initializers -std=gnu99 -iquote inc
 
 OPENSSL = -lcrypto -lssl
-EXAMPLES = example/trilogy_query
+EXAMPLES = example/trilogy_query example/trilogy_binlog
 
 UNAME_S := $(shell uname -s)
 
