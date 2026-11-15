@@ -20,7 +20,7 @@
 
 #define SCRAMBLE_LEN 20
 
-static size_t min(size_t a, size_t b)
+static size_t trilogy_min(size_t a, size_t b)
 {
     if (a < b) {
         return a;
@@ -217,7 +217,7 @@ int trilogy_parse_handshake_packet(const uint8_t *buff, size_t len, trilogy_hand
     size_t server_version_len;
 
     CHECKED(trilogy_reader_get_string(&reader, &server_version, &server_version_len));
-    server_version_len = min(server_version_len, sizeof(out_packet->server_version) - 1);
+    server_version_len = trilogy_min(server_version_len, sizeof(out_packet->server_version) - 1);
     memcpy(out_packet->server_version, server_version, server_version_len);
     out_packet->server_version[server_version_len] = '\0';
 

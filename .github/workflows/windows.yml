@@ -1,0 +1,105 @@
+permissions:
+  contents: read
+
+name: Windows
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+  pull_request:
+
+jobs:
+  test-msvc:
+    name: Test (MSVC, MySQL ${{ matrix.mysql }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mysql: ["8.0", "8.4"]
+    steps:
+    - uses: actions/checkout@v7
+    - uses: shogo82148/actions-setup-mysql@v1
+      with:
+        mysql-version: ${{ matrix.mysql }}
+    - name: Setup database
+      shell: bash
+      run: |
+        mysql -uroot -h127.0.0.1 -e 'CREATE DATABASE test'
+        mysql -uroot -h127.0.0.1 < test/mysql/docker-entrypoint-initdb.d/caching_sha2_password_user.sql
+    - name: Install OpenSSL
+      run: choco install openssl --no-progress -y
+    - name: Build
+      run: |
+        cmake -S . -B build -A x64 -DTRILOGY_BUILD_TESTS=ON -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL"
+        cmake --build build --config Release
+    - name: Test
+      env:
+        MYSQL_HOST: "127.0.0.1"
+      run: |
+        $env:PATH = "C:\Program Files\OpenSSL\bin;$env:PATH"
+        build\Release\trilogy_test.exe
+
+  test-mingw:
+    name: Test (MinGW-w64 UCRT, MySQL 8.4)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+    - uses: actions/checkout@v7
+    - uses: msys2/setup-msys2@v2
+      with:
+        msystem: UCRT64
+        update: true
+        install: >-
+          make
+          mingw-w64-ucrt-x86_64-gcc
+          mingw-w64-ucrt-x86_64-openssl
+    - uses: shogo82148/actions-setup-mysql@v1
+      with:
+        mysql-version: "8.4"
+    - name: Setup database
+      shell: bash
+      run: |
+        mysql -uroot -h127.0.0.1 -e 'CREATE DATABASE test'
+        mysql -uroot -h127.0.0.1 < test/mysql/docker-entrypoint-initdb.d/caching_sha2_password_user.sql
+    - name: Build
+      run: make all test/test.exe
+    - name: Test
+      env:
+        MYSQL_HOST: "127.0.0.1"
+      run: test/test.exe
+
+  test-ruby:
+    name: Test (Ruby ${{ matrix.ruby }}, MySQL 8.4)
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ["3.3", "3.4"]
+    steps:
+    - uses: actions/checkout@v7
+    - uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby }}
+        bundler-cache: true
+        working-directory: contrib/ruby
+    - uses: shogo82148/actions-setup-mysql@v1
+      with:
+        mysql-version: "8.4"
+    - name: Setup database
+      shell: bash
+      run: mysql -uroot -h127.0.0.1 < test/mysql/docker-entrypoint-initdb.d/caching_sha2_password_user.sql
+    - name: Build and install gem
+      working-directory: contrib/ruby
+      run: |
+        gem build trilogy.gemspec
+        gem install (Get-Item trilogy-*.gem).FullName
+    - name: Test
+      working-directory: contrib/ruby
+      env:
+        MYSQL_HOST: "127.0.0.1"
+      run: bundle exec rake test

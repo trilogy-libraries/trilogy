@@ -7,12 +7,19 @@ CFLAGS ?= -O1 -ggdb3
 CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 -fstack-protector
 CFLAGS += -Wall -Werror -Wextra -pedantic -Wsign-conversion -Wno-missing-field-initializers -std=gnu99 -iquote inc
 
-OPENSSL = -lcrypto -lssl
-EXAMPLES = example/trilogy_query
+OPENSSL = -lssl -lcrypto
+EXE =
 
 UNAME_S := $(shell uname -s)
+CC_TARGET := $(shell $(CC) -dumpmachine)
 
-ifeq ($(UNAME_S), Darwin)
+ifneq (,$(or $(findstring mingw,$(CC_TARGET)),$(findstring windows,$(CC_TARGET))))
+  # Windows with a MinGW-w64 toolchain: native under MSYS2, or cross-compiling
+  # with e.g. `CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-ar make`.
+  EXE = .exe
+  OPENSSL += -lws2_32 -lcrypt32
+  LDFLAGS += -fstack-protector
+else ifeq ($(UNAME_S), Darwin)
 	CFLAGS += "-I$(shell brew --prefix openssl@3)/include"
 	LDFLAGS += "-L$(shell brew --prefix openssl@3)/lib"
 else
@@ -20,13 +27,16 @@ else
   LDFLAGS += -pie -Wl,-z,relro,-z,now
 endif
 
+EXAMPLES = example/trilogy_query$(EXE)
+TEST_BIN = test/test$(EXE)
+
 .PHONY: all
 all: libtrilogy.a examples
 
 .PHONY: examples
 examples: $(EXAMPLES)
 
-example/%: example/%.c libtrilogy.a
+example/%$(EXE): example/%.c libtrilogy.a
 	$(CC) -o $@ $(CFLAGS) -pedantic $(LDFLAGS) $^ $(OPENSSL)
 
 libtrilogy.a: $(OBJS)
@@ -48,14 +58,14 @@ fuzz: $(FUZZ_OBJ)
 .PHONY: clean
 clean:
 	rm -f libtrilogy.a $(EXAMPLES) $(OBJS) $(FUZZ_OBJ)
-	rm -f test/test $(TEST_OBJS)
+	rm -f $(TEST_BIN) $(TEST_OBJS)
 
-test/test: $(TEST_SOURCES) libtrilogy.a
-	$(CC) $(CFLAGS) $(LDFLAGS) -Wno-strict-prototypes -o test/test $(TEST_SOURCES) -L. -ltrilogy $(OPENSSL)
+$(TEST_BIN): $(TEST_SOURCES) libtrilogy.a
+	$(CC) $(CFLAGS) $(LDFLAGS) -Wno-strict-prototypes -o $(TEST_BIN) $(TEST_SOURCES) -L. -ltrilogy $(OPENSSL)
 
 update_greatest:
 	curl -o test/greatest.h https://raw.githubusercontent.com/silentbicycle/greatest/master/greatest.h
 
 .PHONY: test
-test: test/test
-	test/test
+test: $(TEST_BIN)
+	$(TEST_BIN)

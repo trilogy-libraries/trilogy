@@ -1,6 +1,3 @@
-#include <errno.h>
-#include <poll.h>
-
 #include "trilogy/blocking.h"
 #include "trilogy/client.h"
 #include "trilogy/error.h"
