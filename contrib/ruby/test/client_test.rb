@@ -27,7 +27,9 @@ class ClientTest < TrilogyTest
     e = assert_raises Trilogy::ConnectionError do
       new_tcp_client port: 13307
     end
-    assert_includes e.message, "Connection refused - Connection refused - connect"
+    # The wording comes from the operating system, so don't hardcode "Connection refused".
+    refused = Errno::ECONNREFUSED.new.message
+    assert_includes e.message, "#{refused} - #{refused} - connect"
     assert_includes e.message, DEFAULT_HOST
     assert_includes e.message, "13307"
   end
@@ -638,7 +640,7 @@ class ClientTest < TrilogyTest
   end
 
   def test_handshake_timeout
-    serv = TCPServer.new(0)
+    serv = TCPServer.new("127.0.0.1", 0)
     port = serv.addr[1]
 
     assert_raises Trilogy::TimeoutError do
@@ -821,6 +823,8 @@ class ClientTest < TrilogyTest
   USR1 = Class.new(StandardError)
 
   def test_interruptible_when_releasing_gvl
+    skip("Fork isn't supported on this platform") unless Process.respond_to?(:fork)
+
     client = new_tcp_client
 
     old_usr1 = trap "USR1" do
@@ -836,8 +840,8 @@ class ClientTest < TrilogyTest
       client.query("SELECT SLEEP(1)")
     end
   ensure
-    Process.wait(pid)
-    trap "USR1", old_usr1
+    Process.wait(pid) if pid
+    trap "USR1", old_usr1 if old_usr1
     ensure_closed client
   end
 
@@ -1140,6 +1144,12 @@ class ClientTest < TrilogyTest
       assert_raises Trilogy::SyscallError::ECONNRESET, Trilogy::EOFError do
         client.query("SELECT 1")
       end
+    elsif windows?
+      # The server sends its "disconnected because of inactivity" error and closes. Sending the query to the closed
+      # connection resets it, and unlike other platforms Windows then discards the unread error packet.
+      assert_raises_connection_error do
+        client.query("SELECT 1")
+      end
     else
       ex = assert_raises Trilogy::BaseConnectionError do
         client.query("SELECT 1")
@@ -1343,7 +1353,7 @@ class ClientTest < TrilogyTest
     end
   end
 
-  if defined?(Process.fork)
+  if Process.respond_to?(:fork)
     def test_free_on_exit
       pid = fork do
         thread = Thread.new do

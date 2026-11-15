@@ -19,7 +19,7 @@ It's currently in production use on github.com.
 
 * Blocking client API wrapping the non-blocking API
 
-* No dependencies outside of POSIX, the C standard library & OpenSSL
+* No dependencies outside of POSIX (or Winsock on Windows), the C standard library & OpenSSL
 
 * Minimal dynamic allocation
 
@@ -38,6 +38,28 @@ It's currently in production use on github.com.
 `make` - that's it. This will build a static `libtrilogy.a`
 
 Trilogy should build out of the box on most UNIX systems which have OpenSSL installed.
+
+### Windows
+
+Trilogy supports Windows 10 and later (Unix domain sockets need Windows 10 version 1803 or later). OpenSSL is required on Windows too.
+
+With [MSYS2](https://www.msys2.org/) (MinGW-w64), install `make`, `mingw-w64-ucrt-x86_64-gcc` and `mingw-w64-ucrt-x86_64-openssl`, then run `make` from a UCRT64 shell. Link programs that use Trilogy against `-lssl -lcrypto -lws2_32 -lcrypt32`.
+
+With Visual Studio, use the CMake build:
+
+```
+cmake -S . -B build -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL"
+cmake --build build --config Release
+```
+
+The CMake target `trilogy` links Winsock (`ws2_32`) for you. Pass `-DTRILOGY_BUILD_TESTS=ON` to build the test suite as well.
+
+Notes for Windows:
+
+* Socket handles are passed through the API as `int` (for example `trilogy_sock_fd` and `trilogy_connect_set_fd`), as OpenSSL's `SSL_set_fd` does. Cast them to `SOCKET` before calling Winsock functions.
+* After `TRILOGY_SYSERR`, `errno` holds the POSIX equivalent of the Winsock error (`ECONNREFUSED`, `ETIMEDOUT` and so on), so the same error handling works on every platform.
+* OpenSSL has no system certificate store on Windows, so set `ssl_ca` when verifying server certificates.
+* The Ruby binding in `contrib/ruby` builds with [RubyInstaller](https://rubyinstaller.org/) and its MSYS2 toolchain; see its README.
 
 ## API Documentation
 

@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Fixed
+
+- Windows support for the C library: Winsock-based socket layer, MinGW-w64 support in the Makefile, a CMake build for MSVC, and Windows CI.
+- Windows support for the Ruby binding, built with RubyInstaller and its MSYS2 (UCRT64) toolchain.
 ## 2.13.3
 
 ### Fixed

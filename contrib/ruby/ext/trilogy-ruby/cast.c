@@ -95,7 +95,8 @@ static time_t civil_to_epoch_utc(int year, int month, int day, int hour, int min
     unsigned yoe = (unsigned)(year - era * 400);
     unsigned doy = (153 * (month > 2 ? month - 3 : month + 9) + 2) / 5 + (unsigned)day - 1;
     unsigned doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-    long days = (long)era * 146097 + (long)doe - 719468;
+    // 64-bit arithmetic: long is 32 bits on Windows, too small for seconds outside 1901-2038.
+    int64_t days = (int64_t)era * 146097 + (int64_t)doe - 719468;
     return (time_t)(days * 86400 + hour * 3600 + min * 60 + sec);
 }
 

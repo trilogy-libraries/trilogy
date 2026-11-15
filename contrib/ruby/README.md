@@ -22,6 +22,20 @@ Or install it yourself as:
 $ gem install trilogy
 ```
 
+### Windows
+
+The gem builds with [RubyInstaller](https://rubyinstaller.org/) and its MSYS2 development toolchain (`ridk install`).
+OpenSSL comes with RubyInstaller. To build and install from a checkout of this repository:
+
+```
+> cd contribuby
+> ridk enable
+> gem build trilogy.gemspec
+> gem install trilogy-<version>.gem
+```
+
+OpenSSL has no system certificate store on Windows, so pass `ssl_ca:` when verifying server certificates.
+
 ## Usage
 
 ``` ruby

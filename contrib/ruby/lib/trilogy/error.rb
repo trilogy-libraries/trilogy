@@ -30,7 +30,11 @@ class Trilogy
 
     class << self
       def from_errno(errno, message)
-        ERRORS[errno].new(message)
+        if (error_class = ERRORS[errno])
+          error_class.new(message)
+        else
+          BaseConnectionError.new("#{message} (unknown errno #{errno})")
+        end
       end
     end
   end

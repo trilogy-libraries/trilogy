@@ -116,6 +116,8 @@ class SslTest < TrilogyTest
   end
 
   def test_raise_proper_invalid_ssl_state
+    skip("Fork isn't supported on this platform") unless Process.respond_to?(:fork)
+
     client = new_tcp_client(ssl: true)
 
     pid = fork do
