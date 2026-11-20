@@ -588,6 +588,33 @@ class ClientTest < TrilogyTest
     ensure_closed client
   end
 
+  def test_query_deadline
+    client = new_tcp_client
+    assert_raises Trilogy::DeadlineExceededError do
+      client.query("SELECT SLEEP(1)", deadline: 0.2)
+    end
+  ensure
+    ensure_closed client
+  end
+
+  def test_ping_deadline
+    client = new_tcp_client
+    assert_raises Trilogy::DeadlineExceededError do
+      client.ping(deadline: 0)
+    end
+  ensure
+    ensure_closed client
+  end
+
+  def test_query_timeout_before_deadline
+    client = new_tcp_client(read_timeout: 0.1)
+    assert_raises Trilogy::TimeoutError do
+      client.query("SELECT SLEEP(1)", deadline: 0.2)
+    end
+  ensure
+    ensure_closed client
+  end
+
   def test_adjustable_read_timeout
     client = new_tcp_client(read_timeout: 5)
     assert client.query("SELECT SLEEP(0.2)");

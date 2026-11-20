@@ -156,7 +156,7 @@ static bool buffer_checkin(trilogy_buffer_t *buffer)
 
 VALUE Trilogy_CastError;
 static VALUE Trilogy_BaseConnectionError, Trilogy_ProtocolError, Trilogy_SSLError, Trilogy_QueryError,
-    Trilogy_ConnectionClosedError,
+    Trilogy_ConnectionClosedError, Trilogy_DeadlineExceededError,
     Trilogy_TimeoutError, Trilogy_SyscallError, Trilogy_Result, Trilogy_EOFError, Trilogy_AuthPluginError;
 
 static ID id_socket, id_host, id_port, id_username, id_password, id_found_rows, id_connect_timeout, id_read_timeout,
@@ -171,6 +171,7 @@ struct trilogy_ctx {
     rb_encoding *encoding;
     unsigned int query_flags;
     char server_version[TRILOGY_SERVER_VERSION_SIZE + 1];
+    struct timeval deadline;
 };
 
 static void rb_trilogy_acquire_buffer(struct trilogy_ctx *ctx)
@@ -185,6 +186,62 @@ static void rb_trilogy_release_buffer(struct trilogy_ctx *ctx)
     if (ctx->conn.packet_buffer.buff) {
         buffer_checkin(&ctx->conn.packet_buffer);
     }
+}
+
+
+static struct timeval double_to_timeval(double secs)
+{
+    double whole_secs = floor(secs);
+
+    return (struct timeval){
+        .tv_sec = whole_secs,
+        .tv_usec = floor((secs - whole_secs) * 1000000),
+    };
+}
+
+static double timeval_to_double(struct timeval tv)
+{
+    return (double)tv.tv_sec + ((double)tv.tv_usec) / 1000000.0;
+}
+
+static void get_timeval_monotonic(struct timeval *tv)
+{
+#if defined(HAVE_CLOCK_GETTIME) && defined(CLOCK_MONOTONIC)
+    struct timespec ts;
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) == -1) {
+        rb_sys_fail("clock_gettime");
+    }
+    tv->tv_sec = ts.tv_sec;
+    tv->tv_usec = (int)(ts.tv_nsec / 1000);
+#else
+    if (gettimeofday(tv, 0) < 0) {
+        rb_sys_fail("gettimeofday");
+    }
+#endif
+}
+
+static void setup_deadline(struct trilogy_ctx *ctx, VALUE vdeadline)
+{
+    if (RTEST(vdeadline)) {
+        struct timeval start;
+        get_timeval_monotonic(&start);
+        struct timeval deadline = double_to_timeval(NUM2DBL(vdeadline));
+        timeradd(&start, &deadline, &ctx->deadline);
+    } else {
+        timerclear(&ctx->deadline);
+    }
+}
+
+static bool deadline_exceeded_p(struct trilogy_ctx *ctx)
+{
+    if (timerisset(&ctx->deadline)) {
+        struct timeval now;
+        get_timeval_monotonic(&now);
+        if (timercmp(&ctx->deadline, &now, <)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 static void free_trilogy(void *ptr)
@@ -286,7 +343,7 @@ static void handle_trilogy_error(struct trilogy_ctx *ctx, int rc, const char *ms
     }
 
     case TRILOGY_TIMEOUT: {
-        exc = rb_exc_new_str(Trilogy_TimeoutError, rbmsg);
+        exc = rb_exc_new_str(deadline_exceeded_p(ctx) ? Trilogy_DeadlineExceededError : Trilogy_TimeoutError, rbmsg);
         break;
     }
 
@@ -378,19 +435,26 @@ static int flush_writes(struct trilogy_ctx *ctx)
     }
 }
 
-static struct timeval double_to_timeval(double secs)
+static bool clamp_timeout_with_deadline(struct trilogy_ctx *ctx, struct timeval *timeout)
 {
-    double whole_secs = floor(secs);
+    if (!timerisset(&ctx->deadline)) {
+        return false;
+    }
 
-    return (struct timeval){
-        .tv_sec = whole_secs,
-        .tv_usec = floor((secs - whole_secs) * 1000000),
-    };
-}
+    struct timeval now;
+    get_timeval_monotonic(&now);
+    struct timeval remaining;
+    timersub(&ctx->deadline, &now, &remaining);
 
-static double timeval_to_double(struct timeval tv)
-{
-    return (double)tv.tv_sec + ((double)tv.tv_usec) / 1000000.0;
+    if (remaining.tv_sec < 0 || remaining.tv_usec < 0) {
+        return true; // deadline exceeded;
+    }
+
+    if (!timerisset(timeout) || timercmp(&remaining, timeout, <)) {
+        *timeout = remaining;
+    }
+
+    return false;
 }
 
 struct rb_trilogy_wait_args {
@@ -410,33 +474,33 @@ static VALUE rb_trilogy_wait_protected(VALUE vargs) {
 
 static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
 {
-    struct timeval *timeout = NULL;
+    struct timeval timeout;
     int wait_flag = 0;
 
     switch (wait) {
     case TRILOGY_WAIT_READ:
-        timeout = &sock->opts.read_timeout;
+        timeout = sock->opts.read_timeout;
         wait_flag = RB_WAITFD_IN;
         break;
 
     case TRILOGY_WAIT_WRITE:
-        timeout = &sock->opts.write_timeout;
+        timeout = sock->opts.write_timeout;
         wait_flag = RB_WAITFD_OUT;
         break;
 
     case TRILOGY_WAIT_CONNECT:
         // wait for connection to be writable
-        timeout = &sock->opts.connect_timeout;
-        if (timeout->tv_sec == 0 && timeout->tv_usec == 0) {
+        timeout = sock->opts.connect_timeout;
+        if (timeout.tv_sec == 0 && timeout.tv_usec == 0) {
             // We used to use the write timeout for this, so if a connect timeout isn't configured, default to that.
-            timeout = &sock->opts.write_timeout;
+            timeout = sock->opts.write_timeout;
         }
         wait_flag = RB_WAITFD_OUT;
         break;
 
     case TRILOGY_WAIT_HANDSHAKE:
         // wait for handshake packet on initial connection
-        timeout = &sock->opts.connect_timeout;
+        timeout = sock->opts.connect_timeout;
         wait_flag = RB_WAITFD_IN;
         break;
 
@@ -444,20 +508,27 @@ static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
         return TRILOGY_ERR;
     }
 
-    if (timeout->tv_sec == 0 && timeout->tv_usec == 0) {
-        timeout = NULL;
+    struct trilogy_ctx *ctx = sock->opts.privdata;
+
+    if (clamp_timeout_with_deadline(ctx, &timeout)) {
+        // deadline exceeded.
+        return TRILOGY_TIMEOUT;
     }
 
     struct rb_trilogy_wait_args args;
     args.fd = trilogy_sock_fd(sock);
     args.wait_flag = wait_flag;
-    args.timeout = timeout;
+    if (timerisset(&timeout)) {
+        args.timeout = &timeout;
+    } else {
+        args.timeout = NULL;
+    }
+
     args.rc = 0;
 
     int state = 0;
     rb_protect(rb_trilogy_wait_protected, (VALUE)&args, &state);
     if (state) {
-        struct trilogy_ctx *ctx = sock->opts.privdata;
         rb_trilogy_release_buffer(ctx);
         trilogy_sock_shutdown(sock);
         rb_jump_tag(state);
@@ -906,22 +977,6 @@ struct read_query_response_state {
     int rc;
 };
 
-static void get_timespec_monotonic(struct timespec *ts)
-{
-#if defined(HAVE_CLOCK_GETTIME) && defined(CLOCK_MONOTONIC)
-    if (clock_gettime(CLOCK_MONOTONIC, ts) == -1) {
-        rb_sys_fail("clock_gettime");
-    }
-#else
-    struct timeval tv;
-    if (gettimeofday(&tv, 0) < 0) {
-        rb_sys_fail("gettimeofday");
-    }
-    ts->tv_sec = tv.tv_sec;
-    ts->tv_nsec = tv.tv_usec * 1000;
-#endif
-}
-
 static VALUE read_query_error(struct read_query_response_state *args, int rc, const char *msg)
 {
     args->rc = rc;
@@ -934,8 +989,8 @@ static VALUE read_query_response(VALUE vargs)
     struct read_query_response_state *args = (void *)vargs;
     struct trilogy_ctx *ctx = args->ctx;
 
-    struct timespec start;
-    get_timespec_monotonic(&start);
+    struct timeval start;
+    get_timeval_monotonic(&start);
 
     uint64_t column_count = 0;
 
@@ -958,11 +1013,11 @@ static VALUE read_query_response(VALUE vargs)
         }
     }
 
-    struct timespec finish;
-    get_timespec_monotonic(&finish);
-
-    double query_time = finish.tv_sec - start.tv_sec;
-    query_time += (double)(finish.tv_nsec - start.tv_nsec) / 1000000000.0;
+    struct timeval finish;
+    get_timeval_monotonic(&finish);
+    struct timeval duration;
+    timersub(&finish, &start, &duration);
+    double query_time = timeval_to_double(duration);
 
     VALUE column_names = 0;
 
@@ -1149,12 +1204,13 @@ static VALUE rb_trilogy_abandon_results(VALUE self)
     return LONG2NUM(count);
 }
 
-static VALUE rb_trilogy_query(VALUE self, VALUE query)
+static VALUE rb_trilogy_query(VALUE self, VALUE query, VALUE vdeadline)
 {
     struct trilogy_ctx *ctx = get_open_ctx(self);
 
     StringValue(query);
     query = rb_str_new_frozen(query);
+    setup_deadline(ctx, vdeadline);
 
     rb_trilogy_acquire_buffer(ctx);
 
@@ -1172,9 +1228,10 @@ static VALUE rb_trilogy_query(VALUE self, VALUE query)
     return execute_read_query_response(ctx);
 }
 
-static VALUE rb_trilogy_ping(VALUE self)
+static VALUE rb_trilogy_ping(VALUE self, VALUE vdeadline)
 {
     struct trilogy_ctx *ctx = get_open_ctx(self);
+    setup_deadline(ctx, vdeadline);
 
     rb_trilogy_acquire_buffer(ctx);
 
@@ -1389,8 +1446,8 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
     rb_define_private_method(Trilogy, "_connect", rb_trilogy_connect, 4);
     rb_define_method(Trilogy, "change_db", rb_trilogy_change_db, 1);
     rb_define_alias(Trilogy, "select_db", "change_db");
-    rb_define_private_method(Trilogy, "_query", rb_trilogy_query, 1);
-    rb_define_method(Trilogy, "ping", rb_trilogy_ping, 0);
+    rb_define_private_method(Trilogy, "_query", rb_trilogy_query, 2);
+    rb_define_private_method(Trilogy, "_ping", rb_trilogy_ping, 1);
     rb_define_private_method(Trilogy, "_escape", rb_trilogy_escape, 1);
     rb_define_method(Trilogy, "close", rb_trilogy_close, 0);
     rb_define_method(Trilogy, "closed?", rb_trilogy_closed, 0);
@@ -1442,6 +1499,9 @@ RUBY_FUNC_EXPORTED void Init_cext(void)
 
     Trilogy_TimeoutError = rb_const_get(Trilogy, rb_intern("TimeoutError"));
     rb_global_variable(&Trilogy_TimeoutError);
+
+    Trilogy_DeadlineExceededError = rb_const_get(Trilogy, rb_intern("DeadlineExceededError"));
+    rb_global_variable(&Trilogy_DeadlineExceededError);
 
     Trilogy_BaseConnectionError = rb_const_get(Trilogy, rb_intern("BaseConnectionError"));
     rb_global_variable(&Trilogy_BaseConnectionError);

@@ -72,6 +72,11 @@ class Trilogy
   class CastError < ClientError
   end
 
+  # DeadlineExceeded isn't a ConnectionError on purpose as it shouldn't
+  # be retried.
+  class DeadlineExceededError < ClientError
+  end
+
   class TimeoutError < BaseConnectionError
   end
 
