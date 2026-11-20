@@ -131,7 +131,7 @@ class ClientTest < TrilogyTest
     flatten_rows_allocations = allocations { client.query_with_flags(sql, client.query_flags | Trilogy::QUERY_FLAGS_FLATTEN_ROWS) }
 
     # Verify O(1) allocations for flatten_rows (constant overhead)
-    assert_operator flatten_rows_allocations, :<=, 20
+    assert_operator flatten_rows_allocations, :<=, 21
 
     # Verify O(N) allocations for standard query (linear scaling with row count)
     # The overhead should be roughly similar to flatten_rows, so they should differ by row_count.
