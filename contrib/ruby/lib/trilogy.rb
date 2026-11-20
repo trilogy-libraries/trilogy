@@ -16,17 +16,25 @@ class Trilogy
     end
   private_constant :IO_TIMEOUT_ERROR
 
-  def query(arg)
+  def query(arg, deadline: nil)
     str = String.try_convert(arg) or raise TypeError, "no implicit conversion of #{arg.class} into String"
     str = str.dup if str.equal?(arg)
     str.freeze
+
+    deadline = nil if deadline == Float::INFINITY
 
     str_encoding = str.encoding
     if @encoding != str_encoding && ::Encoding::BINARY != str_encoding && !(str.ascii_only? && @encoding.ascii_compatible?)
       raise ::Encoding::CompatibilityError, "Trilogy connection uses #{@encoding} but the query was provided in #{str_encoding}"
     end
 
-    _query(str)
+    _query(str, deadline)
+  end
+
+  def ping(deadline: nil)
+    deadline = nil if deadline == Float::INFINITY
+
+    _ping(deadline)
   end
 
   def escape(arg)
@@ -150,11 +158,11 @@ class Trilogy
     @connected_host ||= query_with_flags("select @@hostname", query_flags | QUERY_FLAGS_FLATTEN_ROWS).rows.first
   end
 
-  def query_with_flags(sql, flags)
+  def query_with_flags(sql, flags, deadline: nil)
     old_flags = query_flags
     self.query_flags = flags
 
-    query(sql)
+    query(sql, deadline: deadline)
   ensure
     self.query_flags = old_flags
   end
