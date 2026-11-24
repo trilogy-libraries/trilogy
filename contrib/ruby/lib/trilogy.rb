@@ -84,7 +84,7 @@ class Trilogy
         port = options[:port] || 3306
         connect_timeout = options.fetch(:connect_timeout, 5) || options[:write_timeout]
 
-        socket = TCPSocket.new(host, port, connect_timeout: connect_timeout)
+        socket = new_tcp_socket(host, port, connect_timeout)
 
         socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
 
@@ -157,5 +157,22 @@ class Trilogy
     query(sql)
   ensure
     self.query_flags = old_flags
+  end
+
+  private
+
+  if RUBY_VERSION >= "4"
+    def new_tcp_socket(host, port, timeout)
+      # open_timeout is resolv + connect
+      TCPSocket.new(host, port, open_timeout: timeout)
+    end
+  elsif RUBY_VERSION >= "3.4"
+    def new_tcp_socket(host, port, timeout)
+      TCPSocket.new(host, port, connect_timeout: timeout, resolv_timeout: timeout)
+    end
+  else
+    def new_tcp_socket(host, port, timeout)
+      TCPSocket.new(host, port, connect_timeout: timeout)
+    end
   end
 end
