@@ -1,9 +1,7 @@
 #ifndef TRILOGY_CLIENT_H
 #define TRILOGY_CLIENT_H
 
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include "trilogy/platform.h"
 
 #include "trilogy/buffer.h"
 #include "trilogy/packet_parser.h"

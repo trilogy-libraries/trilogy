@@ -1,13 +1,14 @@
 #ifndef TRILOGY_SOCKET_H
 #define TRILOGY_SOCKET_H
 
+#include "trilogy/platform.h"
+
 #include "trilogy/error.h"
 #include "trilogy/protocol.h"
 #include <openssl/err.h>
 #include <openssl/ssl.h>
 #include <openssl/x509v3.h>
 #include <stdbool.h>
-#include <sys/time.h>
 
 typedef enum {
     TRILOGY_WAIT_READ = 0,

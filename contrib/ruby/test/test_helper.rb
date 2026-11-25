@@ -108,6 +108,10 @@ class TrilogyTest < Minitest::Test
     client&.close
   end
 
+  def windows?
+    Gem.win_platform?
+  end
+
   def ensure_closed(socket)
     socket.close if socket
   end
@@ -213,6 +217,8 @@ class TrilogyTest < Minitest::Test
       assert_includes err.message, "TRILOGY_CLOSED_CONNECTION"
     elsif err.is_a?(Trilogy::SSLError)
       assert_includes err.message, "unexpected eof while reading"
+    elsif windows? && err.is_a?(Trilogy::SyscallError::ECONNABORTED)
+      # Winsock reports a connection torn down by the peer as either reset or aborted.
     else
       assert_instance_of Trilogy::ConnectionResetError, err
     end

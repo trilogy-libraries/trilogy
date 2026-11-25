@@ -22,6 +22,14 @@ append_cflags([
   "-g",
 ])
 
+if RUBY_PLATFORM.match?(/mingw|mswin/)
+  # The Trilogy library talks to Winsock directly, using SOCKET handles. Ruby's
+  # own DLL also exports recv, send, select and friends, as wrappers that expect
+  # C runtime file descriptors instead, and it comes first on the link line.
+  # Put Winsock ahead of it so the library binds to the real functions.
+  $LOCAL_LIBS << (RUBY_PLATFORM.include?("mswin") ? " ws2_32.lib" : " -lws2_32")
+end
+
 dir_config("openssl").any? || pkg_config("openssl")
 
 have_library("crypto", "CRYPTO_malloc")

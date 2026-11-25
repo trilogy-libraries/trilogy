@@ -7,16 +7,27 @@ class AuthTest < TrilogyTest
       client = new_tcp_client
       plugin_exists = client.query("SELECT name FROM mysql.plugin WHERE name = 'cleartext_plugin_server'").rows.first
       unless plugin_exists
-        client.query("INSTALL PLUGIN cleartext_plugin_server SONAME 'auth_test_plugin.so'")
+        # Plugins are DLLs when the server runs on Windows
+        on_windows = client.query("SELECT @@version_compile_os").rows.first.first.to_s.match?(/win/i)
+        soname = on_windows ? "auth_test_plugin.dll" : "auth_test_plugin.so"
+        begin
+          client.query("INSTALL PLUGIN cleartext_plugin_server SONAME '#{soname}'")
+        rescue Trilogy::ProtocolError => error
+          # ER_CANT_OPEN_LIBRARY: this server build doesn't ship the test plugin, skip the tests needing it
+          raise unless error.error_code == 1126
+          @@cleartext_plugin_missing = true
+        end
       end
     end
 
     super
   end
 
+  @@cleartext_plugin_missing = false
+
   def has_cleartext_plugin_available?
     # MariaDB doesn't ship auth_test_plugin.so, only MySQL does
-    !is_mariadb?
+    !is_mariadb? && !@@cleartext_plugin_missing
   end
 
   def has_caching_sha2?

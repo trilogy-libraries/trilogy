@@ -35,7 +35,11 @@ TEST test_check_disconnected()
     trilogy_conn_t conn;
 
     do_connect(&conn);
+#ifdef _WIN32
+    shutdown((SOCKET)trilogy_sock_fd(conn.socket), SD_RECEIVE);
+#else
     shutdown(trilogy_sock_fd(conn.socket), SHUT_RD);
+#endif
 
     int err = trilogy_sock_check(conn.socket);
     ASSERT_ERR(TRILOGY_CLOSED_CONNECTION, err);

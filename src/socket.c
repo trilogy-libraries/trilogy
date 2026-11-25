@@ -1,47 +1,270 @@
+#include "trilogy/platform.h"
+
+#ifdef _WIN32
+#include <limits.h>
+#if defined(__has_include)
+#if __has_include(<afunix.h>)
+#include <afunix.h>
+#define TRILOGY_HAVE_AFUNIX_H
+#endif
+#endif
+#ifndef TRILOGY_HAVE_AFUNIX_H
+// Older SDKs lack <afunix.h>; AF_UNIX itself is supported since Windows 10 1803.
+#define UNIX_PATH_MAX 108
+struct sockaddr_un {
+    ADDRESS_FAMILY sun_family;
+    char sun_path[UNIX_PATH_MAX];
+};
+#endif
+#ifndef PF_UNIX
+#define PF_UNIX AF_UNIX
+#endif
+#else
+#include <fcntl.h>
 #include <netdb.h>
-#include <netinet/tcp.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <poll.h>
-#include <sys/socket.h>
-#include <sys/types.h>
 #include <sys/un.h>
+#endif
 
 #include <errno.h>
-#include <fcntl.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <string.h>
 
 #include "trilogy/allocator.h"
 #include "trilogy/error.h"
 #include "trilogy/socket.h"
 
-#if OPENSSL_VERSION_NUMBER < 0x1000200fL
-#include "trilogy/vendor/openssl_hostname_validation.h"
-#endif
+/* System call shims.
+ *
+ * Every function below behaves like its POSIX namesake: it returns -1 on
+ * failure with the reason in `errno`. On Windows the Winsock error is
+ * translated into the equivalent errno value, because Trilogy's contract is
+ * that callers inspect `errno` after a TRILOGY_SYSERR.
+ */
+#ifdef _WIN32
 
-struct trilogy_sock {
-    trilogy_sock_t base;
-    struct addrinfo *addr;
-    SSL *ssl;
-    int fd;
-    bool freeaddrinfo;
-};
+#define TRILOGY_SOCKET(fd) ((SOCKET)(fd))
 
-void trilogy_sock_set_fd(trilogy_sock_t *_sock, int fd)
+static int trilogy_wsa_to_errno(int err)
 {
-    struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
-    sock->fd = fd;
+    switch (err) {
+    case 0:
+        return 0;
+    case WSAEINTR:
+        return EINTR;
+    case WSAEWOULDBLOCK:
+        return EAGAIN;
+    case WSAEINPROGRESS:
+    case WSAEALREADY:
+        return EINPROGRESS;
+    case WSAEBADF:
+    case WSAENOTSOCK:
+        return EBADF;
+    case WSAEACCES:
+        return EACCES;
+    case WSAEFAULT:
+        return EFAULT;
+    case WSAEINVAL:
+        return EINVAL;
+    case WSAEMFILE:
+        return EMFILE;
+    case WSAEMSGSIZE:
+        return EMSGSIZE;
+    case WSAEAFNOSUPPORT:
+        return EAFNOSUPPORT;
+    case WSAEADDRINUSE:
+        return EADDRINUSE;
+    case WSAEADDRNOTAVAIL:
+        return EADDRNOTAVAIL;
+    case WSAENETDOWN:
+        return ENETDOWN;
+    case WSAENETUNREACH:
+        return ENETUNREACH;
+    case WSAENETRESET:
+        return ENETRESET;
+    case WSAECONNABORTED:
+        return ECONNABORTED;
+    case WSAECONNRESET:
+        return ECONNRESET;
+    case WSAENOBUFS:
+        return ENOBUFS;
+    case WSAEISCONN:
+        return EISCONN;
+    case WSAENOTCONN:
+        return ENOTCONN;
+    case WSAESHUTDOWN:
+        return EPIPE;
+    case WSAETIMEDOUT:
+        return ETIMEDOUT;
+    case WSAECONNREFUSED:
+        return ECONNREFUSED;
+    case WSAEHOSTUNREACH:
+        return EHOSTUNREACH;
+    default:
+        return EIO;
+    }
 }
 
-static int _cb_raw_fd(trilogy_sock_t *_sock)
+// Copy the last Winsock error into errno and return it.
+static int sys_sock_errno(void)
 {
-    struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
-    return sock->fd;
+    errno = trilogy_wsa_to_errno(WSAGetLastError());
+    return errno;
 }
 
-static int _cb_wait(trilogy_sock_t *_sock, trilogy_wait_t wait)
+static int sys_socket(int domain, int type, int protocol)
 {
-    struct pollfd pfd = {.fd = trilogy_sock_fd(_sock)};
+    SOCKET s = socket(domain, type, protocol);
+    if (s == INVALID_SOCKET) {
+        sys_sock_errno();
+        return -1;
+    }
+    return (int)s;
+}
+
+static int sys_close(int fd)
+{
+    if (closesocket(TRILOGY_SOCKET(fd)) == SOCKET_ERROR) {
+        sys_sock_errno();
+        return -1;
+    }
+    return 0;
+}
+
+static int clamp_len(size_t len) { return len > INT_MAX ? INT_MAX : (int)len; }
+
+static ssize_t sys_recv(int fd, void *buf, size_t len, int flags)
+{
+    int n = recv(TRILOGY_SOCKET(fd), (char *)buf, clamp_len(len), flags);
+    if (n == SOCKET_ERROR) {
+        // After shutdown(SHUT_RD) POSIX reports end-of-file; Winsock reports
+        // WSAESHUTDOWN. Normalise to end-of-file.
+        if (WSAGetLastError() == WSAESHUTDOWN) {
+            return 0;
+        }
+        sys_sock_errno();
+        return -1;
+    }
+    return n;
+}
+
+static ssize_t sys_read(int fd, void *buf, size_t len) { return sys_recv(fd, buf, len, 0); }
+
+static ssize_t sys_write(int fd, const void *buf, size_t len)
+{
+    int n = send(TRILOGY_SOCKET(fd), (const char *)buf, clamp_len(len), 0);
+    if (n == SOCKET_ERROR) {
+        // Writing to a connection the peer has torn down fails with EPIPE on
+        // POSIX but with a reset/abort on Windows; report it the POSIX way so
+        // callers get TRILOGY_CLOSED_CONNECTION on both.
+        int err = WSAGetLastError();
+        if (err == WSAECONNRESET || err == WSAECONNABORTED) {
+            errno = EPIPE;
+        } else {
+            sys_sock_errno();
+        }
+        return -1;
+    }
+    return n;
+}
+
+static int sys_setsockopt(int fd, int level, int name, const void *val, socklen_t len)
+{
+    if (setsockopt(TRILOGY_SOCKET(fd), level, name, (const char *)val, len) == SOCKET_ERROR) {
+        sys_sock_errno();
+        return -1;
+    }
+    return 0;
+}
+
+static int sys_set_nonblocking(int fd)
+{
+    u_long mode = 1;
+    if (ioctlsocket(TRILOGY_SOCKET(fd), (long)FIONBIO, &mode) == SOCKET_ERROR) {
+        sys_sock_errno();
+        return -1;
+    }
+    return 0;
+}
+
+// select() rather than WSAPoll(): WSAPoll fails to report a refused
+// non-blocking connect on many Windows versions, while select() reports it
+// through the exception set. With one socket, FD_SETSIZE is not a concern.
+static int sys_wait(int fd, trilogy_wait_t wait)
+{
+    fd_set rfds, wfds, efds;
+    FD_ZERO(&rfds);
+    FD_ZERO(&wfds);
+    FD_ZERO(&efds);
+
+    switch (wait) {
+    case TRILOGY_WAIT_HANDSHAKE:
+    case TRILOGY_WAIT_READ:
+        FD_SET(TRILOGY_SOCKET(fd), &rfds);
+        break;
+    case TRILOGY_WAIT_CONNECT:
+        FD_SET(TRILOGY_SOCKET(fd), &wfds);
+        FD_SET(TRILOGY_SOCKET(fd), &efds);
+        break;
+    case TRILOGY_WAIT_WRITE:
+        FD_SET(TRILOGY_SOCKET(fd), &wfds);
+        break;
+    default:
+        return TRILOGY_ERR;
+    }
+
+    while (1) {
+        if (select(0, &rfds, &wfds, &efds, NULL) == SOCKET_ERROR) {
+            if (sys_sock_errno() == EINTR) {
+                continue;
+            }
+            return TRILOGY_SYSERR;
+        }
+        return TRILOGY_OK;
+    }
+}
+
+#else /* POSIX */
+
+#define TRILOGY_SOCKET(fd) (fd)
+
+static int sys_sock_errno(void) { return errno; }
+
+static int sys_socket(int domain, int type, int protocol) { return socket(domain, type, protocol); }
+
+static int sys_close(int fd) { return close(fd); }
+
+static ssize_t sys_recv(int fd, void *buf, size_t len, int flags) { return recv(fd, buf, len, flags); }
+
+static ssize_t sys_read(int fd, void *buf, size_t len) { return read(fd, buf, len); }
+
+static ssize_t sys_write(int fd, const void *buf, size_t len) { return write(fd, buf, len); }
+
+static int sys_setsockopt(int fd, int level, int name, const void *val, socklen_t len)
+{
+    return setsockopt(fd, level, name, val, len);
+}
+
+static int sys_set_nonblocking(int fd)
+{
+    int flags = fcntl(fd, F_GETFL, 0);
+
+    if (flags < 0) {
+        return -1;
+    }
+
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int sys_wait(int fd, trilogy_wait_t wait)
+{
+    struct pollfd pfd = {.fd = fd};
 
     switch (wait) {
     case TRILOGY_WAIT_HANDSHAKE:
@@ -70,10 +293,41 @@ static int _cb_wait(trilogy_sock_t *_sock, trilogy_wait_t wait)
     }
 }
 
+#endif
+
+#if OPENSSL_VERSION_NUMBER < 0x1000200fL
+#include "trilogy/vendor/openssl_hostname_validation.h"
+#endif
+
+struct trilogy_sock {
+    trilogy_sock_t base;
+    struct addrinfo *addr;
+    SSL *ssl;
+    int fd;
+    bool freeaddrinfo;
+#ifdef _WIN32
+    bool wsa_started;
+#endif
+};
+
+void trilogy_sock_set_fd(trilogy_sock_t *_sock, int fd)
+{
+    struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
+    sock->fd = fd;
+}
+
+static int _cb_raw_fd(trilogy_sock_t *_sock)
+{
+    struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
+    return sock->fd;
+}
+
+static int _cb_wait(trilogy_sock_t *_sock, trilogy_wait_t wait) { return sys_wait(trilogy_sock_fd(_sock), wait); }
+
 static ssize_t _cb_raw_read(trilogy_sock_t *_sock, void *buf, size_t nread)
 {
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
-    ssize_t data_read = read(sock->fd, buf, nread);
+    ssize_t data_read = sys_read(sock->fd, buf, nread);
     if (data_read < 0) {
         if (errno == EINTR || errno == EAGAIN) {
             return (ssize_t)TRILOGY_AGAIN;
@@ -87,7 +341,7 @@ static ssize_t _cb_raw_read(trilogy_sock_t *_sock, void *buf, size_t nread)
 static ssize_t _cb_raw_write(trilogy_sock_t *_sock, const void *buf, size_t nwrite)
 {
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
-    ssize_t data_written = write(sock->fd, buf, nwrite);
+    ssize_t data_written = sys_write(sock->fd, buf, nwrite);
     if (data_written < 0) {
         if (errno == EINTR || errno == EAGAIN) {
             return (ssize_t)TRILOGY_AGAIN;
@@ -107,7 +361,7 @@ static int _cb_raw_close(trilogy_sock_t *_sock)
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
     int rc = 0;
     if (sock->fd != -1) {
-        rc = close(sock->fd);
+        rc = sys_close(sock->fd);
     }
 
     if (sock->addr) {
@@ -133,6 +387,12 @@ static int _cb_raw_close(trilogy_sock_t *_sock)
     xfree(sock->base.opts.ssl_crlpath);
     xfree(sock->base.opts.ssl_key);
     xfree(sock->base.opts.tls_ciphersuites);
+
+#ifdef _WIN32
+    if (sock->wsa_started) {
+        WSACleanup();
+    }
+#endif
 
     xfree(sock);
     return rc;
@@ -180,7 +440,7 @@ static int _cb_raw_shutdown(trilogy_sock_t *_sock) {
     sock->base.fd_cb = _cb_raw_fd;
 
     if (sock->fd != -1)
-        close(sock->fd);
+        sys_close(sock->fd);
     sock->fd = -1;
 
     return TRILOGY_OK;
@@ -188,13 +448,7 @@ static int _cb_raw_shutdown(trilogy_sock_t *_sock) {
 
 static int set_nonblocking_fd(int sock)
 {
-    int flags = fcntl(sock, F_GETFL, 0);
-
-    if (flags < 0) {
-        return TRILOGY_SYSERR;
-    }
-
-    if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0) {
+    if (sys_set_nonblocking(sock) < 0) {
         return TRILOGY_SYSERR;
     }
 
@@ -207,7 +461,7 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
     socklen_t sockerr_len = sizeof(sockerr);
     int rc = TRILOGY_SYSERR;
 
-    sock->fd = socket(ai->ai_family, SOCK_STREAM, ai->ai_protocol);
+    sock->fd = sys_socket(ai->ai_family, SOCK_STREAM, ai->ai_protocol);
     if (sock->fd < 0) {
         return TRILOGY_SYSERR;
     }
@@ -215,20 +469,20 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
 #ifdef TCP_NODELAY
     if (sock->addr->ai_family != PF_UNIX) {
         int flags = 1;
-        if (setsockopt(sock->fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags)) < 0) {
+        if (sys_setsockopt(sock->fd, IPPROTO_TCP, TCP_NODELAY, (void *)&flags, sizeof(flags)) < 0) {
             goto fail;
         }
     }
 #endif
     if (sock->base.opts.keepalive_enabled) {
         int flags = 1;
-        if (setsockopt(sock->fd, SOL_SOCKET, SO_KEEPALIVE, (void *)&flags, sizeof(flags)) < 0) {
+        if (sys_setsockopt(sock->fd, SOL_SOCKET, SO_KEEPALIVE, (void *)&flags, sizeof(flags)) < 0) {
             goto fail;
         }
 #ifdef TCP_KEEPIDLE
         if (sock->base.opts.keepalive_idle > 0) {
             flags = sock->base.opts.keepalive_idle;
-            if (setsockopt(sock->fd, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&flags, sizeof(flags)) < 0) {
+            if (sys_setsockopt(sock->fd, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&flags, sizeof(flags)) < 0) {
                 goto fail;
             }
         }
@@ -236,7 +490,7 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
 #ifdef TCP_KEEPINTVL
         if (sock->base.opts.keepalive_interval > 0) {
             flags = sock->base.opts.keepalive_interval;
-            if (setsockopt(sock->fd, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&flags, sizeof(flags)) < 0) {
+            if (sys_setsockopt(sock->fd, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&flags, sizeof(flags)) < 0) {
                 goto fail;
             }
         }
@@ -244,7 +498,7 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
 #ifdef TCP_KEEPCNT
         if (sock->base.opts.keepalive_count > 0) {
             flags = sock->base.opts.keepalive_count;
-            if (setsockopt(sock->fd, IPPROTO_TCP, TCP_KEEPCNT, (void *)&flags, sizeof(flags)) < 0) {
+            if (sys_setsockopt(sock->fd, IPPROTO_TCP, TCP_KEEPCNT, (void *)&flags, sizeof(flags)) < 0) {
                 goto fail;
             }
         }
@@ -255,8 +509,9 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
         goto fail;
     }
 
-    if (connect(sock->fd, ai->ai_addr, ai->ai_addrlen) < 0) {
-        if (errno != EINPROGRESS && errno != EAGAIN) {
+    if (connect(TRILOGY_SOCKET(sock->fd), ai->ai_addr, (socklen_t)ai->ai_addrlen) < 0) {
+        int err = sys_sock_errno();
+        if (err != EINPROGRESS && err != EAGAIN) {
             goto fail;
         }
     }
@@ -265,7 +520,8 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
         goto failrc;
     }
 
-    if (getsockopt(sock->fd, SOL_SOCKET, SO_ERROR, &sockerr, &sockerr_len) < 0) {
+    if (getsockopt(TRILOGY_SOCKET(sock->fd), SOL_SOCKET, SO_ERROR, (void *)&sockerr, &sockerr_len) < 0) {
+        sys_sock_errno();
         goto fail;
     }
 
@@ -273,7 +529,11 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
         // the socket failed to connect; since `getsockopt` doesn't set `errno`
         // to a meaningful value, we must set it manually because clients always
         // expect to find the error code there
+#ifdef _WIN32
+        errno = trilogy_wsa_to_errno(sockerr);
+#else
         errno = sockerr;
+#endif
         goto fail;
     }
 
@@ -282,7 +542,7 @@ static int raw_connect_internal(struct trilogy_sock *sock, const struct addrinfo
 fail:
     rc = TRILOGY_SYSERR;
 failrc:
-    close(sock->fd);
+    sys_close(sock->fd);
     sock->fd = -1;
     return rc;
 }
@@ -347,6 +607,14 @@ trilogy_sock_t *trilogy_sock_new(const trilogy_sockopt_t *opts)
     sock->addr = NULL;
     sock->ssl = NULL;
 
+#ifdef _WIN32
+    // Winsock must be initialised before any socket or resolver call. It is
+    // reference counted, so every socket takes a reference and releases it in
+    // _cb_raw_close. If this fails, later calls fail with a system error.
+    WSADATA wsa_data;
+    sock->wsa_started = WSAStartup(MAKEWORD(2, 2), &wsa_data) == 0;
+#endif
+
     return (trilogy_sock_t *)sock;
 }
 
@@ -402,6 +670,14 @@ static ssize_t ssl_io_return(struct trilogy_sock *sock, ssize_t ret)
             // Server has closed the connection for writing by sending the close_notify alert
             return (ssize_t)TRILOGY_CLOSED_CONNECTION;
         } else if (rc == SSL_ERROR_SYSCALL && !ERR_peek_error()) {
+#ifdef _WIN32
+            // OpenSSL's socket BIO reports failures through WSAGetLastError.
+            if (WSAGetLastError() != 0) {
+                sys_sock_errno();
+                return (ssize_t)TRILOGY_SYSERR;
+            }
+            return (ssize_t)TRILOGY_CLOSED_CONNECTION;
+#else
             if (errno == 0) {
                 // On OpenSSL <= 1.1.1, SSL_ERROR_SYSCALL with an errno value
                 // of 0 indicates unexpected EOF from the peer.
@@ -409,6 +685,7 @@ static ssize_t ssl_io_return(struct trilogy_sock *sock, ssize_t ret)
             } else {
                 return (ssize_t)TRILOGY_SYSERR;
             }
+#endif
         }
         return (ssize_t)TRILOGY_OPENSSL_ERR;
     }
@@ -423,6 +700,9 @@ static ssize_t _cb_ssl_read(trilogy_sock_t *_sock, void *buf, size_t nread)
     // in the queue.
     ERR_clear_error();
 
+#ifdef _WIN32
+    WSASetLastError(0);
+#endif
     ssize_t data_read = (ssize_t)SSL_read(sock->ssl, buf, (int)nread);
     return ssl_io_return(sock, data_read);
 }
@@ -435,6 +715,9 @@ static ssize_t _cb_ssl_write(trilogy_sock_t *_sock, const void *buf, size_t nwri
     // in the queue.
     ERR_clear_error();
 
+#ifdef _WIN32
+    WSASetLastError(0);
+#endif
     ssize_t data_written = (ssize_t)SSL_write(sock->ssl, buf, (int)nwrite);
     return ssl_io_return(sock, data_written);
 }
@@ -741,7 +1024,7 @@ int trilogy_sock_check(trilogy_sock_t *_sock)
     struct trilogy_sock *sock = (struct trilogy_sock *)_sock;
     char buf[1];
     while (1) {
-        ssize_t data_read = recv(sock->fd, buf, 1, MSG_PEEK);
+        ssize_t data_read = sys_recv(sock->fd, buf, 1, MSG_PEEK);
         if (data_read > 0) {
             return TRILOGY_OK;
         }

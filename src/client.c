@@ -1,4 +1,3 @@
-#include <fcntl.h>
 #include <limits.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>

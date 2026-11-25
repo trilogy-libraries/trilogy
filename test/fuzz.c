@@ -2,9 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
+#endif
 
 #include "trilogy.h"
 
