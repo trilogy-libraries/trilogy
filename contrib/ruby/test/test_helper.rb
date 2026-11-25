@@ -32,6 +32,7 @@ class TrilogyTest < Minitest::Test
   end
 
   def allocations
+    yield # warm the block
     before = GC.stat :total_allocated_objects
     yield
     after = GC.stat :total_allocated_objects
