@@ -14,6 +14,8 @@ wait_for_mysql() {
 
 wait_for_mysql
 
+export ASAN_OPTIONS=verbosity=2
+
 sanitizers="address"
 old_cc="$CC"
 old_cflags="$CFLAGS"
