@@ -56,6 +56,12 @@ export MYSQL_VERSION=${DB_VERSION}
 DISTRIBUTION_SLUG="$(echo "$DISTRIBUTION" | awk '{ gsub(":", "_") ; print $0 }')"
 export DISTRIBUTION_SLUG
 
+if command -v sysctl >/dev/null 2>&1; then
+  # Fix older ASAN implementations.
+  echo "Running: sudo sysctl vm.mmap_rnd_bits=28"
+  sudo sysctl vm.mmap_rnd_bits=28
+fi
+
 # Prepare the shared directory where the certificates will be stored. We need to create
 # and chmod this directory on the host so that the permissions are persisted when the
 # the directory is mounted in the containers. Since the mysql container runs as a non-root
