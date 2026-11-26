@@ -4,6 +4,9 @@
 #include <ruby/encoding.h>
 #include <ruby/io.h>
 #include <ruby/thread.h>
+#ifdef HAVE_RB_FIBER_SCHEDULER_CURRENT
+#include <ruby/fiber/scheduler.h>
+#endif
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/un.h>
@@ -171,6 +174,10 @@ struct trilogy_ctx {
     rb_encoding *encoding;
     unsigned int query_flags;
     char server_version[TRILOGY_SERVER_VERSION_SIZE + 1];
+    VALUE self;
+    // Reused for every Fiber scheduler wait on the socket; Qnil until the first one.
+    VALUE socket_io;
+    int socket_io_fd;
 };
 
 static void rb_trilogy_acquire_buffer(struct trilogy_ctx *ctx)
@@ -185,6 +192,19 @@ static void rb_trilogy_release_buffer(struct trilogy_ctx *ctx)
     if (ctx->conn.packet_buffer.buff) {
         buffer_checkin(&ctx->conn.packet_buffer);
     }
+}
+
+static void mark_trilogy(void *ptr)
+{
+    struct trilogy_ctx *ctx = ptr;
+    rb_gc_mark_movable(ctx->socket_io);
+}
+
+static void compact_trilogy(void *ptr)
+{
+    struct trilogy_ctx *ctx = ptr;
+    ctx->self = rb_gc_location(ctx->self);
+    ctx->socket_io = rb_gc_location(ctx->socket_io);
 }
 
 static void free_trilogy(void *ptr)
@@ -208,9 +228,10 @@ static size_t trilogy_memsize(const void *ptr) {
 static const rb_data_type_t trilogy_data_type = {
     .wrap_struct_name = "trilogy",
     .function = {
-        .dmark = NULL,
+        .dmark = mark_trilogy,
         .dfree = free_trilogy,
         .dsize = trilogy_memsize,
+        .dcompact = compact_trilogy,
     },
     .flags = RUBY_TYPED_FREE_IMMEDIATELY | RUBY_TYPED_WB_PROTECTED
 };
@@ -353,6 +374,9 @@ static VALUE allocate_trilogy(VALUE klass)
     VALUE obj = TypedData_Make_Struct(klass, struct trilogy_ctx, &trilogy_data_type, ctx);
 
     ctx->query_flags = TRILOGY_FLAGS_DEFAULT;
+    ctx->self = obj;
+    ctx->socket_io = Qnil;
+    ctx->socket_io_fd = -1;
 
     if (trilogy_init_no_buffer(&ctx->conn) < 0) {
         VALUE rbmsg = rb_str_new("trilogy_init", 13);
@@ -398,10 +422,39 @@ struct rb_trilogy_wait_args {
     int wait_flag;
     int fd;
     int rc;
+    struct trilogy_ctx *ctx;
 };
+
+#ifdef HAVE_RB_FIBER_SCHEDULER_CURRENT
+// rb_wait_for_single_fd hands a Fiber scheduler a new IO for the fd on every
+// wait. Keep one per connection instead, so the scheduler sees the same object
+// each time and no IO is allocated per query.
+static VALUE rb_trilogy_socket_io(struct trilogy_ctx *ctx, int fd)
+{
+    if (NIL_P(ctx->socket_io) || ctx->socket_io_fd != fd) {
+        VALUE opts = rb_hash_new();
+        rb_hash_aset(opts, ID2SYM(rb_intern("autoclose")), Qfalse);
+        VALUE args[3] = {INT2NUM(fd), rb_str_new_cstr("r+"), opts};
+        VALUE io = rb_funcallv_kw(rb_cIO, rb_intern("for_fd"), 3, args, RB_PASS_KEYWORDS);
+        RB_OBJ_WRITE(ctx->self, &ctx->socket_io, io);
+        ctx->socket_io_fd = fd;
+    }
+    return ctx->socket_io;
+}
+#endif
 
 static VALUE rb_trilogy_wait_protected(VALUE vargs) {
     struct rb_trilogy_wait_args *args = (void *)vargs;
+
+#ifdef HAVE_RB_FIBER_SCHEDULER_CURRENT
+    if (args->ctx && !NIL_P(rb_fiber_scheduler_current())) {
+        VALUE io = rb_trilogy_socket_io(args->ctx, args->fd);
+        VALUE result = rb_io_wait(io, RB_INT2NUM(args->wait_flag), rb_fiber_scheduler_make_timeout(args->timeout));
+        // Like rb_wait_for_single_fd: 0 means the wait timed out.
+        args->rc = RTEST(result) ? 1 : 0;
+        return Qnil;
+    }
+#endif
 
     args->rc = rb_wait_for_single_fd(args->fd, args->wait_flag, args->timeout);
 
@@ -453,6 +506,7 @@ static int _cb_ruby_wait(trilogy_sock_t *sock, trilogy_wait_t wait)
     args.wait_flag = wait_flag;
     args.timeout = timeout;
     args.rc = 0;
+    args.ctx = sock->opts.privdata;
 
     int state = 0;
     rb_protect(rb_trilogy_wait_protected, (VALUE)&args, &state);

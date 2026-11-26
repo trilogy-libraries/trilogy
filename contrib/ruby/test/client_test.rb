@@ -1,6 +1,53 @@
 require "test_helper"
 
 class ClientTest < TrilogyTest
+  # Answers each wait with IO.select and records which IO it was asked to wait on.
+  class RecordingScheduler
+    attr_reader :waited_ios
+
+    def initialize
+      @waited_ios = []
+    end
+
+    def io_wait(io, events, timeout)
+      @waited_ios << io
+      readers = events.anybits?(IO::READABLE) ? [io] : nil
+      writers = events.anybits?(IO::WRITABLE) ? [io] : nil
+      IO.select(readers, writers, nil, timeout) ? events : false
+    end
+
+    def kernel_sleep(duration = nil)
+      IO.select(nil, nil, nil, duration)
+    end
+
+    def block(_blocker, timeout = nil)
+      IO.select(nil, nil, nil, timeout)
+    end
+
+    def unblock(_blocker, _fiber); end
+
+    def fiber(&block)
+      Fiber.new(blocking: false, &block).tap(&:resume)
+    end
+
+    def close; end
+  end
+
+  def test_fiber_scheduler_waits_on_one_io_per_connection
+    client = new_tcp_client
+    scheduler = RecordingScheduler.new
+
+    Thread.new do
+      Fiber.set_scheduler(scheduler)
+      Fiber.schedule { 3.times { |i| assert_equal [[i]], client.query("SELECT #{i} FROM (SELECT SLEEP(0.01)) AS t").rows } }
+    end.join
+
+    refute_empty scheduler.waited_ios
+    assert_equal 1, scheduler.waited_ios.uniq(&:object_id).size
+  ensure
+    ensure_closed client
+  end
+
   def test_trilogy_connected_host
     client = new_tcp_client
     # Since this method depends on the hostname of the machine,
