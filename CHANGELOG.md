@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## Unreleased
+
+### Changed
+
+- Under a Fiber scheduler, wait on one `IO` per connection with `rb_io_wait` instead of `rb_wait_for_single_fd`, which wraps the socket in a new `IO` on every wait.
+
 ## 2.13.3
 
 ### Fixed
